@@ -1,5 +1,5 @@
 import cors from 'cors';
-import express, { Application } from 'express';
+import express, { Application, RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 
@@ -42,6 +42,13 @@ export function createApp(): Application {
   // Routes
   app.use('/health', healthRouter);
   app.use('/auth', authRouter);
+
+  // API Routes (lazy load to ensure database is initialized)
+  app.use('/api/object-types', (req, res, next) => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const objectTypeRoutes = require('./routes/objectType').default as RequestHandler;
+    objectTypeRoutes(req, res, next);
+  });
 
   // Error handlers (must be last)
   app.use(notFoundHandler);

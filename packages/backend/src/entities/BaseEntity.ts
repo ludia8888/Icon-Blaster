@@ -2,6 +2,7 @@ import {
   PrimaryColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   VersionColumn,
   Column,
   BeforeInsert,
@@ -26,6 +27,9 @@ export abstract class BaseEntity {
 
   @Column({ type: 'varchar', nullable: true })
   updatedBy?: string;
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
 
   @BeforeInsert()
   generateRid(): void {

@@ -45,3 +45,10 @@ export function getDataSource(): DataSource {
 
   return dataSource;
 }
+
+/**
+ * Set the DataSource (for testing purposes)
+ */
+export function setDataSource(ds: DataSource): void {
+  dataSource = ds;
+}

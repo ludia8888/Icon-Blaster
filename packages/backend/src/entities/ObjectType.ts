@@ -44,6 +44,9 @@ export class ObjectType extends BaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   metadata?: NodeMetadata;
 
+  @Column({ type: 'simple-array', nullable: true })
+  groups?: string[];
+
   @Column({ type: 'varchar', nullable: true })
   titleProperty?: string;
 

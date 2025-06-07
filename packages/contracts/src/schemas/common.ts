@@ -64,11 +64,19 @@ export const QueryParamsSchema = PaginationSchema.extend({
 });
 
 /**
+ * Common ID parameter schema
+ */
+export const IdParamSchema = z.object({
+  id: z.string().uuid('ID must be a valid UUID'),
+});
+
+/**
  * Type exports
  */
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 export type Pagination = z.infer<typeof PaginationSchema>;
 export type QueryParams = z.infer<typeof QueryParamsSchema>;
+export type IdParam = z.infer<typeof IdParamSchema>;
 
 /**
  * Create error response helper
