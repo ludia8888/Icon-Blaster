@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { getConfig } from './config';
 import { errorHandler } from './middlewares/errorHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
+import { authRouter } from './routes/auth';
 import { healthRouter } from './routes/health';
 
 /**
@@ -40,6 +41,7 @@ export function createApp(): Application {
 
   // Routes
   app.use('/health', healthRouter);
+  app.use('/auth', authRouter);
 
   // Error handlers (must be last)
   app.use(notFoundHandler);

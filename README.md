@@ -107,11 +107,12 @@ npm run test:coverage
   - [x] CORS 설정
   - [x] TypeORM + PostgreSQL 설정
   - [x] 기본 엔티티 (ObjectType, Property, LinkType)
-  - [x] 92%+ 테스트 커버리지
+  - [x] JWT 인증 미들웨어
+  - [x] 역할 기반 접근 제어 (RBAC)
+  - [x] 94%+ 테스트 커버리지
 
 ### In Progress 🔄
 
-- [ ] JWT 인증 미들웨어
 - [ ] ObjectType Repository 계층
 - [ ] ObjectType Service 계층
 - [ ] ObjectType Controller 및 REST API
