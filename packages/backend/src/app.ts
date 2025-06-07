@@ -1,5 +1,5 @@
 import cors from 'cors';
-import express, { Application, RequestHandler } from 'express';
+import express, { Application } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 
@@ -8,6 +8,7 @@ import { errorHandler } from './middlewares/errorHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
 import { authRouter } from './routes/auth';
 import { healthRouter } from './routes/health';
+import objectTypeRouter from './routes/objectType';
 
 /**
  * Create Express application
@@ -43,12 +44,8 @@ export function createApp(): Application {
   app.use('/health', healthRouter);
   app.use('/auth', authRouter);
 
-  // API Routes (lazy load to ensure database is initialized)
-  app.use('/api/object-types', (req, res, next) => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const objectTypeRoutes = require('./routes/objectType').default as RequestHandler;
-    objectTypeRoutes(req, res, next);
-  });
+  // API Routes
+  app.use('/api/object-types', objectTypeRouter);
 
   // Error handlers (must be last)
   app.use(notFoundHandler);

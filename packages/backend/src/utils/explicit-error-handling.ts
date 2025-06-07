@@ -8,6 +8,7 @@
  */
 
 import { AppError, ErrorCode } from '../errors/AppError';
+
 import { logger } from './logger';
 
 /**
@@ -21,6 +22,33 @@ export interface ErrorContext {
 }
 
 /**
+ * AppError 로깅
+ */
+function logAppError(error: AppError, context: ErrorContext): void {
+  logger.error('Known error occurred', {
+    ...context,
+    error: {
+      message: error.message,
+      code: error.code,
+      statusCode: error.statusCode
+    }
+  });
+}
+
+/**
+ * 일반 에러 로깅
+ */
+function logGenericError(error: Error, context: ErrorContext): void {
+  logger.error('Unexpected error occurred', {
+    ...context,
+    error: {
+      message: error.message,
+      stack: error.stack
+    }
+  });
+}
+
+/**
  * 명시적 에러 처리기
  * 에러를 적절한 AppError로 변환하고 로깅
  */
@@ -30,14 +58,7 @@ export function handleError(
 ): AppError {
   // 이미 AppError인 경우
   if (error instanceof AppError) {
-    logger.error('Known error occurred', {
-      ...context,
-      error: {
-        message: error.message,
-        code: error.code,
-        statusCode: error.statusCode
-      }
-    });
+    logAppError(error, context);
     return error;
   }
 
@@ -48,14 +69,7 @@ export function handleError(
 
   // 일반 Error
   if (error instanceof Error) {
-    logger.error('Unexpected error occurred', {
-      ...context,
-      error: {
-        message: error.message,
-        stack: error.stack
-      }
-    });
-
+    logGenericError(error, context);
     return new AppError(
       `${context.operation} failed: ${error.message}`,
       500,
@@ -64,11 +78,7 @@ export function handleError(
   }
 
   // 알 수 없는 에러
-  logger.error('Unknown error type', {
-    ...context,
-    error
-  });
-
+  logger.error('Unknown error type', { ...context, error });
   return new AppError(
     `${context.operation} failed with unknown error`,
     500,
@@ -86,6 +96,41 @@ function isTypeORMError(error: unknown): error is Error {
 }
 
 /**
+ * Unique constraint 에러 처리
+ */
+function handleUniqueConstraintError(message: string, context: ErrorContext): AppError {
+  const field = extractFieldFromError(message);
+  return new AppError(
+    `${context.entity ?? 'Resource'} with this ${field} already exists`,
+    409,
+    ErrorCode.CONFLICT
+  );
+}
+
+/**
+ * Foreign key constraint 에러 처리
+ */
+function handleForeignKeyError(): AppError {
+  return new AppError(
+    'Related resource not found or cannot be deleted due to existing references',
+    400,
+    ErrorCode.VALIDATION_ERROR
+  );
+}
+
+/**
+ * Not null constraint 에러 처리
+ */
+function handleNotNullError(message: string): AppError {
+  const field = extractFieldFromError(message);
+  return new AppError(
+    `Required field '${field}' is missing`,
+    400,
+    ErrorCode.VALIDATION_ERROR
+  );
+}
+
+/**
  * 데이터베이스 에러를 구체적인 AppError로 변환
  */
 function handleDatabaseError(error: Error, context: ErrorContext): AppError {
@@ -93,38 +138,24 @@ function handleDatabaseError(error: Error, context: ErrorContext): AppError {
 
   // Unique constraint 위반
   if (message.includes('duplicate key') || message.includes('unique constraint')) {
-    const field = extractFieldFromError(message);
-    return new AppError(
-      `${context.entity || 'Resource'} with this ${field} already exists`,
-      409,
-      ErrorCode.CONFLICT
-    );
+    return handleUniqueConstraintError(message, context);
   }
 
   // Foreign key 위반
   if (message.includes('foreign key constraint')) {
-    return new AppError(
-      'Related resource not found or cannot be deleted due to existing references',
-      400,
-      ErrorCode.VALIDATION_ERROR
-    );
+    return handleForeignKeyError();
   }
 
   // Not null 위반
   if (message.includes('not-null constraint')) {
-    const field = extractFieldFromError(message);
-    return new AppError(
-      `Required field '${field}' is missing`,
-      400,
-      ErrorCode.VALIDATION_ERROR
-    );
+    return handleNotNullError(message);
   }
 
   // 기타 DB 에러
   return new AppError(
     'Database operation failed',
     500,
-    ErrorCode.DATABASE_ERROR
+    ErrorCode.DATABASE_ERROR as ErrorCode
   );
 }
 
@@ -134,7 +165,12 @@ function handleDatabaseError(error: Error, context: ErrorContext): AppError {
 function extractFieldFromError(message: string): string {
   // PostgreSQL 에러 메시지 패턴에서 필드명 추출
   const match = message.match(/column "(\w+)"|key \((\w+)\)/);
-  return match?.[1] || match?.[2] || 'field';
+  const field1 = match?.[1];
+  const field2 = match?.[2];
+  
+  if (field1 !== undefined && field1.length > 0) return field1;
+  if (field2 !== undefined && field2.length > 0) return field2;
+  return 'field';
 }
 
 /**
