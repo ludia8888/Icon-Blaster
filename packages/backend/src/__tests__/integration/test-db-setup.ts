@@ -1,6 +1,6 @@
 /**
  * 통합 테스트를 위한 실제 PostgreSQL 환경 설정
- * 
+ *
  * 명시적 코드 작성 원칙:
  * 1. 모든 설정값은 명확한 이름과 타입을 가짐
  * 2. 에러 처리는 구체적이고 디버깅 가능하게
@@ -39,7 +39,7 @@ export class TestDatabaseEnvironment {
   async start(): Promise<TestDatabaseConfig> {
     try {
       console.log('🐘 Starting PostgreSQL test container...');
-      
+
       this.container = await new PostgreSqlContainer('postgres:15-alpine')
         .withDatabase('arrakis_test')
         .withUsername('test_user')
@@ -53,7 +53,7 @@ export class TestDatabaseEnvironment {
         database: 'arrakis_test',
         username: 'test_user',
         password: 'test_password',
-        connectionUri: this.container.getConnectionUri()
+        connectionUri: this.container.getConnectionUri(),
       };
 
       console.log(`✅ PostgreSQL container started on port ${config.port}`);
@@ -86,7 +86,7 @@ export class TestDatabaseEnvironment {
 
       await this.dataSource.initialize();
       console.log('✅ DataSource initialized');
-      
+
       return this.dataSource;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -100,7 +100,7 @@ export class TestDatabaseEnvironment {
    */
   async seedTestData(dataSource: DataSource): Promise<void> {
     const queryRunner = dataSource.createQueryRunner();
-    
+
     try {
       await queryRunner.connect();
       await queryRunner.startTransaction();
@@ -153,7 +153,7 @@ export class TestDatabaseEnvironment {
 
     // 에러가 있으면 모두 보고
     if (errors.length > 0) {
-      const messages = errors.map(e => e.message).join('; ');
+      const messages = errors.map((e) => e.message).join('; ');
       throw new Error(`Cleanup failed with errors: ${messages}`);
     }
   }

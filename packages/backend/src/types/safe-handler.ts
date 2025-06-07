@@ -1,6 +1,6 @@
 /**
  * 타입 안전한 Handler 패턴
- * 
+ *
  * Specification-Driven Coding 원칙 적용:
  * Input → Process → Output 계약을 타입 레벨에서 보장
  */
@@ -29,10 +29,7 @@ export type ValidatedRequest<T extends RequestValidation> = Request & {
 /**
  * 3️⃣ 타입 안전한 핸들러 정의
  */
-export type SafeHandler<
-  TValidation extends RequestValidation,
-  TResponse = unknown
-> = (
+export type SafeHandler<TValidation extends RequestValidation, TResponse = unknown> = (
   req: ValidatedRequest<TValidation>,
   res: Response<TResponse>,
   next: NextFunction
@@ -41,10 +38,7 @@ export type SafeHandler<
 /**
  * 4️⃣ 검증 미들웨어 생성기
  */
-export function createValidatedHandler<
-  TValidation extends RequestValidation,
-  TResponse = unknown
->(
+export function createValidatedHandler<TValidation extends RequestValidation, TResponse = unknown>(
   validation: TValidation,
   handler: SafeHandler<TValidation, TResponse>
 ) {
@@ -53,7 +47,7 @@ export function createValidatedHandler<
     ...(validation.body ? [validateBodyMiddleware(validation.body)] : []),
     ...(validation.query ? [validateQueryMiddleware(validation.query)] : []),
     ...(validation.params ? [validateParamsMiddleware(validation.params)] : []),
-    
+
     // 타입 안전한 핸들러
     async (req: Request, res: Response, next: NextFunction) => {
       try {
@@ -62,7 +56,7 @@ export function createValidatedHandler<
       } catch (error) {
         next(error);
       }
-    }
+    },
   ];
 }
 
@@ -111,23 +105,23 @@ import { ValidationError } from '../errors/ValidationError';
 const exampleValidation = {
   body: z.object({
     name: z.string(),
-    email: z.string().email()
+    email: z.string().email(),
   }),
   params: z.object({
-    id: z.string().uuid()
-  })
+    id: z.string().uuid(),
+  }),
 } as const;
 
 export const exampleUsage = {
   // 스키마 정의
   validation: exampleValidation,
-  
+
   // 타입 안전한 핸들러
   handler: async (req: ValidatedRequest<typeof exampleValidation>, res: Response) => {
     // ✅ TypeScript가 이 타입들을 정확히 추론함
     const { name, email } = req.body; // string 타입들
     const { id } = req.params; // string (UUID) 타입
-    
+
     res.json({ id, name, email });
-  }
+  },
 } as const;

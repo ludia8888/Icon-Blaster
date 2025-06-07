@@ -195,21 +195,21 @@ interface ValidationResult {
  */
 export function validateNodeMetadata(metadata: NodeMetadata): ValidationResult {
   const errors: string[] = [];
-  
+
   // 색상 검증
   if (metadata.color && !/^#[0-9A-F]{6}$/i.test(metadata.color)) {
     errors.push('Invalid color format');
   }
-  
+
   // 필수 필드 검증
   if (!Object.values(NodeVisibility).includes(metadata.visibility)) {
     errors.push('Invalid visibility value');
   }
-  
+
   if (!Object.values(NodeStatus).includes(metadata.status)) {
     errors.push('Invalid status value');
   }
-  
+
   return {
     valid: errors.length === 0,
     errors,

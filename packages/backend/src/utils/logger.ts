@@ -1,6 +1,6 @@
 /**
  * Winston 기반 프로덕션 로거
- * 
+ *
  * 특징:
  * - 구조화된 로깅 (JSON 형식)
  * - 로그 레벨별 필터링
@@ -43,11 +43,7 @@ const fileRotateTransport = new DailyRotateFile({
   datePattern: 'YYYY-MM-DD',
   maxSize: '20m',
   maxFiles: '14d',
-  format: combine(
-    timestamp(),
-    errors({ stack: true }),
-    json()
-  )
+  format: combine(timestamp(), errors({ stack: true }), json()),
 });
 
 /**
@@ -59,11 +55,7 @@ const errorFileTransport = new DailyRotateFile({
   datePattern: 'YYYY-MM-DD',
   maxSize: '20m',
   maxFiles: '30d',
-  format: combine(
-    timestamp(),
-    errors({ stack: true }),
-    json()
-  )
+  format: combine(timestamp(), errors({ stack: true }), json()),
 });
 
 /**
@@ -73,35 +65,37 @@ const winstonLogger = winston.createLogger({
   level: process.env['LOG_LEVEL'] ?? 'info',
   format: combine(
     timestamp({
-      format: 'YYYY-MM-DD HH:mm:ss'
+      format: 'YYYY-MM-DD HH:mm:ss',
     }),
     errors({ stack: true }),
     json()
   ),
-  defaultMeta: { 
+  defaultMeta: {
     service: 'arrakis-backend',
-    environment: process.env['NODE_ENV'] ?? 'development'
+    environment: process.env['NODE_ENV'] ?? 'development',
   },
   transports: [
     // 파일 로테이션
     fileRotateTransport,
-    errorFileTransport
-  ]
+    errorFileTransport,
+  ],
 });
 
 /**
  * 개발 환경에서는 콘솔 출력 추가
  */
 if (process.env['NODE_ENV'] !== 'production') {
-  winstonLogger.add(new winston.transports.Console({
-    format: combine(
-      colorize(),
-      timestamp({
-        format: 'YYYY-MM-DD HH:mm:ss'
-      }),
-      devFormat
-    )
-  }));
+  winstonLogger.add(
+    new winston.transports.Console({
+      format: combine(
+        colorize(),
+        timestamp({
+          format: 'YYYY-MM-DD HH:mm:ss',
+        }),
+        devFormat
+      ),
+    })
+  );
 }
 
 /**
@@ -122,17 +116,17 @@ export interface Logger {
 class WinstonLogger implements Logger {
   private sanitizeContext(context?: LogContext): LogContext {
     if (!context) return {};
-    
+
     // 민감한 정보 필터링
     const sanitized = { ...context };
     const sensitiveKeys = ['password', 'token', 'secret', 'apiKey'];
-    
-    Object.keys(sanitized).forEach(key => {
-      if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
+
+    Object.keys(sanitized).forEach((key) => {
+      if (sensitiveKeys.some((sensitive) => key.toLowerCase().includes(sensitive))) {
         sanitized[key] = '[REDACTED]';
       }
     });
-    
+
     return sanitized;
   }
 
@@ -148,8 +142,8 @@ class WinstonLogger implements Logger {
         error: {
           message: context.error.message,
           stack: context.error.stack,
-          name: context.error.name
-        }
+          name: context.error.name,
+        },
       });
     } else {
       winstonLogger.error(message, this.sanitizeContext(context));
@@ -190,10 +184,10 @@ interface ExtendedRequest extends Request {
  */
 export const httpLogger = (req: ExtendedRequest, res: Response, next: NextFunction): void => {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
-    
+
     logger.http(`${req.method} ${req.originalUrl}`, {
       method: req.method,
       url: req.originalUrl,
@@ -202,10 +196,10 @@ export const httpLogger = (req: ExtendedRequest, res: Response, next: NextFuncti
       ip: req.ip,
       userAgent: req.get('user-agent'),
       correlationId: req.correlationId,
-      userId: req.user?.id
+      userId: req.user?.id,
     });
   });
-  
+
   next();
 };
 

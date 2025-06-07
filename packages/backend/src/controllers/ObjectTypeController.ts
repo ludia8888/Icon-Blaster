@@ -1,10 +1,10 @@
-import { 
+import {
   ObjectTypeResponse,
   ObjectTypeListResponse,
   CreateObjectTypeSchema,
   UpdateObjectTypeSchema,
   ObjectTypeQuerySchema,
-  IdParamSchema
+  IdParamSchema,
 } from '@arrakis/contracts';
 import { Response } from 'express';
 
@@ -38,7 +38,7 @@ export class ObjectTypeController {
     res: Response<ObjectTypeListResponse>
   ): Promise<void> {
     const result = await this.service.list(req.query);
-    
+
     const response: ObjectTypeListResponse = {
       data: result.data.map(mapObjectTypeToResponse),
       pagination: {

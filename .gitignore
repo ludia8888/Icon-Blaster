@@ -7,6 +7,7 @@ node_modules/
 coverage/
 *.lcov
 .nyc_output
+.scannerwork/
 
 # Production
 dist/
@@ -36,6 +37,12 @@ lerna-debug.log*
 *.swp
 *.swo
 *~
+
+# SonarQube
+.sonar/
+sonar-project.properties.local
+eslint-report.json
+.scannerwork/
 
 # OS
 .DS_Store

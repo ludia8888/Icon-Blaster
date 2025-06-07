@@ -34,22 +34,22 @@ paths:
       summary: List object types
       operationId: listObjectTypes
       parameters:
-        - $ref: '#/components/parameters/QueryParam'
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/SortByParam'
-        - $ref: '#/components/parameters/SortOrderParam'
+        - $ref: "#/components/parameters/QueryParam"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/SortByParam"
+        - $ref: "#/components/parameters/SortOrderParam"
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectTypeListResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/ObjectTypeListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     post:
       tags:
@@ -61,22 +61,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateObjectType'
+              $ref: "#/components/schemas/CreateObjectType"
       responses:
-        '201':
+        "201":
           description: Created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectType'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '409':
-          $ref: '#/components/responses/ConflictError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/ObjectType"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /object-type/{rid}:
     get:
@@ -85,20 +85,20 @@ paths:
       summary: Get object type by ID
       operationId: getObjectType
       parameters:
-        - $ref: '#/components/parameters/ResourceId'
+        - $ref: "#/components/parameters/ResourceId"
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectType'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/ObjectType"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     put:
       tags:
@@ -106,31 +106,31 @@ paths:
       summary: Update object type
       operationId: updateObjectType
       parameters:
-        - $ref: '#/components/parameters/ResourceId'
-        - $ref: '#/components/parameters/VersionParam'
+        - $ref: "#/components/parameters/ResourceId"
+        - $ref: "#/components/parameters/VersionParam"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateObjectType'
+              $ref: "#/components/schemas/UpdateObjectType"
       responses:
-        '200':
+        "200":
           description: Updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectType'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '409':
-          $ref: '#/components/responses/ConflictError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/ObjectType"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     delete:
       tags:
@@ -138,16 +138,16 @@ paths:
       summary: Delete object type
       operationId: deleteObjectType
       parameters:
-        - $ref: '#/components/parameters/ResourceId'
+        - $ref: "#/components/parameters/ResourceId"
       responses:
-        '204':
+        "204":
           description: Deleted
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
 components:
   parameters:
@@ -230,7 +230,7 @@ components:
           format: uuid
         apiName:
           type: string
-          pattern: '^[a-zA-Z][a-zA-Z0-9_]*$'
+          pattern: "^[a-zA-Z][a-zA-Z0-9_]*$"
         displayName:
           type: string
         description:
@@ -239,15 +239,15 @@ components:
           type: string
         color:
           type: string
-          pattern: '^#[0-9A-F]{6}$'
+          pattern: "^#[0-9A-F]{6}$"
         groups:
           type: array
           items:
             type: string
         visibility:
-          $ref: '#/components/schemas/NodeVisibility'
+          $ref: "#/components/schemas/NodeVisibility"
         status:
-          $ref: '#/components/schemas/NodeStatus'
+          $ref: "#/components/schemas/NodeStatus"
         version:
           type: integer
         createdAt:
@@ -269,7 +269,7 @@ components:
       properties:
         apiName:
           type: string
-          pattern: '^[a-zA-Z][a-zA-Z0-9_]*$'
+          pattern: "^[a-zA-Z][a-zA-Z0-9_]*$"
           minLength: 1
           maxLength: 100
         displayName:
@@ -284,7 +284,7 @@ components:
           maxLength: 50
         color:
           type: string
-          pattern: '^#[0-9A-F]{6}$'
+          pattern: "^#[0-9A-F]{6}$"
         groups:
           type: array
           maxItems: 10
@@ -292,9 +292,9 @@ components:
             type: string
             maxLength: 50
         visibility:
-          $ref: '#/components/schemas/NodeVisibility'
+          $ref: "#/components/schemas/NodeVisibility"
         status:
-          $ref: '#/components/schemas/NodeStatus'
+          $ref: "#/components/schemas/NodeStatus"
 
     UpdateObjectType:
       type: object
@@ -311,7 +311,7 @@ components:
           maxLength: 50
         color:
           type: string
-          pattern: '^#[0-9A-F]{6}$'
+          pattern: "^#[0-9A-F]{6}$"
         groups:
           type: array
           maxItems: 10
@@ -319,9 +319,9 @@ components:
             type: string
             maxLength: 50
         visibility:
-          $ref: '#/components/schemas/NodeVisibility'
+          $ref: "#/components/schemas/NodeVisibility"
         status:
-          $ref: '#/components/schemas/NodeStatus'
+          $ref: "#/components/schemas/NodeStatus"
 
     ObjectTypeListResponse:
       type: object
@@ -332,9 +332,9 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/ObjectType'
+            $ref: "#/components/schemas/ObjectType"
         pagination:
-          $ref: '#/components/schemas/Pagination'
+          $ref: "#/components/schemas/Pagination"
 
     NodeVisibility:
       type: string
@@ -397,42 +397,42 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
 
     UnauthorizedError:
       description: Unauthorized
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
 
     ForbiddenError:
       description: Forbidden
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
 
     NotFoundError:
       description: Not found
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
 
     ConflictError:
       description: Conflict
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
 
     InternalError:
       description: Internal server error
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
 
   securitySchemes:
     bearerAuth:

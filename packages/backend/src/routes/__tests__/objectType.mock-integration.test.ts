@@ -1,11 +1,15 @@
-import { CreateObjectTypeSchema, ObjectTypeQuerySchema, IdParamSchema , ErrorCode } from '@arrakis/contracts';
+import {
+  CreateObjectTypeSchema,
+  ObjectTypeQuerySchema,
+  IdParamSchema,
+  ErrorCode,
+} from '@arrakis/contracts';
 import { NodeStatus, NodeVisibility } from '@arrakis/shared';
 import express, { Application } from 'express';
 import request from 'supertest';
 import { z } from 'zod';
 
 import { validateBody, validateQuery, validateParams } from '../../middlewares/validate';
-
 
 describe('ObjectType API Type Safety and Validation Tests', () => {
   let app: Application;
@@ -15,72 +19,65 @@ describe('ObjectType API Type Safety and Validation Tests', () => {
     app.use(express.json());
 
     // Mock endpoint to test request body validation and type inference
-    app.post('/test/object-types',
-      validateBody(CreateObjectTypeSchema),
-      (req, res) => {
-        // If we reach here, validation passed
-        // TypeScript should know req.body is CreateObjectTypeDto
-        const { apiName, displayName, status, visibility } = req.body;
-        
-        res.json({
-          validated: true,
-          data: {
-            apiName,
-            displayName,
-            status: status ?? NodeStatus.ACTIVE,
-            visibility: visibility ?? NodeVisibility.NORMAL,
-          }
-        });
-      }
-    );
+    app.post('/test/object-types', validateBody(CreateObjectTypeSchema), (req, res) => {
+      // If we reach here, validation passed
+      // TypeScript should know req.body is CreateObjectTypeDto
+      const { apiName, displayName, status, visibility } = req.body;
+
+      res.json({
+        validated: true,
+        data: {
+          apiName,
+          displayName,
+          status: status ?? NodeStatus.ACTIVE,
+          visibility: visibility ?? NodeVisibility.NORMAL,
+        },
+      });
+    });
 
     // Mock endpoint to test query validation
-    app.get('/test/object-types',
-      validateQuery(ObjectTypeQuerySchema),
-      (req, res) => {
-        // TypeScript should know req.query matches ObjectTypeQuery
-        const { page, limit, sortBy, sortOrder } = req.query;
-        
-        res.json({
-          validated: true,
-          query: {
-            page,
-            limit,
-            sortBy,
-            sortOrder,
-          }
-        });
-      }
-    );
+    app.get('/test/object-types', validateQuery(ObjectTypeQuerySchema), (req, res) => {
+      // TypeScript should know req.query matches ObjectTypeQuery
+      const { page, limit, sortBy, sortOrder } = req.query;
+
+      res.json({
+        validated: true,
+        query: {
+          page,
+          limit,
+          sortBy,
+          sortOrder,
+        },
+      });
+    });
 
     // Mock endpoint to test params validation
-    app.get('/test/object-types/:id',
-      validateParams(IdParamSchema),
-      (req, res) => {
-        // TypeScript should know req.params.id is a valid UUID
-        const { id } = req.params;
-        
-        res.json({
-          validated: true,
-          id,
-        });
-      }
-    );
+    app.get('/test/object-types/:id', validateParams(IdParamSchema), (req, res) => {
+      // TypeScript should know req.params.id is a valid UUID
+      const { id } = req.params;
+
+      res.json({
+        validated: true,
+        id,
+      });
+    });
 
     // Error handler to catch validation errors
-    app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      if (err.code === ErrorCode.VALIDATION_ERROR) {
-        res.status(400).json({
-          error: {
-            code: err.code,
-            message: err.message,
-            details: err.details,
-          }
-        });
-      } else {
-        res.status(500).json({ error: 'Internal error' });
+    app.use(
+      (err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+        if (err.code === ErrorCode.VALIDATION_ERROR) {
+          res.status(400).json({
+            error: {
+              code: err.code,
+              message: err.message,
+              details: err.details,
+            },
+          });
+        } else {
+          res.status(500).json({ error: 'Internal error' });
+        }
       }
-    });
+    );
   });
 
   describe('Body Validation', () => {
@@ -161,9 +158,7 @@ describe('ObjectType API Type Safety and Validation Tests', () => {
     });
 
     it('should apply defaults for missing query params', async () => {
-      const response = await request(app)
-        .get('/test/object-types')
-        .expect(200);
+      const response = await request(app).get('/test/object-types').expect(200);
 
       expect(response.body.query.page).toBe(1);
       expect(response.body.query.limit).toBe(20);
@@ -187,19 +182,15 @@ describe('ObjectType API Type Safety and Validation Tests', () => {
   describe('Params Validation', () => {
     it('should validate UUID params', async () => {
       const validUuid = '550e8400-e29b-41d4-a716-446655440000';
-      
-      const response = await request(app)
-        .get(`/test/object-types/${validUuid}`)
-        .expect(200);
+
+      const response = await request(app).get(`/test/object-types/${validUuid}`).expect(200);
 
       expect(response.body.validated).toBe(true);
       expect(response.body.id).toBe(validUuid);
     });
 
     it('should reject invalid UUID format', async () => {
-      const response = await request(app)
-        .get('/test/object-types/not-a-uuid')
-        .expect(400);
+      const response = await request(app).get('/test/object-types/not-a-uuid').expect(400);
 
       expect(response.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
       expect(response.body.error.details[0]).toContain('ID must be a valid UUID');
@@ -212,7 +203,8 @@ describe('ObjectType API Type Safety and Validation Tests', () => {
       const testApp = express();
       testApp.use(express.json());
 
-      testApp.put('/test/:id',
+      testApp.put(
+        '/test/:id',
         validateParams(z.object({ id: z.string().uuid() })),
         validateQuery(z.object({ version: z.coerce.number().optional() })),
         validateBody(z.object({ name: z.string() })),
@@ -221,7 +213,7 @@ describe('ObjectType API Type Safety and Validation Tests', () => {
           // - req.params.id is a string (UUID)
           // - req.query.version is number | undefined
           // - req.body.name is a string
-          
+
           res.json({
             id: req.params.id,
             version: req.query['version'],
@@ -258,15 +250,16 @@ describe('ObjectType API Type Safety and Validation Tests', () => {
 
       const testApp = express();
       testApp.use(express.json());
-      
-      testApp.post('/test/complex',
-        validateBody(complexSchema),
-        (req, res) => res.json({ valid: true, data: req.body })
+
+      testApp.post('/test/complex', validateBody(complexSchema), (req, res) =>
+        res.json({ valid: true, data: req.body })
       );
 
-      testApp.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-        res.status(400).json({ error: err.message });
-      });
+      testApp.use(
+        (err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+          res.status(400).json({ error: err.message });
+        }
+      );
 
       const response = await request(testApp)
         .post('/test/complex')

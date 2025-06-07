@@ -1,6 +1,6 @@
 /**
  * 테스트용 인증 헬퍼
- * 
+ *
  * 명시적으로 테스트 토큰을 생성하는 유틸리티
  */
 
@@ -12,19 +12,21 @@ import { JwtPayload } from '../../auth/types';
  * @param payload 사용자 정보
  * @returns JWT 토큰 문자열
  */
-export function generateTestToken(payload: Partial<JwtPayload> & { sub: string; email: string; roles: string[] }): string {
+export function generateTestToken(
+  payload: Partial<JwtPayload> & { sub: string; email: string; roles: string[] }
+): string {
   const secret = process.env['JWT_SECRET'] || 'test-secret';
-  
+
   const fullPayload: JwtPayload = {
     sub: payload.sub,
     email: payload.email,
     name: payload.name || 'Test User',
-    roles: payload.roles
+    roles: payload.roles,
   };
-  
+
   return jwt.sign(fullPayload, secret, {
     expiresIn: '1h',
-    issuer: 'arrakis-backend'
+    issuer: 'arrakis-backend',
   });
 }
 
@@ -36,26 +38,26 @@ export const testUsers = {
     sub: 'admin-user',
     email: 'admin@test.com',
     name: 'Admin User',
-    roles: ['admin'] as const
+    roles: ['admin'] as const,
   },
   editor: {
     sub: 'editor-user',
     email: 'editor@test.com',
     name: 'Editor User',
-    roles: ['editor'] as const
+    roles: ['editor'] as const,
   },
   viewer: {
     sub: 'viewer-user',
     email: 'viewer@test.com',
     name: 'Viewer User',
-    roles: ['viewer'] as const
+    roles: ['viewer'] as const,
   },
   multiRole: {
     sub: 'multi-user',
     email: 'multi@test.com',
     name: 'Multi Role User',
-    roles: ['editor', 'viewer'] as const
-  }
+    roles: ['editor', 'viewer'] as const,
+  },
 } as const;
 
 /**
@@ -67,6 +69,6 @@ export function getTokenForRole(role: 'admin' | 'editor' | 'viewer'): string {
     sub: user.sub,
     email: user.email,
     name: user.name,
-    roles: [...user.roles]  // Convert readonly array to mutable
+    roles: [...user.roles], // Convert readonly array to mutable
   });
 }

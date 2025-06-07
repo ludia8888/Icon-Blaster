@@ -17,9 +17,7 @@ export class ValidationError extends AppError {
       message: err.message,
     }));
 
-    const detailMessages = validationDetails.map(
-      (detail) => `${detail.path}: ${detail.message}`
-    );
+    const detailMessages = validationDetails.map((detail) => `${detail.path}: ${detail.message}`);
 
     super('Validation failed', 400, ErrorCode.VALIDATION_ERROR, detailMessages);
     this.validationDetails = validationDetails;

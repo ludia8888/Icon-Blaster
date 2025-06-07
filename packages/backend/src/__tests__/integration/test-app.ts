@@ -1,6 +1,6 @@
 /**
  * Test-specific app initialization
- * 
+ *
  * Creates an Express app instance that uses the test DataSource
  */
 
@@ -15,7 +15,7 @@ import { setDataSource } from '../../database';
 export function createTestApp(dataSource: DataSource): Application {
   // Set the test DataSource globally
   setDataSource(dataSource);
-  
+
   // Create and return the app
   return createApp();
 }

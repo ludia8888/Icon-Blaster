@@ -1,4 +1,9 @@
-import { CreateObjectTypeDto, UpdateObjectTypeDto, ObjectTypeQuery , ErrorCode } from '@arrakis/contracts';
+import {
+  CreateObjectTypeDto,
+  UpdateObjectTypeDto,
+  ObjectTypeQuery,
+  ErrorCode,
+} from '@arrakis/contracts';
 import { NodeStatus } from '@arrakis/shared';
 
 import { ObjectType } from '../entities/ObjectType';
@@ -82,14 +87,14 @@ export class ObjectTypeService {
 
   async delete(id: string): Promise<void> {
     await this.findById(id);
-    
+
     // Soft delete by updating status to DEPRECATED
     await this.repository.updateStatus(id, NodeStatus.DEPRECATED);
   }
 
   async activate(id: string, updatedBy: string): Promise<ObjectType> {
     const objectType = await this.findById(id);
-    
+
     if (objectType.status === NodeStatus.ACTIVE) {
       throw new AppError('ObjectType is already active', 400, ErrorCode.BAD_REQUEST);
     }
@@ -108,7 +113,7 @@ export class ObjectTypeService {
 
   async deactivate(id: string, updatedBy: string): Promise<ObjectType> {
     const objectType = await this.findById(id);
-    
+
     if (objectType.status === NodeStatus.DEPRECATED) {
       throw new AppError('ObjectType is already deprecated', 400, ErrorCode.BAD_REQUEST);
     }

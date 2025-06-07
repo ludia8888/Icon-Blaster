@@ -10,23 +10,36 @@
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
+    "lint:fix": "npm run lint:fix --workspaces --if-present",
+    "lint:report": "npm run lint:report --workspaces --if-present",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,scss,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,scss,md,yml,yaml}\"",
     "type-check": "npm run type-check --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "pre-commit": "lint-staged",
+    "code-quality": "npm run lint && npm run format:check && npm run type-check",
+    "sonar": "node scripts/sonar-scanner.js",
+    "sonar:scanner": "sonar-scanner",
+    "sonar:local": "docker-compose -f docker-compose.sonarqube.yml up -d && echo 'SonarQube is starting at http://localhost:9000'",
+    "sonar:stop": "docker-compose -f docker-compose.sonarqube.yml down"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
-    "typescript": "^5.3.0",
-    "eslint": "^8.56.0",
-    "prettier": "^3.2.0",
-    "husky": "^9.0.0",
-    "lint-staged": "^15.2.0",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
+    "dotenv": "^16.5.0",
+    "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-jest": "^27.6.0"
+    "eslint-plugin-jest": "^27.6.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.0",
+    "sonarqube-scanner": "^4.3.0",
+    "typescript": "^5.3.0"
   },
   "engines": {
     "node": ">=18.0.0",
@@ -41,7 +54,13 @@
       "prettier --write"
     ]
   },
-  "keywords": ["ontology", "metadata", "enterprise", "palantir", "foundry"],
+  "keywords": [
+    "ontology",
+    "metadata",
+    "enterprise",
+    "palantir",
+    "foundry"
+  ],
   "author": "Arrakis Team",
   "license": "MIT"
 }

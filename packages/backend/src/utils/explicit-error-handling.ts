@@ -1,6 +1,6 @@
 /**
  * 명시적 에러 처리 유틸리티
- * 
+ *
  * 원칙:
  * 1. 모든 에러는 구체적인 타입과 메시지를 가짐
  * 2. 에러 발생 지점을 추적 가능하게 함
@@ -15,9 +15,9 @@ import { logger } from './logger';
  * 에러 발생 맥락 정보
  */
 export interface ErrorContext {
-  operation: string;      // 어떤 작업 중이었는지
-  entity?: string;       // 어떤 엔티티와 관련있는지
-  userId?: string;       // 누가 작업했는지
+  operation: string; // 어떤 작업 중이었는지
+  entity?: string; // 어떤 엔티티와 관련있는지
+  userId?: string; // 누가 작업했는지
   data?: Record<string, unknown>; // 관련 데이터
 }
 
@@ -30,8 +30,8 @@ function logAppError(error: AppError, context: ErrorContext): void {
     error: {
       message: error.message,
       code: error.code,
-      statusCode: error.statusCode
-    }
+      statusCode: error.statusCode,
+    },
   });
 }
 
@@ -43,8 +43,8 @@ function logGenericError(error: Error, context: ErrorContext): void {
     ...context,
     error: {
       message: error.message,
-      stack: error.stack
-    }
+      stack: error.stack,
+    },
   });
 }
 
@@ -52,10 +52,7 @@ function logGenericError(error: Error, context: ErrorContext): void {
  * 명시적 에러 처리기
  * 에러를 적절한 AppError로 변환하고 로깅
  */
-export function handleError(
-  error: unknown,
-  context: ErrorContext
-): AppError {
+export function handleError(error: unknown, context: ErrorContext): AppError {
   // 이미 AppError인 경우
   if (error instanceof AppError) {
     logAppError(error, context);
@@ -90,9 +87,11 @@ export function handleError(
  * TypeORM 에러인지 확인
  */
 function isTypeORMError(error: unknown): error is Error {
-  return error instanceof Error && 
+  return (
+    error instanceof Error &&
     (error.constructor.name.includes('QueryFailedError') ||
-     error.constructor.name.includes('EntityNotFoundError'));
+      error.constructor.name.includes('EntityNotFoundError'))
+  );
 }
 
 /**
@@ -123,11 +122,7 @@ function handleForeignKeyError(): AppError {
  */
 function handleNotNullError(message: string): AppError {
   const field = extractFieldFromError(message);
-  return new AppError(
-    `Required field '${field}' is missing`,
-    400,
-    ErrorCode.VALIDATION_ERROR
-  );
+  return new AppError(`Required field '${field}' is missing`, 400, ErrorCode.VALIDATION_ERROR);
 }
 
 /**
@@ -152,11 +147,7 @@ function handleDatabaseError(error: Error, context: ErrorContext): AppError {
   }
 
   // 기타 DB 에러
-  return new AppError(
-    'Database operation failed',
-    500,
-    ErrorCode.DATABASE_ERROR as ErrorCode
-  );
+  return new AppError('Database operation failed', 500, ErrorCode.DATABASE_ERROR as ErrorCode);
 }
 
 /**
@@ -167,7 +158,7 @@ function extractFieldFromError(message: string): string {
   const match = message.match(/column "(\w+)"|key \((\w+)\)/);
   const field1 = match?.[1];
   const field2 = match?.[2];
-  
+
   if (field1 !== undefined && field1.length > 0) return field1;
   if (field2 !== undefined && field2.length > 0) return field2;
   return 'field';
@@ -175,7 +166,7 @@ function extractFieldFromError(message: string): string {
 
 /**
  * 비동기 작업을 명시적으로 처리하는 래퍼
- * 
+ *
  * @example
  * const result = await withErrorHandling(
  *   async () => await repository.save(data),
@@ -197,9 +188,7 @@ export async function withErrorHandling<T>(
  * 결과를 명시적으로 표현하는 Result 타입
  * 에러를 예외가 아닌 값으로 처리
  */
-export type Result<T, E = AppError> = 
-  | { success: true; data: T }
-  | { success: false; error: E };
+export type Result<T, E = AppError> = { success: true; data: T } | { success: false; error: E };
 
 /**
  * Result를 반환하는 비동기 작업 래퍼
@@ -234,5 +223,5 @@ export const Result = {
       return result.data;
     }
     throw result.error;
-  }
+  },
 };

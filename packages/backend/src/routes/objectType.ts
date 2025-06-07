@@ -2,7 +2,7 @@ import {
   CreateObjectTypeSchema,
   UpdateObjectTypeSchema,
   ObjectTypeQuerySchema,
-  IdParamSchema
+  IdParamSchema,
 } from '@arrakis/contracts';
 import { Router } from 'express';
 
@@ -11,9 +11,10 @@ import { getDataSource } from '../database';
 import { ObjectType } from '../entities/ObjectType';
 import { authenticate } from '../middlewares/auth';
 import { authorize } from '../middlewares/authorize';
+import { defineRoute } from '../middlewares/type-transforming-middleware';
 import { ObjectTypeRepository } from '../repositories/ObjectTypeRepository';
 import { ObjectTypeService } from '../services/ObjectTypeService';
-import { createValidatedHandler } from '../types/safe-handler';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 
@@ -34,10 +35,12 @@ function getController(): ObjectTypeController {
 router.get(
   '/',
   authenticate,
-  ...createValidatedHandler(
-    { query: ObjectTypeQuerySchema },
-    async (req, res) => getController().list(req, res)
-  )
+  ...defineRoute({
+    query: ObjectTypeQuerySchema,
+    handler: asyncHandler(async (req, res) => {
+      await getController().list(req, res);
+    }),
+  })
 );
 
 // Create a new object type
@@ -45,20 +48,24 @@ router.post(
   '/',
   authenticate,
   authorize(['admin', 'editor']),
-  ...createValidatedHandler(
-    { body: CreateObjectTypeSchema },
-    async (req, res) => getController().create(req, res)
-  )
+  ...defineRoute({
+    body: CreateObjectTypeSchema,
+    handler: asyncHandler(async (req, res) => {
+      await getController().create(req, res);
+    }),
+  })
 );
 
 // Get a single object type
 router.get(
   '/:id',
   authenticate,
-  ...createValidatedHandler(
-    { params: IdParamSchema },
-    async (req, res) => getController().get(req, res)
-  )
+  ...defineRoute({
+    params: IdParamSchema,
+    handler: asyncHandler(async (req, res) => {
+      await getController().get(req, res);
+    }),
+  })
 );
 
 // Update an object type
@@ -66,10 +73,13 @@ router.put(
   '/:id',
   authenticate,
   authorize(['admin', 'editor']),
-  ...createValidatedHandler(
-    { params: IdParamSchema, body: UpdateObjectTypeSchema },
-    async (req, res) => getController().update(req, res)
-  )
+  ...defineRoute({
+    params: IdParamSchema,
+    body: UpdateObjectTypeSchema,
+    handler: asyncHandler(async (req, res) => {
+      await getController().update(req, res);
+    }),
+  })
 );
 
 // Delete an object type (soft delete)
@@ -77,10 +87,12 @@ router.delete(
   '/:id',
   authenticate,
   authorize(['admin']),
-  ...createValidatedHandler(
-    { params: IdParamSchema },
-    async (req, res) => getController().delete(req, res)
-  )
+  ...defineRoute({
+    params: IdParamSchema,
+    handler: asyncHandler(async (req, res) => {
+      await getController().delete(req, res);
+    }),
+  })
 );
 
 // Activate an object type
@@ -88,10 +100,12 @@ router.post(
   '/:id/activate',
   authenticate,
   authorize(['admin', 'editor']),
-  ...createValidatedHandler(
-    { params: IdParamSchema },
-    async (req, res) => getController().activate(req, res)
-  )
+  ...defineRoute({
+    params: IdParamSchema,
+    handler: asyncHandler(async (req, res) => {
+      await getController().activate(req, res);
+    }),
+  })
 );
 
 // Deactivate an object type
@@ -99,10 +113,12 @@ router.post(
   '/:id/deactivate',
   authenticate,
   authorize(['admin', 'editor']),
-  ...createValidatedHandler(
-    { params: IdParamSchema },
-    async (req, res) => getController().deactivate(req, res)
-  )
+  ...defineRoute({
+    params: IdParamSchema,
+    handler: asyncHandler(async (req, res) => {
+      await getController().deactivate(req, res);
+    }),
+  })
 );
 
 export default router;

@@ -51,7 +51,7 @@ describe('ObjectTypeRepository', () => {
         { rid: '1', apiName: 'Object1' },
         { rid: '2', apiName: 'Object2' },
       ] as ObjectType[];
-      
+
       mockTypeOrmRepo.findAndCount.mockResolvedValue([mockData, 10]);
 
       const result = await repository.findPaginated(
@@ -81,10 +81,7 @@ describe('ObjectTypeRepository', () => {
     it('should calculate correct pagination', async () => {
       mockTypeOrmRepo.findAndCount.mockResolvedValue([[], 100]);
 
-      const result = await repository.findPaginated(
-        {},
-        { page: 3, limit: 20 }
-      );
+      const result = await repository.findPaginated({}, { page: 3, limit: 20 });
 
       expect(mockTypeOrmRepo.findAndCount).toHaveBeenCalledWith({
         where: {},
@@ -122,7 +119,10 @@ describe('ObjectTypeRepository', () => {
     it('should update status', async () => {
       const mockObjectType = { rid: '123', status: NodeStatus.ACTIVE } as ObjectType;
       mockTypeOrmRepo.findOne.mockResolvedValue(mockObjectType);
-      mockTypeOrmRepo.save.mockResolvedValue({ ...mockObjectType, status: NodeStatus.DEPRECATED } as ObjectType);
+      mockTypeOrmRepo.save.mockResolvedValue({
+        ...mockObjectType,
+        status: NodeStatus.DEPRECATED,
+      } as ObjectType);
 
       const result = await repository.updateStatus('123', NodeStatus.DEPRECATED);
 
@@ -137,16 +137,15 @@ describe('ObjectTypeRepository', () => {
         where: jest.fn().mockReturnThis(),
         getMany: jest.fn().mockResolvedValue(mockData),
       };
-      
+
       mockTypeOrmRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
 
       const result = await repository.findByGroups(['group1', 'group2']);
 
       expect(mockTypeOrmRepo.createQueryBuilder).toHaveBeenCalledWith('objectType');
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        'objectType.groups && :groups',
-        { groups: ['group1', 'group2'] }
-      );
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('objectType.groups && :groups', {
+        groups: ['group1', 'group2'],
+      });
       expect(result).toBe(mockData);
     });
   });

@@ -42,7 +42,7 @@ export function parseResourceId(id: string): ParseResult {
       error: null,
     };
   }
-  
+
   return {
     valid: false,
     id: null,

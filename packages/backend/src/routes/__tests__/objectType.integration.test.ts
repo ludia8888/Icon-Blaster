@@ -110,10 +110,7 @@ describe('ObjectType API Integration Tests', () => {
     });
 
     it('should require authentication', async () => {
-      await request(app)
-        .post('/api/object-types')
-        .send(validObjectType)
-        .expect(401);
+      await request(app).post('/api/object-types').send(validObjectType).expect(401);
     });
 
     it('should require proper authorization', async () => {
@@ -204,7 +201,7 @@ describe('ObjectType API Integration Tests', () => {
           apiName: 'TestObject',
           displayName: 'Test Object',
         });
-      
+
       objectTypeId = response.body.rid;
     });
 
@@ -220,7 +217,7 @@ describe('ObjectType API Integration Tests', () => {
 
     it('should return 404 for non-existent ID', async () => {
       const fakeId = '550e8400-e29b-41d4-a716-446655440000';
-      
+
       const response = await request(app)
         .get(`/api/object-types/${fakeId}`)
         .set('Authorization', `Bearer ${viewerToken}`)
@@ -250,7 +247,7 @@ describe('ObjectType API Integration Tests', () => {
           apiName: 'TestObject',
           displayName: 'Test Object',
         });
-      
+
       objectTypeId = response.body.rid;
     });
 
@@ -289,7 +286,7 @@ describe('ObjectType API Integration Tests', () => {
           apiName: 'TestObject',
           displayName: 'Test Object',
         });
-      
+
       objectTypeId = response.body.rid;
     });
 
@@ -321,7 +318,7 @@ describe('ObjectType API Integration Tests', () => {
     it('should provide type-safe request bodies', async () => {
       // This test verifies that TypeScript compilation succeeds
       // with proper type inference in the controller
-      
+
       const response = await request(app)
         .post('/api/object-types')
         .set('Authorization', `Bearer ${adminToken}`)

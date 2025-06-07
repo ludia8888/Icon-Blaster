@@ -129,6 +129,7 @@ SENTRY_DSN=https://xxxxx@sentry.io/123
 
 - **Controller**: `@UseGuards(Auth, Acl)` + `@ValidationPipe`
 - **Service**: DB 트랜잭션 포함
+
   ```
   async createObject(dto) {
     return this.dataSource.transaction(async (manager) => {
@@ -140,6 +141,7 @@ SENTRY_DSN=https://xxxxx@sentry.io/123
   }
 
   ```
+
 - **Event Emit**: Kafka producer sends typed payload, key = `rid`
 
 ### 5.3 VersionModule

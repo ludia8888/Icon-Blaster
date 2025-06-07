@@ -26,7 +26,7 @@ export type TypedRequestParams<T extends Record<string, string>> = Request & {
 
 /**
  * Type-safe request with validated body, params, and query
- * 
+ *
  * @template B - Body type (defaults to unknown for safety)
  * @template P - Params type (must be string record)
  * @template Q - Query type (defaults to ParsedQs from Express)
@@ -34,7 +34,7 @@ export type TypedRequestParams<T extends Record<string, string>> = Request & {
 export type TypedRequest<
   B = unknown,
   P extends Record<string, string> = Record<string, string>,
-  Q = qs.ParsedQs
+  Q = qs.ParsedQs,
 > = Request & {
   body: B;
   params: P;

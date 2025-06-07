@@ -16,11 +16,11 @@ describe('Ontology types', () => {
       expect(NodeType.OBJECT).toBe('object');
       expect(NodeType.INTERFACE).toBe('interface');
       expect(NodeType.ACTION).toBe('action');
-      
+
       expect(NodeStatus.ACTIVE).toBe('active');
       expect(NodeStatus.EXPERIMENTAL).toBe('experimental');
       expect(NodeStatus.DEPRECATED).toBe('deprecated');
-      
+
       expect(NodeVisibility.PROMINENT).toBe('prominent');
       expect(NodeVisibility.NORMAL).toBe('normal');
       expect(NodeVisibility.HIDDEN).toBe('hidden');
@@ -35,10 +35,10 @@ describe('Ontology types', () => {
         displayName: 'Employee',
         type: NodeType.OBJECT,
       };
-      
+
       // Act
       const node = createDefaultNode(params);
-      
+
       // Assert
       expect(node).toMatchObject({
         apiName: 'Employee',
@@ -47,7 +47,9 @@ describe('Ontology types', () => {
         position: { x: 0, y: 0 },
         version: 1,
       });
-      expect(node.rid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      expect(node.rid).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
       expect(node.createdAt).toBeInstanceOf(Date);
       expect(node.updatedAt).toBeInstanceOf(Date);
     });
@@ -64,10 +66,10 @@ describe('Ontology types', () => {
           color: '#0052CC',
         },
       };
-      
+
       // Act
       const node = createDefaultNode(params);
-      
+
       // Assert
       expect(node.metadata).toMatchObject({
         description: 'Employee entity',
@@ -88,10 +90,10 @@ describe('Ontology types', () => {
         baseType: BaseType.STRING,
         objectRid: '550e8400-e29b-41d4-a716-446655440000',
       };
-      
+
       // Act
       const property = createDefaultProperty(params);
-      
+
       // Assert
       expect(property).toMatchObject({
         apiName: 'fullName',
@@ -120,10 +122,10 @@ describe('Ontology types', () => {
         visibility: NodeVisibility.NORMAL,
         status: NodeStatus.ACTIVE,
       };
-      
+
       // Act
       const result = validateNodeMetadata(metadata);
-      
+
       // Assert
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
@@ -136,10 +138,10 @@ describe('Ontology types', () => {
         visibility: NodeVisibility.NORMAL,
         status: NodeStatus.ACTIVE,
       };
-      
+
       // Act
       const result = validateNodeMetadata(metadata);
-      
+
       // Assert
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Invalid color format');
@@ -151,10 +153,10 @@ describe('Ontology types', () => {
         visibility: 'invalid' as any,
         status: NodeStatus.ACTIVE,
       } as NodeMetadata;
-      
+
       // Act
       const result = validateNodeMetadata(metadata);
-      
+
       // Assert
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Invalid visibility value');
@@ -166,10 +168,10 @@ describe('Ontology types', () => {
         visibility: NodeVisibility.NORMAL,
         status: 'invalid' as any,
       } as NodeMetadata;
-      
+
       // Act
       const result = validateNodeMetadata(metadata);
-      
+
       // Assert
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Invalid status value');

@@ -1,6 +1,6 @@
 /**
  * Express Request 타입 확장
- * 
+ *
  * 장점: Express 생태계와 완전 호환
  * 단점: 글로벌 타입 오염 가능성
  */
@@ -12,12 +12,12 @@ declare global {
     interface Request {
       // 검증된 상태를 나타내는 플래그들
       _bodyValidated?: boolean;
-      _queryValidated?: boolean; 
+      _queryValidated?: boolean;
       _paramsValidated?: boolean;
-      
+
       // 사용자 정보 (JWT에서 추출)
       user?: JwtPayload;
-      
+
       // 요청 추적용 ID
       id?: string;
     }
@@ -26,7 +26,7 @@ declare global {
 
 /**
  * 검증된 Request 타입
- * 
+ *
  * @template TBody - 검증된 body 타입 (기본값: unknown)
  * @template TQuery - 검증된 query 타입 (기본값: Record<string, string | string[]>)
  * @template TParams - 검증된 params 타입 (기본값: Record<string, string>)
@@ -34,7 +34,7 @@ declare global {
 export interface ValidatedRequest<
   TBody = unknown,
   TQuery = Record<string, string | string[]>,
-  TParams = Record<string, string>
+  TParams = Record<string, string>,
 > extends Express.Request {
   body: TBody;
   query: TQuery;

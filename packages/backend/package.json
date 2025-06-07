@@ -15,6 +15,10 @@
     "test:integration": "jest --testPathPattern=integration --runInBand --forceExit",
     "test:integration:watch": "jest --testPathPattern=integration --runInBand --watch",
     "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "lint:report": "eslint src --ext .ts --format json -o eslint-report.json || true",
+    "format": "prettier --write \"src/**/*.{ts,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,json}\"",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -71,6 +75,8 @@
       "!src/**/examples/**",
       "!src/server.ts"
     ],
+    "coverageReporters": ["text", "lcov", "html", "json"],
+    "coverageDirectory": "coverage",
     "coverageThreshold": {
       "global": {
         "branches": 90,

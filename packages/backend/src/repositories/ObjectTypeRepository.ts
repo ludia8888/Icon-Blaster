@@ -99,7 +99,7 @@ export class ObjectTypeRepository extends BaseRepository<ObjectType> {
     const query = this.repository
       .createQueryBuilder('objectType')
       .where('objectType.groups && :groups', { groups });
-    
+
     return query.getMany();
   }
 }

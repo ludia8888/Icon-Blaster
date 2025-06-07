@@ -1,34 +1,34 @@
 /**
  * 정적 타입 검증 테스트
- * 
+ *
  * 이 파일은 런타임 테스트가 아닌 컴파일 타임 타입 검증을 수행합니다.
  * TypeScript 컴파일러가 타입을 올바르게 추론하는지 확인합니다.
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { 
-  validateBody, 
-  validateQuery, 
+import {
+  validateBody,
+  validateQuery,
   validateParams,
   middlewareChain,
-  defineRoute
+  defineRoute,
 } from '../type-transforming-middleware';
 
 // 테스트용 스키마 정의
 const CreateUserSchema = z.object({
   name: z.string(),
   email: z.string().email(),
-  age: z.number()
+  age: z.number(),
 });
 
 const IdParamSchema = z.object({
-  id: z.string().uuid()
+  id: z.string().uuid(),
 });
 
 const QuerySchema = z.object({
   page: z.number(),
-  limit: z.number()
+  limit: z.number(),
 });
 
 /**
@@ -36,17 +36,17 @@ const QuerySchema = z.object({
  */
 {
   const middleware = validateBody(CreateUserSchema);
-  
+
   // 미들웨어 시그니처 검증
   const _test: (req: Request, res: Response, next: NextFunction) => void = middleware;
-  
+
   // 미들웨어 실행 후 타입 변환 시뮬레이션
   const handler = (req: Request & { body: z.infer<typeof CreateUserSchema> }) => {
     // 이 코드가 컴파일되면 타입 추론이 성공한 것
     const name: string = req.body.name;
     const email: string = req.body.email;
     const age: number = req.body.age;
-    
+
     // @ts-expect-error - body에 없는 필드 접근 시 에러
     const invalid = req.body.invalid;
   };
@@ -60,23 +60,23 @@ const QuerySchema = z.object({
     .use(validateBody(CreateUserSchema))
     .use(validateParams(IdParamSchema))
     .use(validateQuery(QuerySchema));
-  
+
   const route = chain.build();
-  
+
   route.handler(async (req, res) => {
     // 모든 타입이 올바르게 추론되어야 함
     const name: string = req.body.name;
-    const email: string = req.body.email; 
+    const email: string = req.body.email;
     const age: number = req.body.age;
-    
+
     const id: string = req.params.id;
-    
+
     const page: number = req.query.page;
     const limit: number = req.query.limit;
-    
+
     // @ts-expect-error - 잘못된 타입 할당
     const wrongType: boolean = req.body.name;
-    
+
     res.json({ success: true });
   });
 }
@@ -97,12 +97,12 @@ const QuerySchema = z.object({
         email: req.body.email,
         age: req.body.age,
         page: req.query.page,
-        limit: req.query.limit
+        limit: req.query.limit,
       };
-      
+
       // Response 타입도 추론 가능
       res.json(user);
-    }
+    },
   });
 }
 
@@ -115,22 +115,22 @@ const QuerySchema = z.object({
     body: CreateUserSchema,
     handler: (req, res) => {
       const name: string = req.body.name;
-      
+
       // params와 query는 기본 타입
       const id: string = req.params.id;
       const page: string = req.query.page as string;
-    }
+    },
   });
-  
+
   // params만 검증
   const paramsOnly = defineRoute({
     params: IdParamSchema,
     handler: (req, res) => {
       const id: string = req.params.id;
-      
+
       // body는 unknown 타입
       const body: unknown = req.body;
-    }
+    },
   });
 }
 
@@ -143,7 +143,7 @@ const QuerySchema = z.object({
     name: string;
     email: string;
   }
-  
+
   const route = defineRoute({
     body: CreateUserSchema,
     handler: async (req, res: Response<UserResponse>) => {
@@ -151,19 +151,19 @@ const QuerySchema = z.object({
       res.json({
         id: '123',
         name: req.body.name,
-        email: req.body.email
+        email: req.body.email,
       });
-      
+
       // @ts-expect-error - Response 타입에 맞지 않는 데이터
       res.json({ invalid: true });
-    }
+    },
   });
 }
 
 /**
  * 이 파일이 TypeScript 컴파일 에러 없이 통과하면
  * 타입 시스템이 올바르게 작동하는 것입니다.
- * 
+ *
  * @ts-expect-error 주석이 있는 부분은 의도적으로
  * 에러가 발생해야 하는 부분입니다.
  */

@@ -25,7 +25,7 @@ export abstract class BaseRepository<T extends BaseEntity> {
     if (!entity) {
       return null;
     }
-    
+
     Object.assign(entity, data);
     return this.repository.save(entity);
   }

@@ -9,6 +9,7 @@
 ## 핵심 개선사항
 
 ### 기존 방식의 문제점
+
 ```typescript
 // ❌ 타입 추론 안됨
 router.post('/', validateBody(CreateUserSchema), (req, res) => {
@@ -18,6 +19,7 @@ router.post('/', validateBody(CreateUserSchema), (req, res) => {
 ```
 
 ### 새로운 방식의 장점
+
 ```typescript
 // ✅ 완전한 타입 추론
 const route = defineRoute({
@@ -25,7 +27,7 @@ const route = defineRoute({
   handler: async (req, res) => {
     const name: string = req.body.name; // 타입 추론됨
     // const wrong: number = req.body.name; // 컴파일 에러!
-  }
+  },
 });
 ```
 
@@ -39,21 +41,23 @@ const route = defineRoute({
 import { validateBody, validateQuery, validateParams } from '../middlewares/validate';
 
 // After:
-import { 
-  validateBody, 
-  validateQuery, 
+import {
+  validateBody,
+  validateQuery,
   validateParams,
   defineRoute,
-  middlewareChain
+  middlewareChain,
 } from '../middlewares/type-transforming-middleware';
 ```
 
 ### 2단계: 간단한 라우트 마이그레이션
 
 #### 옵션 1: defineRoute 사용 (권장)
+
 ```typescript
 // Before:
-router.post('/',
+router.post(
+  '/',
   authenticate,
   authorize(['admin']),
   validateBody(CreateSchema),
@@ -64,7 +68,8 @@ router.post('/',
 );
 
 // After:
-router.post('/',
+router.post(
+  '/',
   authenticate,
   authorize(['admin']),
   ...defineRoute({
@@ -72,12 +77,13 @@ router.post('/',
     handler: async (req, res) => {
       const data = req.body; // 타입 자동 추론!
       // ...
-    }
+    },
   })
 );
 ```
 
 #### 옵션 2: middlewareChain 사용
+
 ```typescript
 // 복잡한 체이닝이 필요한 경우
 const route = middlewareChain()
@@ -86,7 +92,8 @@ const route = middlewareChain()
   .use(validateQuery(FilterSchema))
   .build();
 
-router.post('/:id',
+router.post(
+  '/:id',
   authenticate,
   ...route.handler(async (req, res) => {
     // 모든 타입이 추론됨
@@ -124,7 +131,7 @@ const createUser = defineRoute({
     const userId = req.user?.id ?? 'system';
     const user = await controller.create(req.body, userId);
     res.json(user);
-  }
+  },
 });
 ```
 
@@ -140,7 +147,7 @@ describe('Type Safety', () => {
         // 이 코드가 컴파일되면 타입 추론 성공
         const name: string = req.body.name;
         expect(name).toBeDefined();
-      }
+      },
     });
   });
 });
@@ -149,21 +156,21 @@ describe('Type Safety', () => {
 ## 고급 패턴
 
 ### 재사용 가능한 검증 조합
+
 ```typescript
 // 공통 검증 정의
-const withPagination = <T extends middlewareChain<any>>(chain: T) => 
+const withPagination = <T extends middlewareChain<any>>(chain: T) =>
   chain.use(validateQuery(PaginationSchema));
 
 const withAuth = <T extends middlewareChain<any>>(chain: T) =>
   chain.use(authenticate).use(authorize(['admin']));
 
 // 조합하여 사용
-const route = withAuth(withPagination(middlewareChain()))
-  .use(validateBody(CreateSchema))
-  .build();
+const route = withAuth(withPagination(middlewareChain())).use(validateBody(CreateSchema)).build();
 ```
 
 ### 타입 안전한 에러 처리
+
 ```typescript
 const safeRoute = defineRoute({
   body: CreateSchema,
@@ -173,15 +180,15 @@ const safeRoute = defineRoute({
       res.json({ success: true, data: result });
     } catch (error) {
       if (error instanceof ValidationError) {
-        res.status(400).json({ 
+        res.status(400).json({
           error: 'Validation failed',
-          details: error.details // 타입 안전
+          details: error.details, // 타입 안전
         });
       } else {
         res.status(500).json({ error: 'Internal error' });
       }
     }
-  }
+  },
 });
 ```
 

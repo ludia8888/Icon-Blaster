@@ -5,7 +5,7 @@ import { ValidationError } from '../errors/ValidationError';
 
 /**
  * Type-safe validation middleware that transforms request types
- * 
+ *
  * This implementation uses generic type constraints to ensure
  * type safety through the middleware chain
  */
@@ -15,10 +15,11 @@ import { ValidationError } from '../errors/ValidationError';
  * @template TReq - Request type
  * @template TRes - Response type
  */
-export type TransformingMiddleware<
-  TReq extends Request,
-  TRes extends Response = Response
-> = (req: TReq, res: TRes, next: NextFunction) => void;
+export type TransformingMiddleware<TReq extends Request, TRes extends Response = Response> = (
+  req: TReq,
+  res: TRes,
+  next: NextFunction
+) => void;
 
 /**
  * Creates a type-safe body validation middleware
@@ -26,17 +27,15 @@ export type TransformingMiddleware<
  * @param schema - Zod schema for validation
  * @returns Middleware that validates and transforms request body
  */
-export function validateBody<T extends ZodSchema>(
-  schema: T
-): TransformingMiddleware<Request> {
+export function validateBody<T extends ZodSchema>(schema: T): TransformingMiddleware<Request> {
   return (req, _res, next) => {
     const result = schema.safeParse(req.body as unknown);
-    
+
     if (!result.success) {
       next(new ValidationError(result.error));
       return;
     }
-    
+
     // Type assertion is safe after validation
     (req as Request & { body: z.infer<T> }).body = result.data;
     next();
@@ -49,17 +48,15 @@ export function validateBody<T extends ZodSchema>(
  * @param schema - Zod schema for validation
  * @returns Middleware that validates and transforms request query
  */
-export function validateQuery<T extends ZodSchema>(
-  schema: T
-): TransformingMiddleware<Request> {
+export function validateQuery<T extends ZodSchema>(schema: T): TransformingMiddleware<Request> {
   return (req, _res, next) => {
     const result = schema.safeParse(req.query as unknown);
-    
+
     if (!result.success) {
       next(new ValidationError(result.error));
       return;
     }
-    
+
     // Type assertion is safe after validation
     (req as Request & { query: z.infer<T> }).query = result.data;
     next();
@@ -72,17 +69,15 @@ export function validateQuery<T extends ZodSchema>(
  * @param schema - Zod schema for validation
  * @returns Middleware that validates and transforms request params
  */
-export function validateParams<T extends ZodSchema>(
-  schema: T
-): TransformingMiddleware<Request> {
+export function validateParams<T extends ZodSchema>(schema: T): TransformingMiddleware<Request> {
   return (req, _res, next) => {
     const result = schema.safeParse(req.params as unknown);
-    
+
     if (!result.success) {
       next(new ValidationError(result.error));
       return;
     }
-    
+
     // Type assertion is safe after validation
     (req as Request & { params: z.infer<T> }).params = result.data;
     next();
@@ -91,14 +86,14 @@ export function validateParams<T extends ZodSchema>(
 
 /**
  * Combined validation builder for multiple parts of the request
- * 
+ *
  * @example
  * ```typescript
  * const validation = createValidation({
  *   body: CreateUserSchema,
  *   params: IdParamSchema
  * });
- * 
+ *
  * router.post('/:id', ...validation.middleware, validation.handler(async (req, res) => {
  *   // req.body is typed as CreateUserDto
  *   // req.params.id is typed as string
@@ -107,7 +102,7 @@ export function validateParams<T extends ZodSchema>(
  */
 export interface ValidationConfig {
   body?: ZodSchema;
-  query?: ZodSchema; 
+  query?: ZodSchema;
   params?: ZodSchema;
 }
 
@@ -117,9 +112,9 @@ export function createValidation<T extends ValidationConfig>(config: T) {
     query: T['query'] extends ZodSchema ? z.infer<T['query']> : any;
     params: T['params'] extends ZodSchema ? z.infer<T['params']> : any;
   };
-  
+
   const middleware: Array<TransformingMiddleware<any>> = [];
-  
+
   if (config.body) {
     middleware.push(validateBody(config.body));
   }
@@ -129,11 +124,11 @@ export function createValidation<T extends ValidationConfig>(config: T) {
   if (config.params) {
     middleware.push(validateParams(config.params));
   }
-  
+
   return {
     middleware,
     handler: <TRes = any>(
       fn: (req: ValidatedReq, res: Response<TRes>, next: NextFunction) => Promise<void> | void
-    ) => fn
+    ) => fn,
   };
 }

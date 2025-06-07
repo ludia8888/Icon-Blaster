@@ -1,6 +1,6 @@
 /**
  * 명시적 검증 유틸리티
- * 
+ *
  * 비즈니스 규칙을 명확하게 표현하고 검증
  */
 
@@ -19,11 +19,7 @@ export class ValidationBuilder<T> {
   /**
    * 검증 규칙 추가
    */
-  addRule(
-    name: string,
-    check: (value: T) => boolean,
-    message: string
-  ): this {
+  addRule(name: string, check: (value: T) => boolean, message: string): this {
     this.rules.push({ name, check, message });
     return this;
   }
@@ -38,14 +34,14 @@ export class ValidationBuilder<T> {
       if (!rule.check(value)) {
         errors.push({
           rule: rule.name,
-          message: rule.message
+          message: rule.message,
         });
       }
     }
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 }
@@ -94,16 +90,8 @@ export const ObjectTypeValidation = {
    * - 특수문자 제한
    */
   displayName: new ValidationBuilder<string>()
-    .addRule(
-      'notEmpty',
-      (name) => name.trim().length > 0,
-      'Display name cannot be empty'
-    )
-    .addRule(
-      'length',
-      (name) => name.length <= 100,
-      'Display name must be 100 characters or less'
-    )
+    .addRule('notEmpty', (name) => name.trim().length > 0, 'Display name cannot be empty')
+    .addRule('length', (name) => name.length <= 100, 'Display name must be 100 characters or less')
     .addRule(
       'validChars',
       (name) => /^[a-zA-Z0-9\s\-_()]+$/.test(name),
@@ -117,29 +105,73 @@ export const ObjectTypeValidation = {
   groups: new ValidationBuilder<string[]>()
     .addRule(
       'validGroups',
-      (groups) => groups.every(g => /^[a-z][a-z0-9_]*$/.test(g)),
+      (groups) => groups.every((g) => /^[a-z][a-z0-9_]*$/.test(g)),
       'Each group must be a valid identifier'
     )
     .addRule(
       'uniqueGroups',
       (groups) => new Set(groups).size === groups.length,
       'Groups must be unique'
-    )
+    ),
 };
 
 /**
  * 예약어 목록
  */
 const RESERVED_WORDS = [
-  'id', 'type', 'class', 'function', 'const', 'let', 'var',
-  'return', 'if', 'else', 'for', 'while', 'do', 'switch',
-  'case', 'break', 'continue', 'throw', 'try', 'catch',
-  'finally', 'new', 'this', 'super', 'extends', 'static',
-  'public', 'private', 'protected', 'abstract', 'interface',
-  'enum', 'namespace', 'module', 'declare', 'as', 'from',
-  'import', 'export', 'default', 'null', 'undefined',
-  'true', 'false', 'object', 'string', 'number', 'boolean',
-  'symbol', 'any', 'unknown', 'never', 'void'
+  'id',
+  'type',
+  'class',
+  'function',
+  'const',
+  'let',
+  'var',
+  'return',
+  'if',
+  'else',
+  'for',
+  'while',
+  'do',
+  'switch',
+  'case',
+  'break',
+  'continue',
+  'throw',
+  'try',
+  'catch',
+  'finally',
+  'new',
+  'this',
+  'super',
+  'extends',
+  'static',
+  'public',
+  'private',
+  'protected',
+  'abstract',
+  'interface',
+  'enum',
+  'namespace',
+  'module',
+  'declare',
+  'as',
+  'from',
+  'import',
+  'export',
+  'default',
+  'null',
+  'undefined',
+  'true',
+  'false',
+  'object',
+  'string',
+  'number',
+  'boolean',
+  'symbol',
+  'any',
+  'unknown',
+  'never',
+  'void',
 ];
 
 /**
@@ -150,24 +182,17 @@ export const StateTransitions = {
   ObjectType: {
     draft: ['active', 'archived'],
     active: ['archived'],
-    archived: ['active']
+    archived: ['active'],
   },
 
-  canTransition(
-    currentState: string,
-    newState: string,
-    entityType: 'ObjectType'
-  ): boolean {
+  canTransition(currentState: string, newState: string, entityType: 'ObjectType'): boolean {
     const transitions = this[entityType][currentState as keyof typeof this.ObjectType];
     return transitions?.includes(newState) ?? false;
   },
 
-  getValidTransitions(
-    currentState: string,
-    entityType: 'ObjectType'
-  ): string[] {
+  getValidTransitions(currentState: string, entityType: 'ObjectType'): string[] {
     return this[entityType][currentState as keyof typeof this.ObjectType] ?? [];
-  }
+  },
 };
 
 /**
@@ -181,16 +206,13 @@ export const PermissionRules = {
     delete: ['admin'],
     activate: ['admin', 'editor'],
     deactivate: ['admin', 'editor'],
-    view: ['admin', 'editor', 'viewer']
+    view: ['admin', 'editor', 'viewer'],
   },
 
-  canPerform(
-    action: keyof typeof this.ObjectType,
-    userRoles: string[]
-  ): boolean {
+  canPerform(action: keyof typeof this.ObjectType, userRoles: string[]): boolean {
     const requiredRoles = this.ObjectType[action];
-    return userRoles.some(role => requiredRoles.includes(role));
-  }
+    return userRoles.some((role) => requiredRoles.includes(role));
+  },
 };
 
 /**
@@ -201,30 +223,27 @@ export function validateDataIntegrity<T extends Record<string, unknown>>(
   schema: z.ZodSchema<T>
 ): { isValid: boolean; errors?: z.ZodError } {
   const result = schema.safeParse(data);
-  
+
   if (result.success) {
     return { isValid: true };
   }
-  
-  return { 
-    isValid: false, 
-    errors: result.error 
+
+  return {
+    isValid: false,
+    errors: result.error,
   };
 }
 
 /**
  * 명시적 전제조건 검증
- * 
+ *
  * @example
  * assertPrecondition(
  *   user.roles.includes('admin'),
  *   'User must have admin role'
  * );
  */
-export function assertPrecondition(
-  condition: boolean,
-  message: string
-): asserts condition {
+export function assertPrecondition(condition: boolean, message: string): asserts condition {
   if (!condition) {
     throw new Error(`Precondition failed: ${message}`);
   }
@@ -232,7 +251,7 @@ export function assertPrecondition(
 
 /**
  * 명시적 사후조건 검증
- * 
+ *
  * @example
  * const result = await operation();
  * assertPostcondition(
@@ -240,10 +259,7 @@ export function assertPrecondition(
  *   'Operation must return an object with id'
  * );
  */
-export function assertPostcondition(
-  condition: boolean,
-  message: string
-): asserts condition {
+export function assertPostcondition(condition: boolean, message: string): asserts condition {
   if (!condition) {
     throw new Error(`Postcondition failed: ${message}`);
   }

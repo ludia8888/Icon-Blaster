@@ -1,6 +1,6 @@
 /**
  * ObjectType API 통합 테스트
- * 
+ *
  * 실제 PostgreSQL을 사용하여 전체 API 스택을 검증
  * 명시적 테스트 원칙:
  * 1. 각 테스트는 독립적이고 명확한 목적을 가짐
@@ -28,21 +28,21 @@ describe('ObjectType API Integration Tests', () => {
     process.env['JWT_SECRET'] = 'test-secret-key';
     // 1. PostgreSQL 컨테이너 시작
     dbConfig = await testEnvironment.start();
-    
+
     // 2. DataSource 초기화
     dataSource = await testEnvironment.createDataSource(dbConfig);
-    
+
     // 3. 테스트 데이터 시드
     await testEnvironment.seedTestData(dataSource);
-    
+
     // 4. Express 앱 생성 (테스트 DataSource 사용)
     app = createTestApp(dataSource);
-    
+
     // 5. 인증 토큰 생성
-    authToken = generateTestToken({ 
-      sub: 'test-user', 
+    authToken = generateTestToken({
+      sub: 'test-user',
       email: 'test@example.com',
-      roles: ['admin'] 
+      roles: ['admin'],
     });
   }, 30000); // 컨테이너 시작에 시간이 걸릴 수 있음
 
@@ -74,15 +74,15 @@ describe('ObjectType API Integration Tests', () => {
             apiName: expect.any(String),
             displayName: expect.any(String),
             status: expect.stringMatching(/^(active|experimental|deprecated)$/),
-            visibility: expect.stringMatching(/^(prominent|normal|hidden)$/)
-          })
+            visibility: expect.stringMatching(/^(prominent|normal|hidden)$/),
+          }),
         ]),
         pagination: {
           page: 1,
           limit: 10,
           total: expect.any(Number),
-          totalPages: expect.any(Number)
-        }
+          totalPages: expect.any(Number),
+        },
       });
 
       // 명시적 검증: 시드 데이터 확인
@@ -106,14 +106,12 @@ describe('ObjectType API Integration Tests', () => {
     });
 
     it('should require authentication', async () => {
-      const response = await request(app)
-        .get('/api/object-types')
-        .expect(401);
+      const response = await request(app).get('/api/object-types').expect(401);
 
       expect(response.body).toMatchObject({
         error: expect.objectContaining({
-          message: expect.stringContaining('authorization header')
-        })
+          message: expect.stringContaining('authorization header'),
+        }),
       });
     });
   });
@@ -125,19 +123,19 @@ describe('ObjectType API Integration Tests', () => {
         displayName: 'Employee',
         description: 'Employee object type for HR system',
         icon: '👤',
-        color: '#4285F4'
+        color: '#4285F4',
       };
 
       const response = await request(app)
         .post('/api/object-types')
         .set('Authorization', `Bearer ${authToken}`)
         .send(newObjectType);
-      
+
       // Log error if 500
       if (response.status === 500) {
         console.error('Create failed:', response.body);
       }
-      
+
       expect(response.status).toBe(201);
       expect(response.type).toMatch(/json/);
 
@@ -150,13 +148,13 @@ describe('ObjectType API Integration Tests', () => {
         createdBy: 'test-user',
         updatedBy: 'test-user',
         createdAt: expect.any(String),
-        updatedAt: expect.any(String)
+        updatedAt: expect.any(String),
       });
 
       // DB에 실제로 저장되었는지 검증
       const repository = dataSource.getRepository(ObjectType);
-      const saved = await repository.findOne({ 
-        where: { apiName: 'employee' } 
+      const saved = await repository.findOne({
+        where: { apiName: 'employee' },
       });
       expect(saved).toBeDefined();
       expect(saved?.displayName).toBe('Employee');
@@ -165,7 +163,7 @@ describe('ObjectType API Integration Tests', () => {
     it('should reject duplicate apiName', async () => {
       const duplicate = {
         apiName: 'customer', // 이미 존재
-        displayName: 'Another Customer'
+        displayName: 'Another Customer',
       };
 
       const response = await request(app)
@@ -177,14 +175,14 @@ describe('ObjectType API Integration Tests', () => {
       expect(response.body).toMatchObject({
         error: expect.objectContaining({
           message: expect.stringContaining('already exists'),
-          code: 'CONFLICT'
-        })
+          code: 'CONFLICT',
+        }),
       });
     });
 
     it('should validate required fields', async () => {
       const invalid = {
-        displayName: 'Missing API Name' // apiName 누락
+        displayName: 'Missing API Name', // apiName 누락
       };
 
       const response = await request(app)
@@ -196,18 +194,16 @@ describe('ObjectType API Integration Tests', () => {
       expect(response.body).toMatchObject({
         error: expect.objectContaining({
           message: 'Validation failed',
-          details: expect.arrayContaining([
-            expect.stringContaining('apiName')
-          ])
-        })
+          details: expect.arrayContaining([expect.stringContaining('apiName')]),
+        }),
       });
     });
 
     it('should require proper authorization', async () => {
-      const viewerToken = generateTestToken({ 
-        sub: 'viewer', 
+      const viewerToken = generateTestToken({
+        sub: 'viewer',
         email: 'viewer@example.com',
-        roles: ['viewer'] // 읽기 권한만
+        roles: ['viewer'], // 읽기 권한만
       });
 
       await request(app)
@@ -222,7 +218,7 @@ describe('ObjectType API Integration Tests', () => {
     it('should update existing object type', async () => {
       const updates = {
         displayName: 'Updated Customer',
-        description: 'Updated description'
+        description: 'Updated description',
       };
 
       const response = await request(app)
@@ -234,10 +230,11 @@ describe('ObjectType API Integration Tests', () => {
       expect(response.body.displayName).toBe('Updated Customer');
       expect(response.body.description).toBe('Updated description');
       expect(response.body.updatedBy).toBe('test-user');
-      
+
       // updatedAt이 변경되었는지 확인
-      expect(new Date(response.body.updatedAt).getTime())
-        .toBeGreaterThan(new Date(response.body.createdAt).getTime());
+      expect(new Date(response.body.updatedAt).getTime()).toBeGreaterThan(
+        new Date(response.body.createdAt).getTime()
+      );
     });
 
     it('should return 404 for non-existent ID', async () => {
@@ -269,7 +266,7 @@ describe('ObjectType API Integration Tests', () => {
         displayName: 'To Delete',
         pluralDisplayName: 'To Delete',
         createdBy: 'test-user',
-        updatedBy: 'test-user'
+        updatedBy: 'test-user',
       });
       objectTypeToDelete = await repository.save(newObjectType);
     });
@@ -282,9 +279,9 @@ describe('ObjectType API Integration Tests', () => {
 
       // Soft delete 확인
       const repository = dataSource.getRepository(ObjectType);
-      const found = await repository.findOne({ 
+      const found = await repository.findOne({
         where: { rid: objectTypeToDelete.rid },
-        withDeleted: true 
+        withDeleted: true,
       });
 
       expect(found).toBeDefined();
@@ -292,10 +289,10 @@ describe('ObjectType API Integration Tests', () => {
     });
 
     it('should require admin role', async () => {
-      const editorToken = generateTestToken({ 
-        sub: 'editor', 
+      const editorToken = generateTestToken({
+        sub: 'editor',
         email: 'editor@example.com',
-        roles: ['editor'] // admin 권한 없음
+        roles: ['editor'], // admin 권한 없음
       });
 
       await request(app)
@@ -355,7 +352,7 @@ describe('ObjectType API Integration Tests', () => {
 
 /**
  * 명시적 코드 작성으로 얻는 이점:
- * 
+ *
  * 1. 각 테스트가 무엇을 검증하는지 명확
  * 2. 실패 시 정확한 원인 파악 가능
  * 3. 실제 DB 사용으로 진짜 동작 검증
