@@ -1,4 +1,5 @@
 [InfraSpec.md]
+
 ## **InfraSpec.md**
 
 ### **1. 문서 개요**
@@ -19,17 +20,17 @@
 ### **2.2 Dockerfile 베스트 프랙티스**
 
 - **Frontend Dockerfile**
-    - Stage 1: Node.js 빌드
-        - npm ci --production=false + 캐시 활용(package-lock.json 변경 시만 재설치)
-        - npm run build
-    - Stage 2: Nginx Serve
-        - nginx:stable-alpine 기반, /etc/nginx/conf.d/default.conf에 HTTP2, gzip, client_max_body_size 설정
-        - 보안 헤더(CSP, HSTS) 추가
+  - Stage 1: Node.js 빌드
+    - npm ci --production=false + 캐시 활용(package-lock.json 변경 시만 재설치)
+    - npm run build
+  - Stage 2: Nginx Serve
+    - nginx:stable-alpine 기반, /etc/nginx/conf.d/default.conf에 HTTP2, gzip, client_max_body_size 설정
+    - 보안 헤더(CSP, HSTS) 추가
 - **Backend Dockerfile**
-    - Stage 1: Node.js 빌드 + 의존성 설치
-    - Stage 2: slim Node.js 이미지(node:18-slim)로 실행
-        - 비루트 유저(node) 사용
-        - dist 폴더만 복사하여 최소 이미지
+  - Stage 1: Node.js 빌드 + 의존성 설치
+  - Stage 2: slim Node.js 이미지(node:18-slim)로 실행
+    - 비루트 유저(node) 사용
+    - dist 폴더만 복사하여 최소 이미지
 
 ### **2.3 이미지 관리**
 
@@ -71,12 +72,12 @@ infra/k8s/ontology-editor/
    └─ serviceaccount.yaml
 ```
 
-- 
+-
 - **Values**:
-    - 리소스 요청/제한(메모리/CPU)
-    - 인그레스 호스트(onto.company.com)
-    - TLS 비밀(cert-manager secret)
-    - HPA 설정(Burst 용량 기반)
+  - 리소스 요청/제한(메모리/CPU)
+  - 인그레스 호스트(onto.company.com)
+  - TLS 비밀(cert-manager secret)
+  - HPA 설정(Burst 용량 기반)
 
 ### **3.3 Kubernetes 리소스**
 
@@ -100,10 +101,10 @@ infra/k8s/ontology-editor/
 ### **4.2 GitHub Actions**
 
 - **Workflow**: .github/workflows/ci-cd.yaml
-    1. **Lint & Test**: 프론트엔드 · 백엔드 검증
-    2. **Build & Push**: Docker Buildx · ECR Push · 이미지 태그 매핑
-    3. **Helm Diff & Release**: helm diff upgrade → helm upgrade --install
-    4. **Promote**: dev → staging → prod 승인 플로우 (GitHub 환경 보호 정책)
+  1. **Lint & Test**: 프론트엔드 · 백엔드 검증
+  2. **Build & Push**: Docker Buildx · ECR Push · 이미지 태그 매핑
+  3. **Helm Diff & Release**: helm diff upgrade → helm upgrade --install
+  4. **Promote**: dev → staging → prod 승인 플로우 (GitHub 환경 보호 정책)
 
 ---
 
@@ -191,4 +192,3 @@ infra/k8s/ontology-editor/
 [QASpec.md]
 [BackendSpec.md]
 [FrontendSpec.md]
-

@@ -100,16 +100,28 @@ npm run test:coverage
   - [x] Zod 스키마 검증
   - [x] OpenAPI 3.0 스펙
   - [x] 97%+ 테스트 커버리지
+- [x] Backend API 서버 기본 구조
+  - [x] Express + TypeScript 설정
+  - [x] Health check 엔드포인트
+  - [x] 에러 핸들링 미들웨어
+  - [x] CORS 설정
+  - [x] TypeORM + PostgreSQL 설정
+  - [x] 기본 엔티티 (ObjectType, Property, LinkType)
+  - [x] 92%+ 테스트 커버리지
 
 ### In Progress 🔄
 
-- [ ] Backend API 서버 구조
-- [ ] Frontend 애플리케이션 구조
+- [ ] JWT 인증 미들웨어
+- [ ] ObjectType Repository 계층
+- [ ] ObjectType Service 계층
+- [ ] ObjectType Controller 및 REST API
 
 ### Planned 📋
 
-- [ ] 인증 시스템 (Keycloak)
-- [ ] Object Type CRUD API
+- [ ] Frontend 애플리케이션 구조
+- [ ] 인증 시스템 (Keycloak 연동)
+- [ ] Property CRUD API
+- [ ] Link Type CRUD API
 - [ ] Canvas UI 컴포넌트
 - [ ] 버전 관리 시스템
 - [ ] ElasticSearch/Neo4j 연동

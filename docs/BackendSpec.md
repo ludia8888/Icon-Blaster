@@ -129,19 +129,17 @@ SENTRY_DSN=https://xxxxx@sentry.io/123
 
 - **Controller**: `@UseGuards(Auth, Acl)` + `@ValidationPipe`
 - **Service**: DB 트랜잭션 포함
-    
-    ```
-    async createObject(dto) {
-      return this.dataSource.transaction(async (manager) => {
-        const obj = manager.create(ObjectEntity, dto);
-        await manager.save(obj);
-        await this.kafka.emit('ontology.object.created', obj);
-        return obj;
-      });
-    }
-    
-    ```
-    
+  ```
+  async createObject(dto) {
+    return this.dataSource.transaction(async (manager) => {
+      const obj = manager.create(ObjectEntity, dto);
+      await manager.save(obj);
+      await this.kafka.emit('ontology.object.created', obj);
+      return obj;
+    });
+  }
+
+  ```
 - **Event Emit**: Kafka producer sends typed payload, key = `rid`
 
 ### 5.3 VersionModule

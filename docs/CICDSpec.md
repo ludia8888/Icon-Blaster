@@ -1,4 +1,5 @@
 [CICDSpec.md]
+
 ## **CICDSpec.md**
 
 ### **1. 문서 개요**
@@ -20,9 +21,9 @@ hotfix/{issue}    • 긴급 수정 (PR → main → 태그 → develop 머지)
 ```
 
 - **Pull Request 정책**
-    - 메시지: type(scope): subject (feat, fix, docs, chore 등)
-    - 최소 2명 리뷰·승인, CI 통과 필수
-    - 브랜치 보호: force-push 금지, fast-forward 병합만 허용
+  - 메시지: type(scope): subject (feat, fix, docs, chore 등)
+  - 최소 2명 리뷰·승인, CI 통과 필수
+  - 브랜치 보호: force-push 금지, fast-forward 병합만 허용
 
 ---
 

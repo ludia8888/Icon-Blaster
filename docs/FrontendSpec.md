@@ -1,4 +1,5 @@
 [FrontendSpec.md]
+
 ## **FrontendSpec.md**
 
 ### **1. 개요**
@@ -45,7 +46,7 @@ packages/frontend/
 
 ### **2.3 환경 변수 관리**
 
-- .env.development, .env.production 파일에 VITE_ prefix 사용
+- .env.development, .env.production 파일에 VITE\_ prefix 사용
 - import.meta.env.VITE_API_BASE 타입 정의(env.d.ts)
 
 ---
@@ -90,8 +91,8 @@ interface OntologyState {
 
 - **Actions**: CRUD, select/deselect, pan/zoom, changeSet ops, error clear
 - **Middleware**:
-    - persist (localStorage: branch, changeSetId)
-    - devtools (ReduxDevTools 연동)
+  - persist (localStorage: branch, changeSetId)
+  - devtools (ReduxDevTools 연동)
 - **Immutability**: immer 적용
 
 ### **4.2 React Query 설정**
@@ -122,8 +123,8 @@ const queryClient = new QueryClient({
 ### **5. 라우팅 & 코드 스플리팅**
 
 - **Route Structure**:
-    - /login
-    - /editor/* (Layout route: Header + Sidebar)
+  - /login
+  - /editor/\* (Layout route: Header + Sidebar)
 - **Lazy Loading**: React.lazy + Suspense for heavy components (CodeEditor, InspectorPanels)
 - **Fallback UIs**: skeleton 컴포넌트, spinner 위치 지정
 
@@ -253,7 +254,7 @@ export interface InspectorPanelProps {
 
 ### **11.2 Unit Test**
 
-- 폴더: src/__tests__ 또는 __tests__
+- 폴더: src/**tests** 또는 **tests**
 - 컴포넌트, 훅, util 함수 80% 커버리지 목표
 
 ### **11.3 Integration Test**
@@ -295,4 +296,3 @@ export interface InspectorPanelProps {
 - InfraSpec.md
 - CICDSpec.md
 - QASpec.md
-
