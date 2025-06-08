@@ -4,7 +4,7 @@ import { z } from 'zod';
 /**
  * API name validation pattern (alphanumeric with underscores)
  */
-const API_NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+const API_NAME_REGEX = /^[a-zA-Z]\w*$/;
 
 /**
  * Color validation pattern (hex color)

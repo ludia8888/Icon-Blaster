@@ -24,14 +24,15 @@ scanner(
     serverUrl,
     token,
     options: {
-      'sonar.projectKey': 'arrakis-project',
+      'sonar.login': token,
+      'sonar.projectKey': 'Arrakis-Project',
       'sonar.projectName': 'Arrakis Project',
       'sonar.projectVersion': '1.0.0',
-      'sonar.sources': 'packages/backend/src,packages/frontend/src,packages/shared/src,packages/contracts/src',
+      'sonar.sources': 'packages/backend/src,packages/shared/src,packages/contracts/src',
       'sonar.exclusions': '**/*.test.ts,**/*.test.tsx,**/*.spec.ts,**/__tests__/**,**/node_modules/**,**/dist/**,**/coverage/**,**/*.d.ts,**/migrations/**',
-      'sonar.tests': 'packages/backend/src,packages/frontend/src,packages/shared/src',
+      'sonar.tests': 'packages/backend/src,packages/shared/src',
       'sonar.test.inclusions': '**/*.test.ts,**/*.test.tsx,**/*.spec.ts,**/__tests__/**',
-      'sonar.javascript.lcov.reportPaths': 'packages/backend/coverage/lcov.info,packages/frontend/coverage/lcov.info,packages/shared/coverage/lcov.info',
+      'sonar.javascript.lcov.reportPaths': 'packages/backend/coverage/lcov.info,packages/shared/coverage/lcov.info',
       'sonar.typescript.tsconfigPath': 'tsconfig.json',
       'sonar.sourceEncoding': 'UTF-8',
       'sonar.scm.provider': 'git',
@@ -39,7 +40,7 @@ scanner(
   },
   () => {
     console.log('✅ SonarQube analysis completed');
-    console.log(`📊 View results at: ${serverUrl}/dashboard?id=arrakis-project`);
+    console.log(`📊 View results at: ${serverUrl}/dashboard?id=Arrakis-Project`);
   },
   (error) => {
     console.error('❌ SonarQube analysis failed:', error);

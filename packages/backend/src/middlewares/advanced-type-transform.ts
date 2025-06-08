@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request } from 'express';
 import { z } from 'zod';
 
 import { logger } from '../utils/logger';
@@ -216,7 +216,7 @@ async function loadUserOrganization(userId: string): Promise<string | undefined>
 }
 
 function generateRequestId(): string {
-  return `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `req-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
 async function extractFileMetadata(file: Express.Multer.File): Promise<any> {

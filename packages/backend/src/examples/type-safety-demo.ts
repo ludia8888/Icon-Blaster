@@ -5,11 +5,9 @@
  */
 
 import { z } from 'zod';
-import { Request, Response } from 'express';
 import {
   validateBody,
   validateParams,
-  validateQuery,
   middlewareChain,
   defineRoute,
 } from '../middlewares/type-transforming-middleware';
@@ -113,7 +111,7 @@ class ProductService {
 
   async getProducts(pagination: PaginationQuery): Promise<PaginatedResponse<Product>> {
     // 타입 안전한 페이지네이션 처리
-    const { page, limit, sortBy } = pagination;
+    const { page, limit } = pagination;
 
     // DB 쿼리 시뮬레이션
     const products: Product[] = [];
