@@ -22,10 +22,9 @@ export function generateToken(
  */
 export function verifyToken(token: string, secret: string): JwtPayload | null {
   try {
-    const decoded = jwt.verify(token, secret, {
+    return jwt.verify(token, secret, {
       issuer: 'arrakis-backend',
     }) as JwtPayload;
-    return decoded;
   } catch {
     return null;
   }
@@ -36,8 +35,7 @@ export function verifyToken(token: string, secret: string): JwtPayload | null {
  */
 export function decodeToken(token: string): JwtPayload | null {
   try {
-    const decoded = jwt.decode(token) as JwtPayload;
-    return decoded;
+    return jwt.decode(token) as JwtPayload;
   } catch {
     return null;
   }

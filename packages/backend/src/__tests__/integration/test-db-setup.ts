@@ -80,7 +80,7 @@ export class TestDatabaseEnvironment {
         password: dbConfig.password,
         synchronize: true, // 테스트 환경에서만 사용
         dropSchema: true, // 각 테스트마다 깨끗한 상태 보장
-        entities: [__dirname + '/../../entities/*.ts'],
+        entities: [`${__dirname  }/../../entities/*.ts`],
         logging: process.env['DATABASE_LOGGING'] === 'true',
       });
 

@@ -21,6 +21,8 @@
     "prepare": "husky install",
     "pre-commit": "lint-staged",
     "code-quality": "npm run lint && npm run format:check && npm run type-check",
+    "code-quality:fix": "npm run lint:fix && npm run format",
+    "code-quality:report": "npm run lint:report && npm run sonar",
     "sonar": "node scripts/sonar-scanner.js",
     "sonar:scanner": "sonar-scanner",
     "sonar:local": "docker-compose -f docker-compose.sonarqube.yml up -d && echo 'SonarQube is starting at http://localhost:9000'",
@@ -35,6 +37,8 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-jest": "^27.6.0",
+    "eslint-plugin-security": "^2.1.1",
+    "eslint-plugin-sonarjs": "^1.0.4",
     "husky": "^9.0.0",
     "lint-staged": "^15.2.0",
     "prettier": "^3.2.0",
@@ -47,7 +51,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
-      "eslint --fix",
+      "eslint --fix --max-warnings 0",
       "prettier --write"
     ],
     "*.{json,md,yml,yaml}": [

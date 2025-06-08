@@ -9,10 +9,11 @@
  * - 에러 스택 트레이스 지원
  */
 
+import path from 'path';
+
+import { Request, Response, NextFunction } from 'express';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import path from 'path';
-import { Request, Response, NextFunction } from 'express';
 
 const { combine, timestamp, errors, json, printf, colorize } = winston.format;
 
@@ -121,11 +122,13 @@ class WinstonLogger implements Logger {
     const sanitized = { ...context };
     const sensitiveKeys = ['password', 'token', 'secret', 'apiKey'];
 
-    Object.keys(sanitized).forEach((key) => {
+    // Use Object.entries to avoid object injection
+    for (const [key, value] of Object.entries(sanitized)) {
       if (sensitiveKeys.some((sensitive) => key.toLowerCase().includes(sensitive))) {
-        sanitized[key] = '[REDACTED]';
+        // Type-safe assignment
+        (sanitized as Record<string, unknown>)[key] = '[REDACTED]';
       }
-    });
+    }
 
     return sanitized;
   }

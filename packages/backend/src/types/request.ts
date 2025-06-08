@@ -1,6 +1,6 @@
 import { Request } from 'express';
-import { z } from 'zod';
 import * as qs from 'qs';
+import { z } from 'zod';
 
 /**
  * Type-safe request with validated body

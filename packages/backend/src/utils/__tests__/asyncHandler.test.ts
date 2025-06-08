@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+
 import { asyncHandler } from '../asyncHandler';
 
 describe('asyncHandler with generic type support', () => {
@@ -41,7 +42,7 @@ describe('asyncHandler with generic type support', () => {
     const mockRes = {} as Response;
 
     // Call handler - should not throw
-    handler(mockReq, mockRes, mockNext);
+    void handler(mockReq, mockRes, mockNext);
 
     // Wait for async operation
     await new Promise((resolve) => setImmediate(resolve));
@@ -59,7 +60,7 @@ describe('asyncHandler with generic type support', () => {
       res.json({ sync: true });
     });
 
-    handler({} as Request, mockRes, mockNext);
+    void handler({} as Request, mockRes, mockNext);
 
     expect(mockRes.json).toHaveBeenCalledWith({ sync: true });
     expect(mockNext).not.toHaveBeenCalled();
@@ -73,13 +74,14 @@ describe('asyncHandler with generic type support', () => {
       query: { limit: number };
     };
 
-    const handler = asyncHandler<ValidatedRequest>(async (req, res) => {
+    const handler = asyncHandler<ValidatedRequest>((req, res) => {
       // All these should be type-safe
       const email: string = req.body.email;
       const id: string = req.params.id;
       const limit: number = req.query.limit;
 
       res.json({ email, id, limit });
+      return Promise.resolve();
     });
 
     expect(handler).toBeDefined();
@@ -87,8 +89,9 @@ describe('asyncHandler with generic type support', () => {
 
   it('should maintain compatibility with existing non-generic usage', () => {
     // Old style should still work
-    const handler = asyncHandler(async (_req: Request, res: Response) => {
+    const handler = asyncHandler((_req: Request, res: Response) => {
       res.json({ legacy: true });
+      return Promise.resolve();
     });
 
     expect(handler).toBeDefined();

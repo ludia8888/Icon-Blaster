@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+
 import {
   validateBody,
   validateParams,
@@ -201,7 +202,7 @@ function generateId(): string {
 // 8. 타입 안전성의 실질적 이점 데모
 function demonstrateTypeSafety() {
   // ✅ 자동완성이 작동함
-  const handler = defineRoute({
+  return defineRoute({
     body: CreateProductSchema,
     handler: async (req, res) => {
       // req.body. 입력 시 IDE가 다음을 제안:
@@ -215,8 +216,6 @@ function demonstrateTypeSafety() {
       // req.body.category = 'invalid'; // Error: 유효하지 않은 enum 값
     },
   });
-
-  return handler;
 }
 
 /**

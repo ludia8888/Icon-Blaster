@@ -8,13 +8,40 @@
  * 3. 테스트 데이터는 예측 가능하고 의미 있게 설계
  */
 
+import { Application } from 'express';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import { Application } from 'express';
-import { testEnvironment, TestDatabaseConfig } from './test-db-setup';
-import { createTestApp } from './test-app';
-import { generateTestToken } from '../utils/auth-helper';
+
 import { ObjectType } from '../../entities/ObjectType';
+import { PaginatedResponse, ApiResponse } from '../../types/common';
+import { generateTestToken } from '../utils/auth-helper';
+
+import { createTestApp } from './test-app';
+import { testEnvironment, TestDatabaseConfig } from './test-db-setup';
+
+// Constants to avoid string duplication
+const API_BASE_PATH = '/api/object-types';
+const AUTH_HEADER = 'Authorization';
+const CONTENT_TYPE = 'Content-Type';
+const JSON_CONTENT = /json/;
+
+// Type definitions
+interface ObjectTypeResponse {
+  rid: string;
+  apiName: string;
+  displayName: string;
+  description?: string;
+  status: string;
+  visibility: string;
+  icon?: string;
+  color?: string;
+  pluralDisplayName?: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+}
+
 
 describe('ObjectType API Integration Tests', () => {
   let app: Application;
@@ -60,14 +87,15 @@ describe('ObjectType API Integration Tests', () => {
   describe('GET /api/object-types', () => {
     it('should return paginated list of object types', async () => {
       const response = await request(app)
-        .get('/api/object-types')
-        .set('Authorization', `Bearer ${authToken}`)
+        .get(API_BASE_PATH)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .query({ page: 1, limit: 10 })
         .expect(200)
-        .expect('Content-Type', /json/);
+        .expect(CONTENT_TYPE, JSON_CONTENT);
 
       // 명시적 검증: 응답 구조
-      expect(response.body).toMatchObject({
+      // 타입 안전성을 위한 명시적 검증
+      const expectedStructure = {
         data: expect.arrayContaining([
           expect.objectContaining({
             rid: expect.any(String),
@@ -83,30 +111,33 @@ describe('ObjectType API Integration Tests', () => {
           total: expect.any(Number),
           totalPages: expect.any(Number),
         },
-      });
+      };
+      expect(response.body).toMatchObject(expectedStructure);
 
       // 명시적 검증: 시드 데이터 확인
-      const customerType = response.body.data.find((t: any) => t.apiName === 'customer');
+      const responseBody = response.body as PaginatedResponse<ObjectTypeResponse>;
+      const customerType = responseBody.data.find((t) => t.apiName === 'customer');
       expect(customerType).toBeDefined();
-      expect(customerType.displayName).toBe('Customer');
+      expect(customerType?.displayName).toBe('Customer');
     });
 
     it('should filter by status', async () => {
       const response = await request(app)
-        .get('/api/object-types')
-        .set('Authorization', `Bearer ${authToken}`)
+        .get(API_BASE_PATH)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .query({ status: 'active' })
         .expect(200);
 
       // 모든 결과가 active 상태인지 검증
-      expect(response.body.data).toHaveLength(2); // customer, product
-      response.body.data.forEach((item: any) => {
+      const responseBody = response.body as PaginatedResponse<ObjectTypeResponse>;
+      expect(responseBody.data).toHaveLength(2); // customer, product
+      responseBody.data.forEach((item) => {
         expect(item.status).toBe('active');
       });
     });
 
     it('should require authentication', async () => {
-      const response = await request(app).get('/api/object-types').expect(401);
+      const response = await request(app).get(API_BASE_PATH).expect(401);
 
       expect(response.body).toMatchObject({
         error: expect.objectContaining({
@@ -167,8 +198,8 @@ describe('ObjectType API Integration Tests', () => {
       };
 
       const response = await request(app)
-        .post('/api/object-types')
-        .set('Authorization', `Bearer ${authToken}`)
+        .post(API_BASE_PATH)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .send(duplicate)
         .expect(409);
 
@@ -186,8 +217,8 @@ describe('ObjectType API Integration Tests', () => {
       };
 
       const response = await request(app)
-        .post('/api/object-types')
-        .set('Authorization', `Bearer ${authToken}`)
+        .post(API_BASE_PATH)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .send(invalid)
         .expect(400);
 
@@ -207,8 +238,8 @@ describe('ObjectType API Integration Tests', () => {
       });
 
       await request(app)
-        .post('/api/object-types')
-        .set('Authorization', `Bearer ${viewerToken}`)
+        .post(API_BASE_PATH)
+        .set(AUTH_HEADER, `Bearer ${viewerToken}`)
         .send({ apiName: 'test', displayName: 'Test' })
         .expect(403);
     });
@@ -222,33 +253,34 @@ describe('ObjectType API Integration Tests', () => {
       };
 
       const response = await request(app)
-        .put('/api/object-types/550e8400-e29b-41d4-a716-446655440001')
-        .set('Authorization', `Bearer ${authToken}`)
+        .put(`${API_BASE_PATH}/550e8400-e29b-41d4-a716-446655440001`)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .send(updates)
         .expect(200);
 
-      expect(response.body.displayName).toBe('Updated Customer');
-      expect(response.body.description).toBe('Updated description');
-      expect(response.body.updatedBy).toBe('test-user');
+      const updatedObject = response.body as ObjectTypeResponse;
+      expect(updatedObject.displayName).toBe('Updated Customer');
+      expect(updatedObject.description).toBe('Updated description');
+      expect(updatedObject.updatedBy).toBe('test-user');
 
       // updatedAt이 변경되었는지 확인
-      expect(new Date(response.body.updatedAt).getTime()).toBeGreaterThan(
-        new Date(response.body.createdAt).getTime()
+      expect(new Date(updatedObject.updatedAt).getTime()).toBeGreaterThan(
+        new Date(updatedObject.createdAt).getTime()
       );
     });
 
     it('should return 404 for non-existent ID', async () => {
       await request(app)
-        .put('/api/object-types/550e8400-e29b-41d4-a716-446655440099')
-        .set('Authorization', `Bearer ${authToken}`)
+        .put(`${API_BASE_PATH}/550e8400-e29b-41d4-a716-446655440099`)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .send({ displayName: 'Test' })
         .expect(404);
     });
 
     it('should validate UUID format', async () => {
       await request(app)
-        .put('/api/object-types/invalid-uuid')
-        .set('Authorization', `Bearer ${authToken}`)
+        .put(`${API_BASE_PATH}/invalid-uuid`)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .send({ displayName: 'Test' })
         .expect(400);
     });
@@ -260,7 +292,7 @@ describe('ObjectType API Integration Tests', () => {
     beforeEach(async () => {
       // 삭제 테스트용 객체 생성 (각 테스트마다 고유한 apiName 사용)
       const repository = dataSource.getRepository(ObjectType);
-      const uniqueSuffix = Date.now() + Math.random().toString(36).substr(2, 9);
+      const uniqueSuffix = Date.now() + Math.random().toString(36).substring(2, 11);
       const newObjectType = repository.create({
         apiName: `to_delete_${uniqueSuffix}`,
         displayName: 'To Delete',
@@ -273,8 +305,8 @@ describe('ObjectType API Integration Tests', () => {
 
     it('should soft delete object type', async () => {
       await request(app)
-        .delete(`/api/object-types/${objectTypeToDelete.rid}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .delete(`${API_BASE_PATH}/${objectTypeToDelete.rid}`)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .expect(200);
 
       // Soft delete 확인
@@ -296,8 +328,8 @@ describe('ObjectType API Integration Tests', () => {
       });
 
       await request(app)
-        .delete(`/api/object-types/${objectTypeToDelete.rid}`)
-        .set('Authorization', `Bearer ${editorToken}`)
+        .delete(`${API_BASE_PATH}/${objectTypeToDelete.rid}`)
+        .set(AUTH_HEADER, `Bearer ${editorToken}`)
         .expect(403);
     });
   });
@@ -305,20 +337,22 @@ describe('ObjectType API Integration Tests', () => {
   describe('Status Management', () => {
     it('POST /:id/activate should change status to active', async () => {
       const response = await request(app)
-        .post('/api/object-types/550e8400-e29b-41d4-a716-446655440003/activate')
-        .set('Authorization', `Bearer ${authToken}`)
+        .post(`${API_BASE_PATH}/550e8400-e29b-41d4-a716-446655440003/activate`)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .expect(200);
 
-      expect(response.body.status).toBe('active');
+      const activatedObject = response.body as ObjectTypeResponse;
+      expect(activatedObject.status).toBe('active');
     });
 
     it('POST /:id/deactivate should change status to deprecated', async () => {
       const response = await request(app)
-        .post('/api/object-types/550e8400-e29b-41d4-a716-446655440001/deactivate')
-        .set('Authorization', `Bearer ${authToken}`)
+        .post(`${API_BASE_PATH}/550e8400-e29b-41d4-a716-446655440001/deactivate`)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .expect(200);
 
-      expect(response.body.status).toBe('deprecated');
+      const deactivatedObject = response.body as ObjectTypeResponse;
+      expect(deactivatedObject.status).toBe('deprecated');
     });
   });
 
@@ -328,8 +362,8 @@ describe('ObjectType API Integration Tests', () => {
       await dataSource.destroy();
 
       const response = await request(app)
-        .get('/api/object-types')
-        .set('Authorization', `Bearer ${authToken}`)
+        .get(API_BASE_PATH)
+        .set(AUTH_HEADER, `Bearer ${authToken}`)
         .expect(500);
 
       expect(response.body.error).toBeDefined();

@@ -107,13 +107,18 @@ export interface ValidationConfig {
 }
 
 export function createValidation<T extends ValidationConfig>(config: T) {
+  // Define default types for unvalidated parts
+  type DefaultBody = Record<string, never>; // Empty object
+  type DefaultQuery = Record<string, string | string[] | undefined>; // Express default query type
+  type DefaultParams = Record<string, string>; // Express default params type
+  
   type ValidatedReq = Request & {
-    body: T['body'] extends ZodSchema ? z.infer<T['body']> : any;
-    query: T['query'] extends ZodSchema ? z.infer<T['query']> : any;
-    params: T['params'] extends ZodSchema ? z.infer<T['params']> : any;
+    body: T['body'] extends ZodSchema ? z.infer<T['body']> : DefaultBody;
+    query: T['query'] extends ZodSchema ? z.infer<T['query']> : DefaultQuery;
+    params: T['params'] extends ZodSchema ? z.infer<T['params']> : DefaultParams;
   };
 
-  const middleware: Array<TransformingMiddleware<any>> = [];
+  const middleware: Array<TransformingMiddleware<Request>> = [];
 
   if (config.body) {
     middleware.push(validateBody(config.body));
@@ -127,7 +132,7 @@ export function createValidation<T extends ValidationConfig>(config: T) {
 
   return {
     middleware,
-    handler: <TRes = any>(
+    handler: <TRes = Record<string, unknown>>(
       fn: (req: ValidatedReq, res: Response<TRes>, next: NextFunction) => Promise<void> | void
     ) => fn,
   };

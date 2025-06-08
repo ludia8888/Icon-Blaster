@@ -24,14 +24,12 @@ export class ObjectTypeService {
       );
     }
 
-    const objectType = await this.repository.create({
+    return await this.repository.create({
       ...data,
       pluralDisplayName: data.pluralDisplayName || `${data.displayName}s`,
       createdBy,
       updatedBy: createdBy,
     });
-
-    return objectType;
   }
 
   async findById(id: string): Promise<ObjectType> {

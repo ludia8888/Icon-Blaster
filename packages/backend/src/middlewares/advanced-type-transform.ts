@@ -2,6 +2,7 @@ import { Request } from 'express';
 import { z } from 'zod';
 
 import { logger } from '../utils/logger';
+
 import { TransformingMiddleware } from './type-transforming-middleware';
 
 /**
@@ -219,9 +220,20 @@ function generateRequestId(): string {
   return `req-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
-async function extractFileMetadata(file: Express.Multer.File): Promise<any> {
+interface FileMetadata {
+  width?: number;
+  height?: number;
+  duration?: number;
+  format?: string;
+  size: number;
+}
+
+async function extractFileMetadata(file: Express.Multer.File): Promise<FileMetadata> {
   // Extract metadata based on file type
-  return {};
+  return {
+    size: file.size,
+    format: file.mimetype,
+  };
 }
 
 /**

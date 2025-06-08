@@ -5,6 +5,7 @@
  */
 
 import jwt from 'jsonwebtoken';
+
 import { JwtPayload } from '../../auth/types';
 
 /**

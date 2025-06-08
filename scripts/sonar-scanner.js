@@ -25,17 +25,8 @@ scanner(
     token,
     options: {
       'sonar.login': token,
+      // sonar-project.properties 파일의 설정을 사용하도록 최소한의 옵션만 제공
       'sonar.projectKey': 'Arrakis-Project',
-      'sonar.projectName': 'Arrakis Project',
-      'sonar.projectVersion': '1.0.0',
-      'sonar.sources': 'packages/backend/src,packages/shared/src,packages/contracts/src',
-      'sonar.exclusions': '**/*.test.ts,**/*.test.tsx,**/*.spec.ts,**/__tests__/**,**/node_modules/**,**/dist/**,**/coverage/**,**/*.d.ts,**/migrations/**',
-      'sonar.tests': 'packages/backend/src,packages/shared/src',
-      'sonar.test.inclusions': '**/*.test.ts,**/*.test.tsx,**/*.spec.ts,**/__tests__/**',
-      'sonar.javascript.lcov.reportPaths': 'packages/backend/coverage/lcov.info,packages/shared/coverage/lcov.info',
-      'sonar.typescript.tsconfigPath': 'tsconfig.json',
-      'sonar.sourceEncoding': 'UTF-8',
-      'sonar.scm.provider': 'git',
     },
   },
   () => {
