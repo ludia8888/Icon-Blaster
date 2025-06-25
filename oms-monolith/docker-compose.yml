@@ -1,0 +1,140 @@
+version: '3.8'
+
+services:
+  # OMS Monolith Application
+  oms-monolith:
+    build: .
+    container_name: oms-monolith
+    ports:
+      - "8000:8000"     # Main API
+      - "8090:8090"     # API Gateway
+      - "8006:8006"     # GraphQL HTTP
+      - "8004:8004"     # GraphQL WebSocket
+      - "9090:9090"     # Prometheus metrics
+    environment:
+      - APP_ENV=production
+      - TERMINUSDB_URL=http://terminusdb:6363
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - JWT_SECRET_KEY=your-secret-key-here
+      - ACTIONS_SERVICE_URL=http://actions-service:8009
+    depends_on:
+      - terminusdb
+      - redis
+      - nats
+    networks:
+      - oms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # TerminusDB
+  terminusdb:
+    image: terminusdb/terminusdb:v11.1.11
+    container_name: oms-terminusdb
+    ports:
+      - "6363:6363"
+    environment:
+      - TERMINUSDB_SERVER_NAME=oms-terminusdb
+      - TERMINUSDB_ADMIN_PASS=root
+      - TERMINUSDB_SERVER_PORT=6363
+      - TERMINUSDB_STORAGE_VOLUME=/opt/terminusdb/storage
+    volumes:
+      - terminusdb-data:/opt/terminusdb/storage
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: oms-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis-data:/data
+    networks:
+      - oms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # NATS
+  nats:
+    image: nats:2.10-alpine
+    container_name: oms-nats
+    ports:
+      - "4222:4222"   # Client connections
+      - "8222:8222"   # HTTP monitoring
+      - "6222:6222"   # Cluster routing
+    command: ["-js", "-m", "8222", "--store_dir", "/data"]
+    volumes:
+      - nats-data:/data
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+  # Prometheus (Optional - for monitoring)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: oms-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+  # Grafana (Optional - for monitoring)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: oms-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - oms-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # Jaeger (Optional - for distributed tracing)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: oms-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "6831:6831/udp" # Jaeger agent
+      - "14268:14268"   # Jaeger collector
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+networks:
+  oms-network:
+    driver: bridge
+
+volumes:
+  terminusdb-data:
+  redis-data:
+  nats-data:
+  prometheus-data:
+  grafana-data:

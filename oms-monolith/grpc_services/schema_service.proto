@@ -1,0 +1,292 @@
+syntax = "proto3";
+
+package oms.schema.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/oms/api/schema/v1";
+
+// Schema Service - 섹션 11.4.1
+service SchemaService {
+  // Object Type operations
+  rpc GetObjectType(GetObjectTypeRequest) returns (ObjectType);
+  rpc ListObjectTypes(ListObjectTypesRequest) returns (ListObjectTypesResponse);
+  rpc CreateObjectType(CreateObjectTypeRequest) returns (ObjectType);
+  rpc UpdateObjectType(UpdateObjectTypeRequest) returns (ObjectType);
+  rpc DeleteObjectType(DeleteObjectTypeRequest) returns (google.protobuf.Empty);
+  
+  // Property operations
+  rpc AddProperty(AddPropertyRequest) returns (Property);
+  rpc UpdateProperty(UpdatePropertyRequest) returns (Property);
+  rpc RemoveProperty(RemovePropertyRequest) returns (google.protobuf.Empty);
+  
+  // Batch operations
+  rpc BatchCreateObjectTypes(BatchCreateObjectTypesRequest) returns (BatchCreateObjectTypesResponse);
+  rpc BatchValidate(BatchValidateRequest) returns (BatchValidateResponse);
+  
+  // Version operations
+  rpc GetVersion(GetVersionRequest) returns (SchemaVersion);
+  rpc CompareVersions(CompareVersionsRequest) returns (VersionDiff);
+}
+
+// Messages
+message ObjectType {
+  string id = 1;
+  string name = 2;
+  string displayName = 3;
+  string pluralDisplayName = 4;
+  string description = 5;
+  Status status = 6;
+  TypeClass typeClass = 7;
+  Visibility visibility = 8;
+  bool isMutable = 9;
+  bool isAbstract = 10;
+  string extends = 11;
+  repeated string implements = 12;
+  repeated Property properties = 13;
+  repeated string tags = 14;
+  UIHints uiHints = 15;
+  string icon = 16;
+  DataClassification dataClassification = 17;
+  string versionHash = 18;
+  string createdBy = 19;
+  google.protobuf.Timestamp createdAt = 20;
+  string modifiedBy = 21;
+  google.protobuf.Timestamp modifiedAt = 22;
+}
+
+message Property {
+  string id = 1;
+  string objectTypeId = 2;
+  string name = 3;
+  string displayName = 4;
+  string dataType = 5;
+  bool isRequired = 6;
+  bool isUnique = 7;
+  bool isPrimaryKey = 8;
+  bool isSearchable = 9;
+  bool isIndexed = 10;
+  string defaultValue = 11;
+  string description = 12;
+  repeated ValidationRule validationRules = 13;
+  UIHints uiHints = 14;
+  string enumValues = 15;
+  string linkedObjectType = 16;
+  Status status = 17;
+  Visibility visibility = 18;
+  bool isMutable = 19;
+  string versionHash = 20;
+  string createdBy = 21;
+  google.protobuf.Timestamp createdAt = 22;
+  string modifiedBy = 23;
+  google.protobuf.Timestamp modifiedAt = 24;
+}
+
+message UIHints {
+  string inputType = 1;
+  string placeholder = 2;
+  string helpText = 3;
+  int32 displayOrder = 4;
+  int32 width = 5;
+  bool isPassword = 6;
+  bool isMultiline = 7;
+  repeated string allowedValues = 8;
+  string format = 9;
+  string unit = 10;
+}
+
+message ValidationRule {
+  string type = 1;
+  string expression = 2;
+  string message = 3;
+  map<string, string> parameters = 4;
+}
+
+message SchemaVersion {
+  string hash = 1;
+  string branch = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  string author = 4;
+  string message = 5;
+  repeated string changedResources = 6;
+}
+
+message VersionDiff {
+  SchemaVersion fromVersion = 1;
+  SchemaVersion toVersion = 2;
+  repeated ResourceChange changes = 3;
+  bool hasBreakingChanges = 4;
+  repeated string breakingChanges = 5;
+}
+
+message ResourceChange {
+  string resourceId = 1;
+  string resourceType = 2;
+  ChangeType changeType = 3;
+  map<string, string> before = 4;
+  map<string, string> after = 5;
+  bool isBreaking = 6;
+}
+
+// Request messages
+message GetObjectTypeRequest {
+  string branch = 1;
+  string id = 2;
+}
+
+message ListObjectTypesRequest {
+  string branch = 1;
+  Status status = 2;
+  TypeClass typeClass = 3;
+  repeated string tags = 4;
+  int32 limit = 5;
+  int32 offset = 6;
+}
+
+message ListObjectTypesResponse {
+  repeated ObjectType objectTypes = 1;
+  int32 totalCount = 2;
+  bool hasMore = 3;
+}
+
+message CreateObjectTypeRequest {
+  string branch = 1;
+  ObjectType objectType = 2;
+  string userId = 3;
+}
+
+message UpdateObjectTypeRequest {
+  string branch = 1;
+  string id = 2;
+  ObjectType objectType = 3;
+  string userId = 4;
+}
+
+message DeleteObjectTypeRequest {
+  string branch = 1;
+  string id = 2;
+  bool force = 3;
+  string userId = 4;
+}
+
+message AddPropertyRequest {
+  string branch = 1;
+  string objectTypeId = 2;
+  Property property = 3;
+  string userId = 4;
+}
+
+message UpdatePropertyRequest {
+  string branch = 1;
+  string id = 2;
+  Property property = 3;
+  string userId = 4;
+}
+
+message RemovePropertyRequest {
+  string branch = 1;
+  string id = 2;
+  string userId = 3;
+}
+
+message BatchCreateObjectTypesRequest {
+  string branch = 1;
+  repeated ObjectType objectTypes = 2;
+  string userId = 3;
+  bool validateOnly = 4;
+}
+
+message BatchCreateObjectTypesResponse {
+  repeated BatchResult results = 1;
+  bool allSuccessful = 2;
+  int32 successCount = 3;
+  int32 errorCount = 4;
+}
+
+message BatchResult {
+  string id = 1;
+  bool success = 2;
+  ObjectType objectType = 3;
+  Error error = 4;
+}
+
+message Error {
+  string code = 1;
+  string message = 2;
+  map<string, string> details = 3;
+}
+
+message BatchValidateRequest {
+  string branch = 1;
+  repeated ObjectType objectTypes = 2;
+}
+
+message BatchValidateResponse {
+  bool isValid = 1;
+  repeated ValidationError errors = 2;
+  repeated ValidationWarning warnings = 3;
+}
+
+message ValidationError {
+  string field = 1;
+  string code = 2;
+  string message = 3;
+  string resourceId = 4;
+}
+
+message ValidationWarning {
+  string field = 1;
+  string message = 2;
+  string resourceId = 3;
+}
+
+message GetVersionRequest {
+  string branch = 1;
+  string hash = 2;
+}
+
+message CompareVersionsRequest {
+  string branch = 1;
+  string fromHash = 2;
+  string toHash = 3;
+}
+
+// Enums
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  EXPERIMENTAL = 2;
+  DEPRECATED = 3;
+  EXAMPLE = 4;
+}
+
+enum TypeClass {
+  TYPE_CLASS_UNSPECIFIED = 0;
+  OBJECT = 1;
+  INTERFACE = 2;
+  LINK = 3;
+  EMBEDDED = 4;
+}
+
+enum Visibility {
+  VISIBILITY_UNSPECIFIED = 0;
+  VISIBLE = 1;
+  HIDDEN = 2;
+  ADVANCED = 3;
+}
+
+enum DataClassification {
+  DATA_CLASSIFICATION_UNSPECIFIED = 0;
+  PUBLIC = 1;
+  INTERNAL = 2;
+  CONFIDENTIAL = 3;
+  RESTRICTED = 4;
+}
+
+enum ChangeType {
+  CHANGE_TYPE_UNSPECIFIED = 0;
+  ADDED = 1;
+  MODIFIED = 2;
+  DELETED = 3;
+}

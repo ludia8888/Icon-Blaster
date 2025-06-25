@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  frontend-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oms-frontend-service
+    ports:
+      - "8080:8080"
+    environment:
+      # NATS 연결 설정 (OMS 이벤트 구독용)
+      - NATS_URL=nats://nats:4222
+      
+      # 로깅 설정
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+      
+      # Frontend Service 설정
+      - SERVICE_NAME=Frontend-Service
+      - SERVICE_VERSION=1.0.0
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+      
+      # WebSocket 설정
+      - WEBSOCKET_PING_INTERVAL=30
+      - WEBSOCKET_TIMEOUT=300
+      
+      # 보안 설정
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-frontend-service-secret}
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRE_MINUTES=60
+      
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - nats
+    networks:
+      - oms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: oms-nats
+    ports:
+      - "4222:4222"    # Client connections
+      - "8222:8222"    # HTTP management
+      - "6222:6222"    # Cluster connections
+    command: 
+      - --jetstream
+      - --store_dir=/data
+      - --http_port=8222
+      - --max_memory=1GB
+      - --max_file=10GB
+    volumes:
+      - nats_data:/data
+    networks:
+      - oms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nats", "ping", "--timeout=5s"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  nats_data:
+    driver: local
+
+networks:
+  oms-network:
+    driver: bridge
+    external: true  # OMS 메인 서비스와 공유

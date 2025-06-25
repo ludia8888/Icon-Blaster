@@ -1,0 +1,51 @@
+[tool.poetry]
+name = "oms-monolith"
+version = "3.0.0"
+description = "Ontology Management System - Ultimate Monolith"
+authors = ["OMS Team"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.104.0"
+uvicorn = {extras = ["standard"], version = "^0.24.0"}
+redis = "^5.0.0"
+prometheus-client = "^0.19.0"
+strawberry-graphql = {extras = ["fastapi"], version = "^0.209.0"}
+pydantic = "^2.4.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+python-multipart = "^0.0.6"
+httpx = "^0.25.0"
+opentelemetry-api = "^1.21.0"
+opentelemetry-sdk = "^1.21.0"
+opentelemetry-instrumentation-fastapi = "^0.42b0"
+opentelemetry-exporter-prometheus = "^0.42b0"
+
+[tool.poetry.dev-dependencies]
+import-linter = "^1.12.0"
+black = "^23.0.0"
+isort = "^5.12.0"
+mypy = "^1.7.0"
+ruff = "^0.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "N", "W", "B", "C90"]
+ignore = ["E501"]
+

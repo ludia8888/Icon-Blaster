@@ -1,0 +1,99 @@
+{
+  "siem_integrations": {
+    "splunk_production": {
+      "platform": "splunk",
+      "format": "json",
+      "endpoint": "https://splunk.company.com:8088",
+      "api_key": "${SPLUNK_HEC_TOKEN}",
+      "index": "oms_security",
+      "batch_size": 50,
+      "batch_timeout": 15,
+      "retry_attempts": 3,
+      "retry_delay": 5,
+      "enable_tls": true,
+      "verify_ssl": true,
+      "severity_mapping": {
+        "info": "Low",
+        "warning": "Medium", 
+        "error": "High",
+        "critical": "Critical"
+      }
+    },
+    "elk_security": {
+      "platform": "elasticsearch",
+      "format": "json",
+      "endpoint": "https://elasticsearch.security.company.com:9200",
+      "username": "${ELK_USERNAME}",
+      "password": "${ELK_PASSWORD}",
+      "index": "oms-security-logs",
+      "batch_size": 100,
+      "batch_timeout": 30,
+      "retry_attempts": 3,
+      "enable_tls": true,
+      "verify_ssl": true
+    },
+    "syslog_siem": {
+      "platform": "syslog",
+      "format": "syslog_rfc5424",
+      "endpoint": "siem.company.com",
+      "port": 514,
+      "facility": 16,
+      "batch_size": 10,
+      "batch_timeout": 5,
+      "retry_attempts": 2
+    },
+    "azure_sentinel": {
+      "platform": "webhook",
+      "format": "json",
+      "endpoint": "https://sentinel-workspace.azure.com/api/logs",
+      "api_key": "${AZURE_SENTINEL_KEY}",
+      "batch_size": 25,
+      "batch_timeout": 20,
+      "custom_headers": {
+        "Log-Type": "OMS_Naming_Security",
+        "time-generated-field": "timestamp"
+      }
+    },
+    "security_webhook": {
+      "platform": "webhook",
+      "format": "cef",
+      "endpoint": "https://security-platform.company.com/api/events",
+      "api_key": "${SECURITY_WEBHOOK_TOKEN}",
+      "batch_size": 20,
+      "batch_timeout": 10,
+      "custom_headers": {
+        "X-Source": "OMS-Naming-Validator",
+        "X-Environment": "production"
+      }
+    }
+  },
+  "global_settings": {
+    "enable_siem_integration": true,
+    "default_severity_threshold": "Medium",
+    "max_queue_size": 10000,
+    "enable_local_fallback": true,
+    "local_fallback_path": "/var/log/oms/siem_fallback.log"
+  },
+  "event_filters": {
+    "validation_events": {
+      "enabled": true,
+      "min_severity": "Medium",
+      "include_success": false,
+      "include_failure": true,
+      "include_error": true
+    },
+    "security_events": {
+      "enabled": true,
+      "min_severity": "Low",
+      "include_input_sanitization": true,
+      "include_policy_tampering": true,
+      "include_authentication": true
+    },
+    "policy_events": {
+      "enabled": true,
+      "min_severity": "Medium",
+      "include_policy_changes": true,
+      "include_signature_verification": true
+    }
+  }
+}
