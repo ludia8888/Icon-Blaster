@@ -4,14 +4,14 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from services.validation_service.core.models import (
+from core.validation.models import (
     BreakingChange,
     ImpactEstimate,
     MigrationStrategy,
     Severity,
     ValidationContext,
 )
-from services.validation_service.core.rules.base import BreakingChangeRule
+from core.validation.rules.base import BreakingChangeRule
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 
 from services.event_publisher.core.models import Change
 from services.event_publisher.core.state_store import StateStore
-from shared.clients.terminus_db import TerminusDBClient
+from database.clients.terminus_db import TerminusDBClient
 
 logger = logging.getLogger(__name__)
 

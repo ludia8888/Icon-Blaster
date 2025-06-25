@@ -6,13 +6,13 @@ Foundry OMS 핵심 원칙: Domain-driven, Cache-first, Event-driven
 import logging
 from typing import Any, Dict, List, Optional
 
-from services.validation_service.core.models import (
+from core.validation.models import (
     BreakingChange,
     DataImpact,
     Severity,
     ValidationContext,
 )
-from services.validation_service.core.rules.base import BreakingChangeRule
+from core.validation.rules.base import BreakingChangeRule
 
 logger = logging.getLogger(__name__)
 

@@ -5,8 +5,8 @@ Shared Property 변경 감지 규칙
 import logging
 from typing import Any, Dict, List, Optional
 
-from services.validation_service.core.models import BreakingChange, Severity
-from services.validation_service.core.rules.base import BreakingChangeRule
+from core.validation.models import BreakingChange, Severity
+from core.validation.rules.base import BreakingChangeRule
 
 logger = logging.getLogger(__name__)
 

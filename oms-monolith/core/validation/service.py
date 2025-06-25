@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List
 
-from services.validation_service.core.models import (
+from core.validation.models import (
     BreakingChange,
     ImpactEstimate,
     MigrationOptions,
@@ -23,14 +23,14 @@ from services.validation_service.core.models import (
     ValidationResult,
     ValidationWarning,
 )
-from services.validation_service.core.rules.data_impact_analyzer import DataImpactAnalyzer
-from services.validation_service.core.rules.primary_key_change import PrimaryKeyChangeRule
-from services.validation_service.core.rules.required_field import RequiredFieldRemovalRule
-from services.validation_service.core.rules.shared_property import SharedPropertyChangeRule
-from services.validation_service.core.rules.type_change import TypeCompatibilityRule
-from services.validation_service.core.rules.type_incompatibility import TypeIncompatibilityRule
+from core.validation.rules.data_impact_analyzer import DataImpactAnalyzer
+from core.validation.rules.primary_key_change import PrimaryKeyChangeRule
+from core.validation.rules.required_field import RequiredFieldRemovalRule
+from core.validation.rules.shared_property import SharedPropertyChangeRule
+from core.validation.rules.type_change import TypeCompatibilityRule
+from core.validation.rules.type_incompatibility import TypeIncompatibilityRule
 from shared.cache.smart_cache import SmartCacheManager
-from shared.clients.terminus_db import TerminusDBClient
+from database.clients.terminus_db import TerminusDBClient
 from shared.events import EventPublisher
 
 logger = logging.getLogger(__name__)

@@ -8,14 +8,14 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Set
 
-from services.validation_service.core.models import (
+from core.validation.models import (
     BreakingChange,
     MigrationOptions,
     MigrationPlan,
     MigrationStep,
     MigrationStrategy,
 )
-from shared.clients.terminus_db import TerminusDBClient
+from database.clients.terminus_db import TerminusDBClient
 
 logger = logging.getLogger(__name__)
 

@@ -8,10 +8,10 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from services.branch_service.core.conflict_resolver import ConflictResolver
-from services.branch_service.core.diff_engine import DiffEngine
-from services.branch_service.core.merge_strategies import MergeStrategyImplementor
-from services.branch_service.core.models import (
+from core.branch.conflict_resolver import ConflictResolver
+from core.branch.diff_engine import DiffEngine
+from core.branch.merge_strategies import MergeStrategyImplementor
+from core.branch.models import (
     BranchDiff,
     ChangeProposal,
     MergeResult,
@@ -19,10 +19,10 @@ from services.branch_service.core.models import (
     ProposalStatus,
     ProposalUpdate,
 )
-from services.branch_service.core.three_way_merge import ThreeWayMergeAlgorithm
+from core.branch.three_way_merge import ThreeWayMergeAlgorithm
 from shared.cache.smart_cache import SmartCacheManager
-from shared.clients.terminus_db import TerminusDBClient
-from shared.models.domain import Branch
+from database.clients.terminus_db import TerminusDBClient
+from models.domain import Branch
 
 logger = logging.getLogger(__name__)
 

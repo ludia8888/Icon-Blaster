@@ -6,11 +6,11 @@ import logging
 from datetime import datetime
 from typing import Dict, List
 
-from services.branch_service.core.models import (
+from core.branch.models import (
     ChangeProposal,
     MergeResult,
 )
-from shared.clients.terminus_db import TerminusDBClient
+from database.clients.terminus_db import TerminusDBClient
 
 logger = logging.getLogger(__name__)
 

@@ -7,13 +7,14 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set
 
-from services.validation_service.core.models import (
+from core.validation.models import (
     BreakingChange,
     DataImpact,
     Severity,
     ValidationContext,
 )
-from services.validation_service.core.rules.base import BreakingChangeRule
+from core.validation.rules.base import BreakingChangeRule
+from database.clients.terminus_db import TerminusDBClient
 
 logger = logging.getLogger(__name__)
 

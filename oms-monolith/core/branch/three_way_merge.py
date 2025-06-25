@@ -6,7 +6,7 @@ REQ-OMS-F2-AC4: Preview 기능 지원
 import logging
 from typing import Any, Dict, List, Optional
 
-from services.branch_service.core.models import (
+from core.branch.models import (
     Conflict,
     FieldConflict,
     FieldMergeResult,
@@ -14,7 +14,7 @@ from services.branch_service.core.models import (
     MergeStatistics,
     ResourceMergeResult,
 )
-from shared.clients.terminus_db import TerminusDBClient
+from database.clients.terminus_db import TerminusDBClient
 
 logger = logging.getLogger(__name__)
 

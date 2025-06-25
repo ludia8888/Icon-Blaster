@@ -5,7 +5,7 @@ REQ-OMS-F2-AC3: 충돌 해결 엔진
 import logging
 from typing import Any, Dict, List, Optional
 
-from services.branch_service.core.models import (
+from core.branch.models import (
     Conflict,
     ConflictType,
     DiffEntry,

@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Optional
 
-from shared.clients.terminus_db import TerminusDBClient
+from database.clients.terminus_db import TerminusDBClient
 from shared.infrastructure.metrics import MetricsCollector
 from shared.infrastructure.nats_client import NATSClient
 from .cloudevents_enhanced import EnhancedCloudEvent, CloudEventValidator

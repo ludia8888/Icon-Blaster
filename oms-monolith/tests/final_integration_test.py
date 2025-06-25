@@ -13,7 +13,7 @@ from core.schema.service import SchemaService
 from core.branch.service import BranchService
 from core.validation.service import ValidationService
 from core.event_publisher.enhanced_event_service import EnhancedEventService
-from shared.models.domain import (
+from models.domain import (
     ObjectTypeCreate, LinkTypeCreate, PropertyCreate,
     Cardinality, DataType, Status
 )

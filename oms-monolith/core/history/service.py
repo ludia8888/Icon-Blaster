@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from database.clients.terminus_db import TerminusDBClient
-from core.event.publisher import EventPublisher
+from shared.events import EventPublisher
 from utils.logger import get_logger, log_operation_start, log_operation_end
 from .models import (
     AuditEvent, ChangeDetail, ChangeOperation,

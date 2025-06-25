@@ -17,8 +17,8 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from shared.clients.terminus_db import TerminusDBClient
-from shared.models.action_types import (
+from database.clients.terminus_db import TerminusDBClient
+from models.action_types import (
     ActionCategory,
     ActionType,
     ActionTypeCreate,
@@ -29,7 +29,7 @@ from shared.models.action_types import (
     ParameterSchema,
     TransformationType,
 )
-from shared.models.data_types import (
+from models.data_types import (
     DataType,
     DataTypeCategory,
     DataTypeCreate,
@@ -37,7 +37,7 @@ from shared.models.data_types import (
     DataTypeUpdate,
     TypeConstraint,
 )
-from shared.models.domain import (
+from models.domain import (
     Cardinality,
     Directionality,
     Interface,
@@ -58,7 +58,7 @@ from shared.models.domain import (
     TypeClass,
     Visibility,
 )
-from shared.models.function_types import (
+from models.function_types import (
     FunctionBehavior,
     FunctionCategory,
     FunctionExample,
