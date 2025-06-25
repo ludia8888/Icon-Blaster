@@ -15,8 +15,9 @@ from core.validation.service import ValidationService
 from core.event_publisher.enhanced_event_service import EnhancedEventService
 from models.domain import (
     ObjectTypeCreate, LinkTypeCreate, PropertyCreate,
-    Cardinality, DataType, Status
+    Cardinality, Status
 )
+from models.data_types import DataType
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
