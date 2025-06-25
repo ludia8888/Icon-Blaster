@@ -23,7 +23,7 @@ def get_history_event_publisher() -> HistoryEventPublisher:
     """History Event Publisher 의존성 주입"""
     # TODO: 실제 구현에서는 DI 컨테이너 사용
     from database.clients.terminus_db import get_terminus_client
-    from core.event.publisher import get_event_publisher
+    from core.event_publisher import get_event_publisher
     
     return HistoryEventPublisher(
         terminus_client=get_terminus_client(),

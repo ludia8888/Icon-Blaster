@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from .cloudevents_enhanced import EnhancedCloudEvent
 from core.event_publisher import EventPublisher
 from ..security.pii_handler import PIIHandler, PIIHandlingStrategy, PIIMatch
-from shared.config import settings
+from shared.config import config as settings
 
 logger = logging.getLogger(__name__)
 

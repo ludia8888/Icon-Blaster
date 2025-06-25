@@ -10,7 +10,7 @@ import strawberry
 
 from api.gateway.auth import User
 
-from api.graphql.schema import (
+from .schema import (
     ActionCategoryEnum,
     ActionType,
     ActionTypeInput,
@@ -720,7 +720,7 @@ class Query:
             result = await service_client.call_service(url, "GET", params, user)
 
             # 데이터 변환
-            from api.graphql.schema import SearchItem
+            from .schema import SearchItem
 
             search_items = []
             for item in result.get('items', []):
@@ -798,7 +798,7 @@ class Query:
                 )
 
             # ActionTypeReference 변환
-            from api.graphql.schema import ActionTypeReference
+            from .schema import ActionTypeReference
             referenced_actions = []
             for ref in at.get('referencedActions', []):
                 referenced_actions.append(ActionTypeReference(
@@ -870,7 +870,7 @@ class Query:
                 )
 
             # ActionTypeReference 변환
-            from api.graphql.schema import ActionTypeReference
+            from .schema import ActionTypeReference
             referenced_actions = []
             for ref in result.get('referencedActions', []):
                 referenced_actions.append(ActionTypeReference(
@@ -1021,7 +1021,7 @@ class Query:
 
     def _convert_to_function_type_query(self, result: dict) -> FunctionType:
         """Query용 FunctionType 변환 (Mutation의 변환과 동일)"""
-        from api.graphql.schema import (
+        from .schema import (
             FunctionBehavior,
             FunctionCategoryEnum,
             FunctionExample,
@@ -1134,7 +1134,7 @@ class Query:
 
     def _convert_to_data_type_query(self, result: dict) -> DataType:
         """Query용 DataType 변환 (Mutation의 변환과 동일)"""
-        from api.graphql.schema import DataTypeCategoryEnum, DataTypeFormatEnum, TypeConstraint
+        from .schema import DataTypeCategoryEnum, DataTypeFormatEnum, TypeConstraint
 
         # Constraints 변환
         constraints = []
@@ -1369,7 +1369,7 @@ class Mutation:
             )
 
         # ActionTypeReference 변환
-        from api.graphql.schema import ActionTypeReference
+        from .schema import ActionTypeReference
         referenced_actions = []
         for ref in result.get('referencedActions', []):
             referenced_actions.append(ActionTypeReference(
@@ -1486,7 +1486,7 @@ class Mutation:
             )
 
         # ActionTypeReference 변환
-        from api.graphql.schema import ActionTypeReference
+        from .schema import ActionTypeReference
         referenced_actions = []
         for ref in result.get('referencedActions', []):
             referenced_actions.append(ActionTypeReference(
@@ -1633,7 +1633,7 @@ class Mutation:
 
     def _convert_to_function_type(self, result: dict) -> FunctionType:
         """API 응답을 GraphQL FunctionType으로 변환"""
-        from api.graphql.schema import (
+        from .schema import (
             FunctionBehavior,
             FunctionCategoryEnum,
             FunctionExample,
@@ -1746,7 +1746,7 @@ class Mutation:
 
     def _convert_to_data_type(self, result: dict) -> DataType:
         """API 응답을 GraphQL DataType으로 변환"""
-        from api.graphql.schema import DataTypeCategoryEnum, DataTypeFormatEnum, TypeConstraint
+        from .schema import DataTypeCategoryEnum, DataTypeFormatEnum, TypeConstraint
 
         # Constraints 변환
         constraints = []
@@ -1794,7 +1794,7 @@ class Mutation:
 
 
 # Import subscriptions
-from api.graphql.subscriptions import Subscription
+from .subscriptions import Subscription
 
 # Create the schema with subscriptions
 schema = strawberry.Schema(query=Query, mutation=Mutation, subscription=Subscription)

@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
 # Compatibility Shim을 통해 모든 import 해결
-import shared  # This loads the compatibility shim
+# import shared  # This loads the compatibility shim
 
 # Core Services
 from core.schema.service import SchemaService

@@ -200,7 +200,7 @@ class AuthenticationManager:
                 user_data = json.loads(cached_user.decode())
             else:
                 # Fetch from user service using mTLS
-                from database.clients.service_client import create_user_client
+                from shared.clients.service_client import create_user_client
 
                 user_client = create_user_client("api-gateway")
                 user_data = await user_client.validate_user(user_id)

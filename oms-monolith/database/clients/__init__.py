@@ -1,4 +1,4 @@
-# Database clients
-from database.clients.terminus_db_simple import TerminusDBClient
+# Re-export service_client
+from .service_client import ServiceClient, create_user_client
 
-__all__ = ["TerminusDBClient"]
+__all__ = ["ServiceClient", "create_user_client"]

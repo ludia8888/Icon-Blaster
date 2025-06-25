@@ -189,7 +189,7 @@ async def get_current_user_info(
     # Get full user details from database
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from core.user.service import User
+        from core.user import User
         
         result = await session.execute(
             select(User).where(User.id == current_user.id)
@@ -229,7 +229,7 @@ async def update_current_user(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from core.user.service import User
+        from core.user import User
         
         result = await session.execute(
             select(User).where(User.id == current_user.id)
@@ -363,7 +363,7 @@ async def disable_mfa(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from core.user.service import User, pwd_context
+        from core.user import User, pwd_context
         
         result = await session.execute(
             select(User).where(User.id == current_user.id)
@@ -413,7 +413,7 @@ async def verify_mfa(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from core.user.service import User
+        from core.user import User
         
         result = await session.execute(
             select(User).where(User.id == current_user.id)
@@ -453,7 +453,7 @@ async def list_users(
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
         from sqlalchemy import or_, and_
-        from core.user.service import User
+        from core.user import User
         
         query = select(User)
         
@@ -517,7 +517,7 @@ async def get_user(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from core.user.service import User
+        from core.user import User
         
         result = await session.execute(
             select(User).where(User.id == user_id)
@@ -564,7 +564,7 @@ async def update_user(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from core.user.service import User
+        from core.user import User
         
         result = await session.execute(
             select(User).where(User.id == user_id)
@@ -617,7 +617,7 @@ async def unlock_user(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from core.user.service import User
+        from core.user import User
         
         result = await session.execute(
             select(User).where(User.id == user_id)

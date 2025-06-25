@@ -10,7 +10,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from dataclasses import dataclass
 import time
 
-from api.graphql.realtime_publisher import realtime_publisher, RealtimeEvent, EventType
+from .realtime_publisher import realtime_publisher, RealtimeEvent, EventType
 
 logger = logging.getLogger(__name__)
 

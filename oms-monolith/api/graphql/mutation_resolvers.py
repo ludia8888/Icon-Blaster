@@ -7,8 +7,8 @@ from typing import Optional
 
 import strawberry
 
-from api.graphql.resolvers import ServiceClient
-from api.graphql.schema import (
+from .resolvers import ServiceClient
+from .schema import (
     Branch,
     BranchStatusEnum,
     CreateBranchInput,

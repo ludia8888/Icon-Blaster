@@ -11,12 +11,18 @@ from typing import Dict, List, Tuple
 
 # Import 매핑 규칙 - Final P0 Top-10 Critical Fix
 IMPORT_MAPPINGS = {
-    # ============ TOP-10 P0 CRITICAL PATH FIXES ============
-    # 사용자 분석 기반 가장 중요한 경로 오타 수정
+    # ============ FINAL 6건 P0 CRITICAL PATH FIXES ============  
+    # 사용자 2차 분석 기반 마지막 내부 오타 수정
+    r'^from core\.event\.publisher': r'from core.event_publisher',
+    r'^from core\.event_publisher\.main_ultimate': r'from core.event_publisher.enhanced_event_service',
+    r'^from database\.clients\.service_client': r'from shared.clients.service_client',
+    r'^from security\.pii_handler': r'from core.security.pii_handler',
+    r'^from pii_handler': r'from core.security.pii_handler',
+    r'^from retry_strategy': r'from utils.retry_strategy',
+    
+    # 기존 TOP-10 P0 수정사항들
     r'^from cache\.smart_cache': r'from shared.cache.smart_cache',
     r'^from clients\.terminus_db': r'from database.clients.terminus_db',
-    r'^from security\.pii_handler': r'from core.security.pii_handler',
-    r'^from retry_strategy': r'from utils.retry_strategy',
     r'^from event_publisher\.': r'from core.event_publisher.',
     r'^from multi_platform_router': r'from core.event_publisher.multi_platform_router',
     r'^from metadata_service': r'from core.action.metadata_service',

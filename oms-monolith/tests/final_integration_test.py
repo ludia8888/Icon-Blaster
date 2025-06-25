@@ -261,8 +261,43 @@ class OMSIntegrationTest:
             await self.cleanup()
 
 
+# pytest 호환 테스트 함수들
+import pytest
+
+@pytest.mark.asyncio
+async def test_oms_integration():
+    """pytest 호환 통합 테스트"""
+    test_suite = OMSIntegrationTest()
+    await test_suite.run_all_tests()
+
+@pytest.mark.asyncio  
+async def test_core_imports():
+    """핵심 모듈 import 테스트"""
+    # 이미 파일 상단에서 import되었으므로 성공
+    assert SchemaService is not None
+    assert BranchService is not None
+    assert ValidationService is not None
+    assert EnhancedEventService is not None
+    logger.info("✓ 모든 핵심 모듈 import 성공")
+
+@pytest.mark.asyncio
+async def test_service_initialization():
+    """서비스 초기화 테스트"""
+    try:
+        schema_service = SchemaService()
+        await schema_service.initialize()
+        
+        # EnhancedEventService는 initialize가 없을 수 있으므로 생성만 테스트
+        event_service = EnhancedEventService()
+        assert event_service is not None
+        
+        logger.info("✓ 서비스 초기화 성공")
+    except Exception as e:
+        logger.error(f"서비스 초기화 실패: {e}")
+        pytest.fail(f"Service initialization failed: {e}")
+
 async def main():
-    """메인 함수"""
+    """스크립트로 직접 실행할 때 메인 함수"""
     test_suite = OMSIntegrationTest()
     await test_suite.run_all_tests()
 

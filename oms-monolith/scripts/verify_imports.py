@@ -36,12 +36,15 @@ def extract_modules(file_path: pathlib.Path) -> Set[Tuple[str, int]]:
                 for alias in node.names:
                     modules.add((alias.name, node.lineno))
             elif isinstance(node, ast.ImportFrom):
+                # Skip relative imports to avoid false positives
+                if node.level > 0:  # This is a relative import
+                    continue
+                    
                 if node.module:
                     modules.add((node.module, node.lineno))
-                    # Also check if we're importing specific items
-                    for alias in node.names:
-                        full_name = f"{node.module}.{alias.name}"
-                        modules.add((full_name, node.lineno))
+                    # Skip individual imported names to avoid false positives
+                    # 사용자 피드백: "from core.history.models import CommitDetail" 같은 구문을
+                    # "core.history.models.CommitDetail" 로 잘못 파싱해 "모듈 없음"으로 표기하는 문제 해결
     except Exception as e:
         print(f"⚠️  Error parsing {file_path}: {e}")
     

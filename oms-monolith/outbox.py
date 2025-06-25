@@ -193,16 +193,20 @@ class OutboxProcessor:
     async def _publish_event(self, event: OutboxEvent):
         """이벤트 발행 (구현 필요)"""
         # EventService.publish 호출
-        from core.event_publisher.main_ultimate import Event, EventService
+        from core.event_publisher.enhanced_event_service import EnhancedEventService
+        from core.event_publisher import get_event_publisher
+        
+        event_service = get_event_publisher()
 
-        await EventService.publish(Event(
-            type=event.event_type,
-            source=f"outbox-{event.aggregate_type}",
+        # EnhancedEventService의 publish 메서드 호출
+        await event_service.publish(
             subject=f"{event.aggregate_type}/{event.aggregate_id}",
+            event_type=event.event_type,
+            source=f"outbox-{event.aggregate_type}",
             data=event.event_data,
-            userId=event.metadata.get("user_id", "system"),
+            user_id=event.metadata.get("user_id", "system"),
             metadata=event.metadata
-        ))
+        )
 
 # 전역 인스턴스
 outbox_store = OutboxStore()
