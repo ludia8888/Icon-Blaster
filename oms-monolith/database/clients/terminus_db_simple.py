@@ -138,3 +138,6 @@ class TerminusDBClient:
                 db["current_branch"] = branch_name
                 return True
         return False
+
+# Alias for compatibility with existing code
+SimpleTerminusDBClient = TerminusDBClient

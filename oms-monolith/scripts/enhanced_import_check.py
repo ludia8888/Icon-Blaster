@@ -62,10 +62,12 @@ class ImportAnalyzer:
                         module_name = ''.join(module_parts)
                         imports.append((module_name, node.lineno))
                         
-                        # Also check individual imported names
-                        for alias in node.names:
-                            full_name = f"{node.module}.{alias.name}"
-                            imports.append((full_name, node.lineno))
+                        # Skip individual imported names to avoid false positives
+                        # 사용자 피드백: "from core.history.models import CommitDetail" 같은 구문을
+                        # "core.history.models.CommitDetail" 로 잘못 파싱해 "모듈 없음"으로 표기하는 문제 해결
+                        # for alias in node.names:
+                        #     full_name = f"{node.module}.{alias.name}"
+                        #     imports.append((full_name, node.lineno))
                             
         except Exception as e:
             print(f"Error parsing {file_path}: {e}")

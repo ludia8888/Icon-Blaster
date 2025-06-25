@@ -9,9 +9,22 @@ from pathlib import Path
 import argparse
 from typing import Dict, List, Tuple
 
-# Import 매핑 규칙 - Enhanced P1 Critical Fix
+# Import 매핑 규칙 - Final P0 Top-10 Critical Fix
 IMPORT_MAPPINGS = {
-    # P1 Critical: Relative import fixes
+    # ============ TOP-10 P0 CRITICAL PATH FIXES ============
+    # 사용자 분석 기반 가장 중요한 경로 오타 수정
+    r'^from cache\.smart_cache': r'from shared.cache.smart_cache',
+    r'^from clients\.terminus_db': r'from database.clients.terminus_db',
+    r'^from security\.pii_handler': r'from core.security.pii_handler',
+    r'^from retry_strategy': r'from utils.retry_strategy',
+    r'^from event_publisher\.': r'from core.event_publisher.',
+    r'^from multi_platform_router': r'from core.event_publisher.multi_platform_router',
+    r'^from metadata_service': r'from core.action.metadata_service',
+    r'^from eventbridge_publisher': r'from core.event_publisher.eventbridge_publisher',
+    r'^from cloudevents_migration': r'from core.event_publisher.cloudevents_migration',
+    r'^from enhanced_event_service': r'from core.event_publisher.enhanced_event_service',
+    
+    # P1 Critical: Relative import fixes (이미 완료된 것들)
     r'from \.metadata_service': r'from core.action.metadata_service',
     r'from \.event_publisher': r'from core.event_publisher',
     r'from \.realtime_publisher': r'from api.graphql.realtime_publisher',
@@ -28,21 +41,14 @@ IMPORT_MAPPINGS = {
     r'from \.\.core\.event_publisher\.eventbridge_adapter': r'from core.event_publisher.eventbridge_adapter',
     r'from \.\.\.core\.event_publisher\.cloudevents_enhanced': r'from core.event_publisher.cloudevents_enhanced',
     
-    # P0 Critical: Fix specific module path errors from verification report
+    # Additional P0 Critical fixes
     r'from cloudevents_adapter': r'from core.event_publisher.cloudevents_adapter',
     r'from cloudevents_enhanced': r'from core.event_publisher.cloudevents_enhanced',
-    r'from cloudevents_migration': r'from core.event_publisher.cloudevents_migration',
-    r'from enhanced_event_service': r'from core.event_publisher.enhanced_event_service',
-    r'from event_publisher': r'from core.event_publisher',
-    r'from eventbridge_publisher': r'from core.event_publisher.eventbridge_publisher',
-    r'from multi_platform_router': r'from core.event_publisher.multi_platform_router',
     r'from realtime_publisher': r'from api.graphql.realtime_publisher',
     
     # Missing core modules
-    r'from metadata_service': r'from core.action.metadata_service',
     r'from simple_terminus_client': r'from database.clients.terminus_db_simple',
     r'from pii_handler': r'from core.security.pii_handler',
-    r'from retry_strategy': r'from utils.retry_strategy',
     
     # GraphQL schema imports
     r'from resolvers': r'from api.graphql.resolvers',
@@ -54,7 +60,7 @@ IMPORT_MAPPINGS = {
     r'from service(?!s)': r'from core.user.service',
     r'from main_ultimate': r'from core.event_publisher.main_ultimate',
     
-    # Models imports - fix specific patterns
+    # Models imports - fix specific patterns  
     r'from models\*': r'from shared.models.*',
     r'from models\.([^\.]+)$': r'from shared.models.\1',
     
@@ -69,7 +75,6 @@ IMPORT_MAPPINGS = {
     # Auth and security
     r'from core\.auth\.context': r'from api.gateway.auth',
     r'from shared\.security\.mtls_config': r'from shared.security.mtls_config',
-    r'from security\.pii_handler': r'from core.security.pii_handler',
     
     # Shared modules
     r'from shared\.audit\.audit_logger': r'from shared.audit.audit_logger',
