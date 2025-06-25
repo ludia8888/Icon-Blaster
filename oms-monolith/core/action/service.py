@@ -28,7 +28,7 @@ except ImportError:
     class TerminusDBClient:
         def __init__(self, *args, **kwargs):
             pass
-from .metadata_service import ActionMetadataService
+from core.action.metadata_service import ActionMetadataService
 
 logger = logging.getLogger(__name__)
 

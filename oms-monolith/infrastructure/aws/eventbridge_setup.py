@@ -115,7 +115,7 @@ class EventBridgeInfrastructureManager:
         Returns:
             생성된 Rule들의 정보
         """
-        from ..core.event_publisher.eventbridge_adapter import EventBridgeRuleGenerator
+        from core.event_publisher.eventbridge_adapter import EventBridgeRuleGenerator
         
         results = []
         

@@ -13,7 +13,7 @@ from utils.logger import get_logger
 from .models import (
     RevertRequest, RevertResult, ChangeOperation, ResourceType
 )
-from .service import HistoryEventPublisher
+from core.user.service import HistoryEventPublisher
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/schema", tags=["schema-events"])

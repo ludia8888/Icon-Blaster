@@ -12,8 +12,8 @@ from strawberry.types import Info
 
 from api.gateway.auth import User
 
-from .realtime_publisher import realtime_publisher
-from .schema import (
+from api.graphql.realtime_publisher import realtime_publisher
+from api.graphql.schema import (
     ActionProgressEvent,
     BranchChangeEvent,
     ProposalUpdateEvent,

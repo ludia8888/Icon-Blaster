@@ -9,8 +9,25 @@ from pathlib import Path
 import argparse
 from typing import Dict, List, Tuple
 
-# Import 매핑 규칙 - 2024 P0 Critical Fix
+# Import 매핑 규칙 - Enhanced P1 Critical Fix
 IMPORT_MAPPINGS = {
+    # P1 Critical: Relative import fixes
+    r'from \.metadata_service': r'from core.action.metadata_service',
+    r'from \.event_publisher': r'from core.event_publisher',
+    r'from \.realtime_publisher': r'from api.graphql.realtime_publisher',
+    r'from \.resolvers': r'from api.graphql.resolvers',
+    r'from \.schema': r'from api.graphql.schema',
+    r'from \.subscriptions': r'from api.graphql.subscriptions',
+    r'from \.websocket_manager': r'from api.graphql.websocket_manager',
+    r'from \.service': r'from core.user.service',
+    r'from \.terminus_db_simple': r'from database.clients.terminus_db_simple',
+    r'from \.client': r'from .client',  # Keep SDK relative imports
+    
+    # Relative parent imports
+    r'from \.\.config': r'from shared.config',
+    r'from \.\.core\.event_publisher\.eventbridge_adapter': r'from core.event_publisher.eventbridge_adapter',
+    r'from \.\.\.core\.event_publisher\.cloudevents_enhanced': r'from core.event_publisher.cloudevents_enhanced',
+    
     # P0 Critical: Fix specific module path errors from verification report
     r'from cloudevents_adapter': r'from core.event_publisher.cloudevents_adapter',
     r'from cloudevents_enhanced': r'from core.event_publisher.cloudevents_enhanced',
@@ -19,7 +36,7 @@ IMPORT_MAPPINGS = {
     r'from event_publisher': r'from core.event_publisher',
     r'from eventbridge_publisher': r'from core.event_publisher.eventbridge_publisher',
     r'from multi_platform_router': r'from core.event_publisher.multi_platform_router',
-    r'from realtime_publisher': r'from core.event_publisher.realtime_publisher',
+    r'from realtime_publisher': r'from api.graphql.realtime_publisher',
     
     # Missing core modules
     r'from metadata_service': r'from core.action.metadata_service',
@@ -37,7 +54,8 @@ IMPORT_MAPPINGS = {
     r'from service(?!s)': r'from core.user.service',
     r'from main_ultimate': r'from core.event_publisher.main_ultimate',
     
-    # Models imports
+    # Models imports - fix specific patterns
+    r'from models\*': r'from shared.models.*',
     r'from models\.([^\.]+)$': r'from shared.models.\1',
     
     # Config imports
@@ -51,6 +69,7 @@ IMPORT_MAPPINGS = {
     # Auth and security
     r'from core\.auth\.context': r'from api.gateway.auth',
     r'from shared\.security\.mtls_config': r'from shared.security.mtls_config',
+    r'from security\.pii_handler': r'from core.security.pii_handler',
     
     # Shared modules
     r'from shared\.audit\.audit_logger': r'from shared.audit.audit_logger',
@@ -62,9 +81,6 @@ IMPORT_MAPPINGS = {
     
     # Utils
     r'from utils\.logging': r'from shared.utils.logging',
-    
-    # Client imports in SDK
-    r'from client(?!s)': r'from .client',
 }
 
 class ImportFixer:

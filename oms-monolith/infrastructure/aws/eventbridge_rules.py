@@ -133,7 +133,7 @@ class EventBridgeRuleManager:
         Returns:
             생성된 Rule들의 정보
         """
-        from ...core.event_publisher.cloudevents_enhanced import EventType
+        from core.event_publisher.cloudevents_enhanced import EventType
         
         results = []
         

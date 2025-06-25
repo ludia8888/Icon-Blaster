@@ -23,9 +23,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from api.gateway.auth import User, get_current_user_optional, GraphQLWebSocketAuth, AuthenticationManager
 
-from .realtime_publisher import realtime_publisher
-from .resolvers import schema
-from .websocket_manager import websocket_manager
+from api.graphql.realtime_publisher import realtime_publisher
+from api.graphql.resolvers import schema
+from api.graphql.websocket_manager import websocket_manager
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)

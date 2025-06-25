@@ -7,7 +7,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from .service import (
+from core.user.service import (
     EnterpriseUserService,
     UserCreate,
     UserUpdate,
@@ -189,7 +189,7 @@ async def get_current_user_info(
     # Get full user details from database
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from .service import User
+        from core.user.service import User
         
         result = await session.execute(
             select(User).where(User.id == current_user.id)
@@ -229,7 +229,7 @@ async def update_current_user(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from .service import User
+        from core.user.service import User
         
         result = await session.execute(
             select(User).where(User.id == current_user.id)
@@ -363,7 +363,7 @@ async def disable_mfa(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from .service import User, pwd_context
+        from core.user.service import User, pwd_context
         
         result = await session.execute(
             select(User).where(User.id == current_user.id)
@@ -413,7 +413,7 @@ async def verify_mfa(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from .service import User
+        from core.user.service import User
         
         result = await session.execute(
             select(User).where(User.id == current_user.id)
@@ -453,7 +453,7 @@ async def list_users(
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
         from sqlalchemy import or_, and_
-        from .service import User
+        from core.user.service import User
         
         query = select(User)
         
@@ -517,7 +517,7 @@ async def get_user(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from .service import User
+        from core.user.service import User
         
         result = await session.execute(
             select(User).where(User.id == user_id)
@@ -564,7 +564,7 @@ async def update_user(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from .service import User
+        from core.user.service import User
         
         result = await session.execute(
             select(User).where(User.id == user_id)
@@ -617,7 +617,7 @@ async def unlock_user(
     """
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
-        from .service import User
+        from core.user.service import User
         
         result = await session.execute(
             select(User).where(User.id == user_id)
@@ -711,7 +711,7 @@ async def get_user_audit_logs(
     async with user_service.async_session() as session:
         from sqlalchemy.future import select
         from sqlalchemy import and_
-        from .service import AuditLog
+        from core.user.service import AuditLog
         
         query = select(AuditLog).where(AuditLog.user_id == user_id)
         

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import logging
 
-from .metadata_service import ActionMetadataService
+from core.action.metadata_service import ActionMetadataService
 from .models import ActionTypeModel
 
 logger = logging.getLogger(__name__)
