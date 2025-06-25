@@ -2,7 +2,35 @@
 Observability 더미 구현
 """
 
-def add_span_attributes(**kwargs):
+class DummyMetrics:
+    """더미 메트릭스 클래스"""
+    def increment(self, *args, **kwargs):
+        pass
+    
+    def histogram(self, *args, **kwargs):
+        pass
+    
+    def gauge(self, *args, **kwargs):
+        pass
+
+class DummyTracing:
+    """더미 트레이싱 클래스"""
+    def get_tracer(self, name):
+        return self
+    
+    def start_span(self, *args, **kwargs):
+        return self
+        
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, *args):
+        pass
+
+metrics = DummyMetrics()
+tracing = DummyTracing()
+
+def add_span_attributes(attributes=None):
     """span 속성 추가 더미"""
     pass
 

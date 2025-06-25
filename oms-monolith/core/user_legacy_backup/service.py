@@ -22,7 +22,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
 from sqlalchemy.sql import func
 
-from database.clients import RedisHAClient
+# from database.clients import RedisHAClient  # TODO: Implement RedisHAClient
 from utils import logging
 from models import UserContext
 from shared.observability import metrics, tracing
@@ -228,8 +228,8 @@ class EnterpriseUserService:
     def __init__(
         self,
         database_url: str,
-        redis_client: RedisHAClient,
         jwt_secret: str,
+        redis_client: Optional[Any] = None,  # RedisHAClient
         jwt_algorithm: str = "HS256",
         access_token_expire_minutes: int = 30,
         refresh_token_expire_days: int = 7,

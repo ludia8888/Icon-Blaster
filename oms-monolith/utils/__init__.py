@@ -10,6 +10,7 @@ from .retry_strategy import (
     RetryStrategy,
     with_retry,
 )
+from .logger import logging
 
 __all__ = [
     'RetryStrategy',
@@ -22,4 +23,5 @@ __all__ = [
     'CircuitBreakerOpenError',
     'RetryBudgetExhaustedError',
     'BulkheadFullError',
+    'logging',
 ]

@@ -21,7 +21,7 @@ from prometheus_client import make_asgi_app
 from core.schema import SchemaService
 from core.validation import ValidationService
 from core.branch import BranchService
-# from core.user.service import UserService  # TODO: Many dependencies (pyotp, jwt, etc)
+# User Service moved to separate MSA (port 8000) - no longer imported
 from core.history import HistoryService
 
 # Event System
@@ -102,7 +102,7 @@ class ServiceContainer:
             
             # User service (if using SQLAlchemy, would need DB setup)
             # For now, using a simplified version
-            logger.info("User service initialization skipped (requires SQL DB)")
+            logger.info("User Service is now a separate MSA (port 8000) - OMS integrates via JWT tokens")
             
             # History service - uses TerminusDBClient and EventPublisher
             self.history_service = HistoryService(
@@ -179,6 +179,8 @@ app.add_middleware(
 )
 
 # 미들웨어 추가
+from middleware.auth_middleware import AuthMiddleware
+app.add_middleware(AuthMiddleware)
 # app.add_middleware(CircuitBreakerMiddleware)
 # app.add_middleware(RateLimiterMiddleware)
 
@@ -216,9 +218,22 @@ async def root():
     }
 
 # === Schema Management API ===
+from fastapi import Depends
+from middleware.auth_middleware import get_current_user
+from core.auth import UserContext, ResourceType, Action, get_permission_checker
+
 @app.post("/api/v1/schemas/{branch}/object-types")
-async def create_object_type(branch: str, request: Dict[str, Any]):
+async def create_object_type(
+    branch: str, 
+    request: Dict[str, Any],
+    user: UserContext = Depends(get_current_user)
+):
     """ObjectType 생성"""
+    # 권한 체크
+    checker = get_permission_checker()
+    if not checker.check_permission(user, ResourceType.SCHEMA, "*", Action.CREATE):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
     if not services.schema_service:
         raise HTTPException(status_code=503, detail="Schema service not available")
     

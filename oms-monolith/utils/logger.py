@@ -8,6 +8,10 @@ import sys
 import os
 import time
 from datetime import datetime, timezone
+
+def get_logger(name):
+    """표준 로거 반환"""
+    return logging.getLogger(name)
 from typing import Optional, Dict, Any, Union
 from enum import Enum
 
