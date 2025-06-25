@@ -640,7 +640,7 @@ class Query:
         result = await service_client.call_service(url, "POST", data, user)
 
         # 데이터 변환
-        from api.graphql.schema import BreakingChange, ImpactAnalysis, SuggestedMigration, ValidationWarning
+        from .schema import BreakingChange, ImpactAnalysis, SuggestedMigration, ValidationWarning
 
         breaking_changes = []
         for bc in result.get('breakingChanges', []):

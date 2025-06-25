@@ -11,8 +11,11 @@ from pydantic import BaseModel, Field
 from enum import Enum
 import threading
 from collections import defaultdict, deque
+import asyncio
 
 from core.validation.naming_convention import EntityType, NamingValidationResult, ValidationIssue
+from core.validation.events import ValidationLogEntry as EventValidationLogEntry
+from infra.siem.port import ISiemPort
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -87,6 +90,24 @@ class ValidationLogEntry(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat() if v else None
         }
+    
+    def to_base_log_entry(self) -> EventValidationLogEntry:
+        """events.py의 ValidationLogEntry로 변환"""
+        return EventValidationLogEntry(
+            log_id=self.log_id,
+            validation_id=self.metadata.get('validation_id', self.log_id),
+            branch=self.metadata.get('branch', 'main'),
+            rule_id=self.convention_id,
+            rule_name=f"{self.entity_type}_{self.entity_name}",
+            is_valid=self.is_valid,
+            error_message=str(self.issues[0]) if self.issues else None,
+            execution_time_ms=self.validation_time_ms or 0.0,
+            affected_objects=[self.entity_name],
+            created_at=datetime.fromisoformat(self.timestamp.replace('Z', '+00:00')) if 'Z' in self.timestamp else datetime.fromisoformat(self.timestamp),
+            user_id=self.user_id,
+            correlation_id=self.session_id,
+            metadata=self.metadata
+        )
 
 
 class ValidationMetrics(BaseModel):
@@ -135,13 +156,14 @@ class ValidationEventStream(BaseModel):
 
 
 class ValidationLogger:
-    """검증 로거"""
+    """검증 로거 (DI 패턴 적용)"""
     
     def __init__(self, 
                  log_dir: str = "/var/log/oms/validation",
                  max_log_size_mb: int = 100,
                  max_log_files: int = 10,
-                 enable_stream: bool = True):
+                 enable_stream: bool = True,
+                 siem_port: Optional[ISiemPort] = None):
         """
         초기화
         
@@ -150,9 +172,11 @@ class ValidationLogger:
             max_log_size_mb: 최대 로그 파일 크기 (MB)
             max_log_files: 최대 로그 파일 수
             enable_stream: 실시간 스트림 활성화
+            siem_port: SIEM 포트 (의존성 주입)
         """
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.siem_port = siem_port
         
         self.max_log_size_bytes = max_log_size_mb * 1024 * 1024
         self.max_log_files = max_log_files
@@ -280,8 +304,9 @@ class ValidationLogger:
             # 인메모리 캐시 업데이트
             self.recent_logs.append(log_entry)
             
-            # SIEM 통합 - 조건부 전송
-            self._send_to_siem_if_enabled(log_entry)
+            # SIEM 통합 - 조건부 전송 (DI 패턴)
+            if self.siem_port:
+                asyncio.create_task(self._send_to_siem(log_entry))
             
             return log_entry
     
@@ -610,16 +635,17 @@ class ValidationLogger:
         except Exception as e:
             logger.error(f"Failed to cleanup old logs: {e}")
     
-    def _send_to_siem_if_enabled(self, log_entry: ValidationLogEntry):
-        """SIEM 활성화시 로그 전송"""
+    async def _send_to_siem(self, log_entry: ValidationLogEntry):
+        """비동기로 SIEM으로 로그 전송 (DI 패턴)"""
         try:
-            siem_manager = _get_siem_manager()
-            if siem_manager:
-                # 심각도 필터링 (설정 가능)
-                should_send = self._should_send_to_siem(log_entry)
-                if should_send:
-                    siem_manager.send_validation_log(log_entry)
-                    logger.debug(f"Sent validation log {log_entry.log_id} to SIEM")
+            if self.siem_port and self._should_send_to_siem(log_entry):
+                # ValidationLogEntry를 기본 ValidationLogEntry로 변환
+                base_log_entry = log_entry.to_base_log_entry()
+                await self.siem_port.send(
+                    event_type="validation.log",
+                    payload=base_log_entry.to_dict()
+                )
+                logger.debug(f"Sent validation log {log_entry.log_id} to SIEM")
         except Exception as e:
             logger.error(f"Failed to send log to SIEM: {e}")
     
@@ -665,16 +691,18 @@ def get_validation_logger(
     log_dir: Optional[str] = None,
     max_log_size_mb: int = 100,
     max_log_files: int = 10,
-    enable_stream: bool = True
+    enable_stream: bool = True,
+    siem_port: Optional[ISiemPort] = None
 ) -> ValidationLogger:
-    """검증 로거 인스턴스 반환"""
+    """검증 로거 인스턴스 반환 (DI 지원)"""
     global _validation_logger
-    if not _validation_logger or log_dir:
+    if not _validation_logger or log_dir or siem_port:
         _validation_logger = ValidationLogger(
-            log_dir or "/var/log/oms/validation",
-            max_log_size_mb,
-            max_log_files,
-            enable_stream
+            log_dir=log_dir or "/var/log/oms/validation",
+            max_log_size_mb=max_log_size_mb,
+            max_log_files=max_log_files,
+            enable_stream=enable_stream,
+            siem_port=siem_port
         )
     return _validation_logger
 

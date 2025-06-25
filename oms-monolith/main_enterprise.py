@@ -18,18 +18,18 @@ from prometheus_client import make_asgi_app
 # import shared  # This loads the compatibility shim
 
 # Core Services
-from core.schema.service import SchemaService
-from core.validation.service import ValidationService
-from core.branch.service import BranchService
+from core.schema import SchemaService
+from core.validation import ValidationService
+from core.branch import BranchService
 # from core.user.service import UserService  # TODO: Many dependencies (pyotp, jwt, etc)
-from core.history.service import HistoryEventPublisher as HistoryService
+from core.history import HistoryService
 
 # Event System
 from core.event_publisher.enhanced_event_service import EnhancedEventService
 from shared.events import EventPublisher
 
 # Database
-from database.clients.terminus_db import TerminusDBClient
+from database.clients import TerminusDBClient
 
 # Cache
 from shared.cache.smart_cache import SmartCacheManager
@@ -89,8 +89,7 @@ class ServiceContainer:
             )
             
             # Branch service initialization
-            from core.branch.diff_engine import DiffEngine
-            from core.branch.conflict_resolver import ConflictResolver
+            from core.branch import DiffEngine, ConflictResolver
             diff_engine = DiffEngine("http://localhost:6363")
             conflict_resolver = ConflictResolver()
             self.branch_service = BranchService(

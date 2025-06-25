@@ -2,47 +2,24 @@
 Policy Tampering Detection System
 정책 변조 감지 및 무결성 검증 시스템
 """
+import asyncio
 import hashlib
 import json
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
 from pydantic import BaseModel, Field
-from enum import Enum
+import uuid
 
 from core.validation.naming_convention import NamingConvention
 from core.validation.policy_signing import SignedNamingPolicy, get_policy_signing_manager
+from core.validation.events import TamperingEvent, TamperingType, EventSeverity
+from infra.siem.port import ISiemPort
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
-
-# SIEM 통합을 위한 지연 로딩
-_siem_integration_enabled = False
-_siem_manager = None
-
-def _get_siem_manager():
-    """SIEM 관리자 지연 로딩"""
-    global _siem_manager, _siem_integration_enabled
-    if not _siem_integration_enabled:
-        try:
-            from core.validation.siem_integration import get_siem_manager
-            _siem_manager = get_siem_manager()
-            _siem_integration_enabled = True
-            logger.debug("SIEM integration enabled for tampering detection")
-        except ImportError:
-            logger.debug("SIEM integration not available")
-        except Exception as e:
-            logger.warning(f"SIEM integration initialization failed: {e}")
-    return _siem_manager
-
-
-class TamperingAlert(str, Enum):
-    """변조 감지 알림 레벨"""
-    INFO = "info"
-    WARNING = "warning" 
-    CRITICAL = "critical"
 
 
 class PolicySnapshot(BaseModel):
@@ -63,36 +40,23 @@ class PolicySnapshot(BaseModel):
         }
 
 
-class TamperingEvent(BaseModel):
-    """변조 감지 이벤트"""
-    event_id: str
-    policy_id: str
-    alert_level: TamperingAlert
-    event_type: str
-    description: str
-    timestamp: str
-    details: Dict[str, Any] = Field(default_factory=dict)
-    previous_snapshot: Optional[PolicySnapshot] = None
-    current_snapshot: Optional[PolicySnapshot] = None
-    
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat() if v else None
-        }
+# TamperingEvent는 이제 events.py에서 import됨
 
 
 class PolicyIntegrityChecker:
-    """정책 무결성 검증자"""
+    """정책 무결성 검증자 (DI 패턴 적용)"""
     
-    def __init__(self, snapshot_dir: str = "/etc/oms/snapshots"):
+    def __init__(self, snapshot_dir: str = "/etc/oms/snapshots", siem_port: Optional[ISiemPort] = None):
         """
         초기화
         
         Args:
             snapshot_dir: 스냅샷 저장 디렉토리
+            siem_port: SIEM 포트 (의존성 주입)
         """
         self.snapshot_dir = Path(snapshot_dir)
         self.snapshot_dir.mkdir(parents=True, exist_ok=True)
+        self.siem_port = siem_port
         
         # 이벤트 저장소
         self.events_file = self.snapshot_dir / "tampering_events.json"
@@ -293,7 +257,7 @@ class PolicyIntegrityChecker:
             if not signing_manager.verify_policy(signed_policy):
                 events.append(self._create_event(
                     policy.id,
-                    TamperingAlert.CRITICAL,
+                    "critical",
                     "signature_verification_failed",
                     "Policy signature verification failed",
                     {'signer': signed_policy.signature.signer}
@@ -304,11 +268,14 @@ class PolicyIntegrityChecker:
             self.events.extend(events)
             self._save_events()
             
-            # SIEM으로 변조 이벤트 전송
-            self._send_events_to_siem(events)
+            # SIEM으로 변조 이벤트 전송 (DI 패턴)
+            if self.siem_port:
+                for event in events:
+                    if self._should_send_tampering_event_to_siem(event):
+                        asyncio.create_task(self._send_event_to_siem(event))
         
         # 치명적인 이벤트가 있는지 확인
-        has_critical = any(event.alert_level == TamperingAlert.CRITICAL for event in events)
+        has_critical = any(event.severity == EventSeverity.CRITICAL for event in events)
         
         return not has_critical, events
     
@@ -324,7 +291,7 @@ class PolicyIntegrityChecker:
         if previous.content_hash != current.content_hash:
             events.append(self._create_event(
                 current.policy_id,
-                TamperingAlert.WARNING,
+                "warning",
                 "content_modified",
                 "Policy content has been modified",
                 {
@@ -339,7 +306,7 @@ class PolicyIntegrityChecker:
         if previous.metadata_hash != current.metadata_hash:
             events.append(self._create_event(
                 current.policy_id,
-                TamperingAlert.INFO,
+                "info",
                 "metadata_modified",
                 "Policy metadata has been modified",
                 {
@@ -354,7 +321,7 @@ class PolicyIntegrityChecker:
         if previous.file_hash != current.file_hash:
             # 파일 크기가 크게 다르면 더 심각한 경고
             size_diff_ratio = abs(current.file_size - previous.file_size) / max(previous.file_size, 1)
-            alert_level = TamperingAlert.CRITICAL if size_diff_ratio > 0.5 else TamperingAlert.WARNING
+            alert_level = "critical" if size_diff_ratio > 0.5 else "warning"
             
             events.append(self._create_event(
                 current.policy_id,
@@ -376,7 +343,7 @@ class PolicyIntegrityChecker:
         if previous.signature_hash != current.signature_hash:
             events.append(self._create_event(
                 current.policy_id,
-                TamperingAlert.CRITICAL,
+                "critical",
                 "signature_modified",
                 "Policy signature has been modified or removed",
                 {
@@ -393,7 +360,7 @@ class PolicyIntegrityChecker:
             # 내용은 같은데 파일 시간이 변경됨 - 의심스러운 활동
             events.append(self._create_event(
                 current.policy_id,
-                TamperingAlert.WARNING,
+                "warning",
                 "suspicious_file_touch",
                 "File modification time changed without content changes",
                 {
@@ -410,32 +377,56 @@ class PolicyIntegrityChecker:
     def _create_event(
         self,
         policy_id: str,
-        alert_level: TamperingAlert,
+        alert_level: str,  # TamperingAlert 대신 문자열
         event_type: str,
         description: str,
         details: Optional[Dict[str, Any]] = None,
         previous_snapshot: Optional[PolicySnapshot] = None,
         current_snapshot: Optional[PolicySnapshot] = None
     ) -> TamperingEvent:
-        """변조 이벤트 생성"""
-        import uuid
+        """변조 이벤트 생성 (새로운 이벤트 모델 사용)"""
+        # alert_level을 EventSeverity로 매핑
+        severity_map = {
+            "info": EventSeverity.INFO,
+            "warning": EventSeverity.HIGH,
+            "critical": EventSeverity.CRITICAL
+        }
+        
+        # event_type을 TamperingType으로 매핑
+        tampering_type_map = {
+            "content_modified": TamperingType.SCHEMA_MODIFICATION,
+            "metadata_modified": TamperingType.DATA_MANIPULATION,
+            "file_modified": TamperingType.DATA_MANIPULATION,
+            "signature_modified": TamperingType.SIGNATURE_MISMATCH,
+            "signature_verification_failed": TamperingType.SIGNATURE_MISMATCH,
+            "suspicious_file_touch": TamperingType.TIMESTAMP_FORGERY
+        }
         
         return TamperingEvent(
             event_id=str(uuid.uuid4()),
-            policy_id=policy_id,
-            alert_level=alert_level,
-            event_type=event_type,
-            description=description,
-            timestamp=datetime.now(timezone.utc).isoformat(),
-            details=details or {},
-            previous_snapshot=previous_snapshot,
-            current_snapshot=current_snapshot
+            validator="PolicyIntegrityChecker",
+            object_type="NamingConvention",
+            field="policy",
+            old_value=str(previous_snapshot.snapshot_hash) if previous_snapshot else "N/A",
+            new_value=str(current_snapshot.snapshot_hash) if current_snapshot else "N/A",
+            tampering_type=tampering_type_map.get(event_type, TamperingType.DATA_MANIPULATION),
+            severity=severity_map.get(alert_level, EventSeverity.MEDIUM),
+            detected_at=datetime.now(timezone.utc),
+            detection_method="hash_comparison",
+            confidence_score=0.95,
+            affected_records=1,
+            metadata={
+                "policy_id": policy_id,
+                "event_type": event_type,
+                "description": description,
+                "details": details or {}
+            }
         )
     
     def get_events(
         self,
         policy_id: Optional[str] = None,
-        alert_level: Optional[TamperingAlert] = None,
+        alert_level: Optional[str] = None,
         since: Optional[datetime] = None
     ) -> List[TamperingEvent]:
         """
@@ -452,14 +443,21 @@ class PolicyIntegrityChecker:
         filtered_events = self.events[:]
         
         if policy_id:
-            filtered_events = [e for e in filtered_events if e.policy_id == policy_id]
+            filtered_events = [e for e in filtered_events if e.metadata.get('policy_id') == policy_id]
         
         if alert_level:
-            filtered_events = [e for e in filtered_events if e.alert_level == alert_level]
+            # alert_level을 severity로 매핑
+            severity_map = {
+                "info": EventSeverity.INFO,
+                "warning": EventSeverity.HIGH,  
+                "critical": EventSeverity.CRITICAL
+            }
+            target_severity = severity_map.get(alert_level)
+            if target_severity:
+                filtered_events = [e for e in filtered_events if e.severity == target_severity]
         
         if since:
-            since_str = since.isoformat()
-            filtered_events = [e for e in filtered_events if e.timestamp >= since_str]
+            filtered_events = [e for e in filtered_events if e.detected_at >= since]
         
         return filtered_events
     
@@ -477,12 +475,11 @@ class PolicyIntegrityChecker:
         events = self.get_events(policy_id=policy_id)
         
         # 최근 이벤트들 분석
-        recent_events = [e for e in events if e.timestamp >= 
-                        (datetime.now(timezone.utc) - 
-                         __import__('datetime').timedelta(hours=24)).isoformat()]
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
+        recent_events = [e for e in events if e.detected_at >= cutoff_time]
         
-        critical_count = sum(1 for e in recent_events if e.alert_level == TamperingAlert.CRITICAL)
-        warning_count = sum(1 for e in recent_events if e.alert_level == TamperingAlert.WARNING)
+        critical_count = sum(1 for e in recent_events if e.severity == EventSeverity.CRITICAL)
+        warning_count = sum(1 for e in recent_events if e.severity == EventSeverity.HIGH)
         
         return {
             'policy_id': policy_id,
@@ -503,11 +500,10 @@ class PolicyIntegrityChecker:
         Args:
             days_to_keep: 보관할 일수
         """
-        cutoff_date = datetime.now(timezone.utc) - __import__('datetime').timedelta(days=days_to_keep)
-        cutoff_str = cutoff_date.isoformat()
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
         
         original_count = len(self.events)
-        self.events = [e for e in self.events if e.timestamp >= cutoff_str]
+        self.events = [e for e in self.events if e.detected_at >= cutoff_date]
         removed_count = original_count - len(self.events)
         
         if removed_count > 0:
@@ -552,18 +548,17 @@ class PolicyIntegrityChecker:
         
         return report
     
-    def _send_events_to_siem(self, events: List[TamperingEvent]):
-        """변조 이벤트를 SIEM으로 전송"""
+    async def _send_event_to_siem(self, event: TamperingEvent):
+        """변조 이벤트를 SIEM으로 전송 (비동기)"""
         try:
-            siem_manager = _get_siem_manager()
-            if siem_manager:
-                for event in events:
-                    # 심각도 필터링
-                    if self._should_send_tampering_event_to_siem(event):
-                        siem_manager.send_tampering_event(event)
-                        logger.debug(f"Sent tampering event {event.event_id} to SIEM")
+            if self.siem_port:
+                await self.siem_port.send(
+                    event_type="security.tampering",
+                    payload=event.to_dict()
+                )
+                logger.debug(f"Sent tampering event {event.event_id} to SIEM")
         except Exception as e:
-            logger.error(f"Failed to send tampering events to SIEM: {e}")
+            logger.error(f"Failed to send tampering event to SIEM: {e}")
     
     def _should_send_tampering_event_to_siem(self, event: TamperingEvent) -> bool:
         """SIEM 전송 필요성 판단"""
@@ -577,12 +572,12 @@ class PolicyIntegrityChecker:
         if not os.getenv("SIEM_SEND_TAMPERING_EVENTS", "true").lower() in ("true", "1", "yes"):
             return False
         
-        # CRITICAL 및 WARNING 이벤트는 항상 전송
-        if event.alert_level in (TamperingAlert.CRITICAL, TamperingAlert.WARNING):
+        # CRITICAL 및 HIGH 이벤트는 항상 전송
+        if event.severity in (EventSeverity.CRITICAL, EventSeverity.HIGH):
             return True
         
         # INFO 이벤트는 설정에 따라
-        if (event.alert_level == TamperingAlert.INFO and 
+        if (event.severity == EventSeverity.INFO and 
             os.getenv("SIEM_SEND_INFO_TAMPERING", "false").lower() in ("true", "1", "yes")):
             return True
         
@@ -592,9 +587,12 @@ class PolicyIntegrityChecker:
 # 싱글톤 인스턴스
 _integrity_checker = None
 
-def get_integrity_checker(snapshot_dir: Optional[str] = None) -> PolicyIntegrityChecker:
-    """무결성 검증자 인스턴스 반환"""
+def get_integrity_checker(snapshot_dir: Optional[str] = None, siem_port: Optional[ISiemPort] = None) -> PolicyIntegrityChecker:
+    """무결성 검증자 인스턴스 반환 (DI 지원)"""
     global _integrity_checker
-    if not _integrity_checker or snapshot_dir:
-        _integrity_checker = PolicyIntegrityChecker(snapshot_dir or "/etc/oms/snapshots")
+    if not _integrity_checker or snapshot_dir or siem_port:
+        _integrity_checker = PolicyIntegrityChecker(
+            snapshot_dir=snapshot_dir or "/etc/oms/snapshots",
+            siem_port=siem_port
+        )
     return _integrity_checker
