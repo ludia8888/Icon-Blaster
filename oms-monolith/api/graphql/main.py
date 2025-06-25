@@ -16,7 +16,7 @@ from fastapi import Depends, FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from strawberry.fastapi import GraphQLRouter
 
-from shared.middleware.rbac_middleware import create_rbac_middleware
+from middleware.rbac_middleware import create_rbac_middleware
 
 # shared 모듈 import를 위한 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
