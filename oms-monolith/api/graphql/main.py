@@ -21,9 +21,7 @@ from middleware.rbac_middleware import create_rbac_middleware
 # shared 모듈 import를 위한 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from services.api_gateway.core.auth import AuthenticationManager
-from shared.auth import User, get_current_user_optional
-from shared.auth.websocket_auth import GraphQLWebSocketAuth
+from api.gateway.auth import User, get_current_user_optional, GraphQLWebSocketAuth, AuthenticationManager
 
 from .realtime_publisher import realtime_publisher
 from .resolvers import schema

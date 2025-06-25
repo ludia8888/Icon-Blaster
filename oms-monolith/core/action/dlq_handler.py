@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Optional
 import redis.asyncio as redis
 from prometheus_client import Counter, Gauge, Histogram
 
-from shared.events.nats_client import NATSClient
+from shared.infrastructure.nats_client import NATSClient
 
 logger = logging.getLogger(__name__)
 

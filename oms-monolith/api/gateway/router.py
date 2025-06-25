@@ -10,7 +10,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from services.api_gateway.core.models import RequestContext, ServiceRoute
+from api.gateway.models import RequestContext, ServiceRoute
 
 logger = logging.getLogger(__name__)
 

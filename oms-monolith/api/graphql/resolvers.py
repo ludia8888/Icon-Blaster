@@ -8,7 +8,7 @@ from typing import List, Optional
 import httpx
 import strawberry
 
-from shared.auth import User
+from api.gateway.auth import User
 
 from .schema import (
     ActionCategoryEnum,

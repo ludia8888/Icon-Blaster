@@ -64,22 +64,16 @@ def _alias(real_module_path: str, alias: str):
 # _alias("middleware.rbac_middleware", "shared.middleware.rbac_middleware")
 
 # 2. Auth module mappings (GraphQL needs these)
-# TODO(#OMS-SHIM-003): Consolidate auth module under shared/auth
-_alias("api.gateway.auth", "shared.auth")
-# TODO(#OMS-SHIM-004): Websocket auth should be part of unified auth
-_alias("api.gateway.auth", "shared.auth.websocket_auth")
+# REMOVED: OMS-SHIM-003 - Fixed imports in GraphQL modules  
+# _alias("api.gateway.auth", "shared.auth")
+# REMOVED: OMS-SHIM-004 - Added GraphQLWebSocketAuth to api.gateway.auth
+# _alias("api.gateway.auth", "shared.auth.websocket_auth")
 
-# Create dummy User class for shared.auth
-if "shared.auth" in sys.modules:
-    class User:
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
-    sys.modules["shared.auth"].User = User
-    sys.modules["shared.auth"].UserContext = User  # Alias
+# REMOVED: dummy User class creation (no longer needed)
 
 # 3. Event system mappings
-# TODO(#OMS-SHIM-005): NATS client should be under events package
-_alias("shared.infrastructure.nats_client", "shared.events.nats_client")
+# REMOVED: OMS-SHIM-005 - Fixed import in core/action/dlq_handler.py
+# _alias("shared.infrastructure.nats_client", "shared.events.nats_client")
 
 # Import the real shared.events module first
 import shared.events
@@ -94,16 +88,16 @@ if "shared.events" in sys.modules:
 
 # 4. Services namespace mappings
 # API Gateway
-# TODO(#OMS-SHIM-006): Remove services namespace - use api.gateway directly
-_alias("api.gateway.auth", "services.api_gateway.core.auth")
-# TODO(#OMS-SHIM-007): API gateway models in wrong namespace
-_alias("api.gateway.models", "services.api_gateway.core.models")
+# REMOVED: OMS-SHIM-006 - Fixed import in api/graphql/main.py
+# _alias("api.gateway.auth", "services.api_gateway.core.auth")
+# REMOVED: OMS-SHIM-007 - Fixed imports in rate_limiter.py and router.py
+# _alias("api.gateway.models", "services.api_gateway.core.models")
 
 # Event Publisher
-# TODO(#OMS-SHIM-008): Event publisher should not be under services namespace
-_alias("core.event_publisher.models", "services.event_publisher.core.models")
-# TODO(#OMS-SHIM-009): State store is part of event publisher core
-_alias("core.event_publisher.state_store", "services.event_publisher.core.state_store")
+# REMOVED: OMS-SHIM-008 - Fixed import in change_detector.py
+# _alias("core.event_publisher.models", "services.event_publisher.core.models")
+# REMOVED: OMS-SHIM-009 - Fixed import in change_detector.py  
+# _alias("core.event_publisher.state_store", "services.event_publisher.core.state_store")
 
 # Create services parent modules
 for service in ["api_gateway", "event_publisher", "validation_service", "branch_service", "schema_service"]:

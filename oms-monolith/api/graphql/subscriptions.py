@@ -10,7 +10,7 @@ from typing import AsyncGenerator, Optional
 import strawberry
 from strawberry.types import Info
 
-from shared.auth import User
+from api.gateway.auth import User
 
 from .realtime_publisher import realtime_publisher
 from .schema import (

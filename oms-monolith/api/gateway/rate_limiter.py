@@ -7,7 +7,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 
-from services.api_gateway.core.models import RateLimitPolicy, RequestContext
+from api.gateway.models import RateLimitPolicy, RequestContext
 
 logger = logging.getLogger(__name__)
 

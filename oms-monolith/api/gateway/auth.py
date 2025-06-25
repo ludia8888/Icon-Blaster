@@ -6,6 +6,7 @@ import os
 from typing import Any, Dict, List, Optional, Set
 
 import httpx
+from fastapi import WebSocket
 import jwt
 import redis.asyncio as redis
 from fastapi import HTTPException, Request, status
@@ -199,7 +200,7 @@ class AuthenticationManager:
                 user_data = json.loads(cached_user.decode())
             else:
                 # Fetch from user service using mTLS
-                from shared.clients.service_client import create_user_client
+                from database.clients.service_client import create_user_client
 
                 user_client = create_user_client("api-gateway")
                 user_data = await user_client.validate_user(user_id)
@@ -258,6 +259,9 @@ auth_manager = AuthenticationManager()
 # FastAPI security scheme
 security = HTTPBearer()
 
+# Alias for compatibility with GraphQL modules
+User = UserContext
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = None,
     request: Request = None
@@ -288,6 +292,16 @@ async def get_current_user(
         )
 
     return user
+
+async def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials = None,
+    request: Request = None
+) -> Optional[UserContext]:
+    """Get current authenticated user, return None if not authenticated"""
+    try:
+        return await get_current_user(credentials, request)
+    except HTTPException:
+        return None
 
 async def require_permission(permission: str):
     """Dependency factory for permission requirements"""
@@ -387,6 +401,56 @@ def role_required(*roles: str):
             return await func(*args, **kwargs)
         return wrapper
     return decorator
+
+class GraphQLWebSocketAuth:
+    """GraphQL WebSocket Authentication Handler"""
+    
+    def __init__(self, auth_manager: 'AuthenticationManager'):
+        self.auth_manager = auth_manager
+    
+    async def authenticate_graphql_subscription(self, websocket: WebSocket) -> Optional[UserContext]:
+        """Authenticate WebSocket connection for GraphQL subscriptions"""
+        try:
+            # Extract token from WebSocket headers or query params
+            auth_header = websocket.headers.get("authorization")
+            if not auth_header:
+                # Try query parameter
+                token = websocket.query_params.get("token")
+                if not token:
+                    await websocket.close(code=1008, reason="Authentication required")
+                    return None
+            else:
+                token = auth_header.replace("Bearer ", "")
+            
+            # Verify token
+            user = await self.auth_manager.verify_token(token)
+            if user:
+                await websocket.accept()
+                return user
+            else:
+                await websocket.close(code=1008, reason="Invalid token")
+                return None
+                
+        except Exception as e:
+            await websocket.close(code=1011, reason=f"Authentication error: {str(e)}")
+            return None
+    
+    async def authorize_subscription(self, user: UserContext, subscription_name: str, variables: Dict[str, Any]) -> bool:
+        """Check if user is authorized for specific subscription"""
+        # Basic authorization - can be extended based on subscription type
+        if not user.is_active:
+            return False
+            
+        # Define subscription permissions
+        subscription_permissions = {
+            "schemaChanges": "schema:read",
+            "branchUpdates": "branch:read", 
+            "actionProgress": "action:read",
+            "proposalUpdates": "branch:read"
+        }
+        
+        required_permission = subscription_permissions.get(subscription_name, "read")
+        return PermissionManager.has_permission(user.roles, required_permission)
 
 # Cleanup function
 async def cleanup_auth():

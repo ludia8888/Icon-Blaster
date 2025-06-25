@@ -11,8 +11,8 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from services.event_publisher.core.models import Change
-from services.event_publisher.core.state_store import StateStore
+from core.event_publisher.models import Change
+from core.event_publisher.state_store import StateStore
 from database.clients.terminus_db import TerminusDBClient
 
 logger = logging.getLogger(__name__)
