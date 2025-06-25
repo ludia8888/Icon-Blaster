@@ -6,7 +6,7 @@ pydantic-settings==2.0.3
 python-dotenv==1.0.0
 
 # Database
-terminusdb-client==10.2.5
+terminusdb-client==10.2.6
 redis[hiredis]==5.0.1
 motor==3.3.2
 

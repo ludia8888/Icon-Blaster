@@ -84,24 +84,12 @@ class SchemaService:
         # TerminusDB 내부 LRU 캐싱 활용 (TERMINUSDB_LRU_CACHE_SIZE 환경변수)
         self.event_publisher = event_publisher
 
-        # Redis URL은 하위 호환성을 위해 받지만 사용하지 않음
-        if redis_url:
-            logger.warning("Redis URL provided but not used. Using TerminusDB internal caching instead.")
-
     async def initialize(self):
         """서비스 초기화"""
         # TerminusDB 초기화 (내부 캐싱 자동 활성화)
         try:
             await self.tdb.create_database(self.db_name)
             logger.info(f"Database {self.db_name} initialized with TerminusDB internal caching")
-
-            # 자주 사용되는 문서 타입들을 캐시에 워밍
-            await self.cache.warm_cache_for_branch(
-                self.db_name,
-                "main",
-                ["ObjectType", "Property", "LinkType", "Interface", "SharedProperty"]
-            )
-
         except Exception as e:
             logger.warning(f"Database initialization: {e}")
 
@@ -186,10 +174,7 @@ class SchemaService:
 
             await tx.commit()
 
-        # 7. 캐시 무효화 (문서 119-120줄)
-        await self.cache.invalidate_branch(branch)
-
-        # 8. 이벤트 발행 (Outbox 패턴, 문서 122-133줄)
+        # 7. 이벤트 발행 (Outbox 패턴, 문서 122-133줄)
         await self.events.create_outbox_event(
             event_type="schema.changed",
             payload={
@@ -282,17 +267,8 @@ class SchemaService:
         type_name: str
     ) -> Optional[ObjectType]:
         """ObjectType 조회"""
-        # TerminusDB 내부 캐시를 활용한 최적화된 조회
-        cache_key = f"object_type:{branch}:{type_name}"
-
-        # SmartCacheManager를 통한 최적화된 조회
-        return await self.cache.get_with_optimization(
-            key=cache_key,
-            db=self.db_name,
-            branch=branch,
-            query_factory=lambda: self._get_object_type_from_db(type_name, branch),
-            doc_type="ObjectType"
-        )
+        # TerminusDB 내부 캐싱을 활용한 직접 조회
+        return await self._get_object_type_from_db(type_name, branch)
 
     async def _get_object_type_from_db(self, type_name: str, branch: str) -> Optional[ObjectType]:
         """DB에서 ObjectType 직접 조회"""
@@ -314,17 +290,8 @@ class SchemaService:
         type_class: Optional[TypeClass] = None
     ) -> List[ObjectType]:
         """ObjectType 목록 조회 - TerminusDB 내부 캐싱 활용"""
-        filter_key = f"{status.value if status else 'all'}_{type_class.value if type_class else 'all'}"
-        cache_key = f"object_types:{branch}:list:{filter_key}"
-
-        # SmartCacheManager를 통한 최적화된 조회
-        return await self.cache.get_with_optimization(
-            key=cache_key,
-            db=self.db_name,
-            branch=branch,
-            query_factory=lambda: self._get_object_types_from_db(branch, status, type_class),
-            doc_type="ObjectType"
-        )
+        # TerminusDB 내부 캐싱을 활용한 직접 조회
+        return await self._get_object_types_from_db(branch, status, type_class)
 
     async def _get_object_types_from_db(
         self,
@@ -536,8 +503,7 @@ class SchemaService:
 
             await tx.commit()
 
-        # 6. 캐시 무효화 및 이벤트 (문서 227-230줄)
-        await self.cache.invalidate_pattern(f"*:{branch}:{object_type_id}*")
+        # 6. 이벤트 발행 (문서 227-230줄)
         await self._publish_property_added_event(branch, obj_type, prop_doc, user)
 
         return Property.from_document(prop_doc)
@@ -740,9 +706,6 @@ class SchemaService:
                 message=f"Create LinkType {data.name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"link_types:{branch}")
-
             result = self._doc_to_link_type(doc)
 
             # 이벤트 발행 - UC-01 요구사항 충족
@@ -765,13 +728,6 @@ class SchemaService:
         to_type: Optional[str] = None
     ) -> List[LinkType]:
         """LinkType 목록 조회"""
-        cache_key = f"link_types:{branch}:{from_type or 'all'}:{to_type or 'all'}"
-
-        # 캐시 확인
-        cached = await self.cache.get(cache_key)
-        if cached:
-            return [LinkType(**lt) for lt in cached]
-
         async with TerminusDBClient(self.tdb_endpoint) as tdb:
             # WOQL 쿼리로 LinkType 조회
             query = {
@@ -789,14 +745,6 @@ class SchemaService:
             )
 
             link_types = [self._doc_to_link_type(doc) for doc in docs]
-
-            # 캐시 저장
-            await self.cache.set(
-                cache_key,
-                [lt.model_dump() for lt in link_types],
-                version=f"{branch}_link_types"
-            )
-
             return link_types
 
     async def get_link_type(
@@ -856,9 +804,6 @@ class SchemaService:
                 message=f"Update LinkType {link_name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"link_types:{branch}")
-
             return self._doc_to_link_type(doc)
 
     async def delete_link_type(
@@ -887,9 +832,6 @@ class SchemaService:
                 author=user_id,
                 message=f"Delete LinkType {link_name}"
             )
-
-            # 캐시 무효화
-            await self.cache.invalidate(f"link_types:{branch}")
 
             return True
 
@@ -978,9 +920,6 @@ class SchemaService:
                 message=f"Create Interface {data.name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"interfaces:{branch}")
-
             return self._doc_to_interface(doc)
 
     async def list_interfaces(
@@ -989,12 +928,6 @@ class SchemaService:
         extends: Optional[str] = None
     ) -> List[Interface]:
         """Interface 목록 조회"""
-        cache_key = f"interfaces:{branch}:{extends or 'all'}"
-
-        # 캐시 확인
-        cached = await self.cache.get(cache_key)
-        if cached:
-            return [Interface(**i) for i in cached]
 
         async with TerminusDBClient(self.tdb_endpoint) as tdb:
             # WOQL 쿼리로 Interface 조회
@@ -1011,14 +944,6 @@ class SchemaService:
             )
 
             interfaces = [self._doc_to_interface(doc) for doc in docs]
-
-            # 캐시 저장
-            await self.cache.set(
-                cache_key,
-                [i.model_dump() for i in interfaces],
-                version=f"{branch}_interfaces"
-            )
-
             return interfaces
 
     async def get_interface(
@@ -1089,9 +1014,6 @@ class SchemaService:
                 message=f"Update Interface {interface_name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"interfaces:{branch}")
-
             return self._doc_to_interface(doc)
 
     async def delete_interface(
@@ -1130,9 +1052,6 @@ class SchemaService:
                 author=user_id,
                 message=f"Delete Interface {interface_name}"
             )
-
-            # 캐시 무효화
-            await self.cache.invalidate(f"interfaces:{branch}")
 
             return True
 
@@ -1210,9 +1129,6 @@ class SchemaService:
                 message=f"Create SharedProperty {data.name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"shared_properties:{branch}")
-
             return self._doc_to_shared_property(doc)
 
     async def list_shared_properties(
@@ -1221,12 +1137,6 @@ class SchemaService:
         semantic_type: Optional[str] = None
     ) -> List[SharedProperty]:
         """SharedProperty 목록 조회"""
-        cache_key = f"shared_properties:{branch}:{semantic_type or 'all'}"
-
-        # 캐시 확인
-        cached = await self.cache.get(cache_key)
-        if cached:
-            return [SharedProperty(**sp) for sp in cached]
 
         async with TerminusDBClient(self.tdb_endpoint) as tdb:
             # WOQL 쿼리로 SharedProperty 조회
@@ -1243,13 +1153,6 @@ class SchemaService:
             )
 
             shared_properties = [self._doc_to_shared_property(doc) for doc in docs]
-
-            # 캐시 저장
-            await self.cache.set(
-                cache_key,
-                [sp.model_dump() for sp in shared_properties],
-                version=f"{branch}_shared_properties"
-            )
 
             return shared_properties
 
@@ -1307,9 +1210,6 @@ class SchemaService:
                 message=f"Update SharedProperty {property_name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"shared_properties:{branch}")
-
             return self._doc_to_shared_property(doc)
 
     async def delete_shared_property(
@@ -1348,9 +1248,6 @@ class SchemaService:
                 author=user_id,
                 message=f"Delete SharedProperty {property_name}"
             )
-
-            # 캐시 무효화
-            await self.cache.invalidate(f"shared_properties:{branch}")
 
             return True
 
@@ -1527,9 +1424,6 @@ class SchemaService:
                 message=f"Create ActionType {data.name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"action_types:{branch}")
-
             result = self._doc_to_action_type(doc)
 
             # 이벤트 발행
@@ -1553,12 +1447,6 @@ class SchemaService:
         applicable_object_type: Optional[str] = None
     ) -> List[ActionType]:
         """Action Type 목록 조회"""
-        cache_key = f"action_types:{branch}:{category or 'all'}:{transformation_type or 'all'}:{applicable_object_type or 'all'}"
-
-        # 캐시 확인
-        cached = await self.cache.get(cache_key)
-        if cached:
-            return [ActionType(**at) for at in cached]
 
         async with TerminusDBClient(self.tdb_endpoint) as tdb:
             # 모든 ActionType 조회
@@ -1583,13 +1471,6 @@ class SchemaService:
                         continue
 
                 action_types.append(at)
-
-            # 캐시 저장
-            await self.cache.set(
-                cache_key,
-                [at.model_dump() for at in action_types],
-                version=f"{branch}_action_types"
-            )
 
             return action_types
 
@@ -1687,9 +1568,6 @@ class SchemaService:
                 message=f"Update ActionType {action_name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"action_types:{branch}")
-
             result = self._doc_to_action_type(doc)
 
             # 이벤트 발행
@@ -1748,9 +1626,6 @@ class SchemaService:
                 author=user_id,
                 message=f"Delete ActionType {action_name}"
             )
-
-            # 캐시 무효화
-            await self.cache.invalidate(f"action_types:{branch}")
 
             # 이벤트 발행
             if self.event_publisher:
@@ -2001,9 +1876,6 @@ class SchemaService:
                 message=f"Create FunctionType {data.name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"function_types:{branch}")
-
             return self._doc_to_function_type(doc)
 
     async def list_function_types(
@@ -2014,12 +1886,6 @@ class SchemaService:
         tags: Optional[List[str]] = None
     ) -> List[FunctionType]:
         """Function Type 목록 조회"""
-        cache_key = f"function_types:{branch}:{category or 'all'}:{runtime or 'all'}:{':'.join(tags or [])}"
-
-        # 캐시 확인
-        cached = await self.cache.get(cache_key)
-        if cached:
-            return [FunctionType(**ft) for ft in cached]
 
         async with TerminusDBClient(self.tdb_endpoint) as tdb:
             # WOQL 쿼리로 Function Type 조회
@@ -2040,13 +1906,6 @@ class SchemaService:
             )
 
             function_types = [self._doc_to_function_type(doc) for doc in docs]
-
-            # 캐시 저장
-            await self.cache.set(
-                cache_key,
-                [ft.model_dump() for ft in function_types],
-                version=f"{branch}_function_types"
-            )
 
             return function_types
 
@@ -2175,9 +2034,6 @@ class SchemaService:
                 message=f"Update FunctionType {function_name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"function_types:{branch}")
-
             return self._doc_to_function_type(doc)
 
     async def delete_function_type(
@@ -2208,9 +2064,6 @@ class SchemaService:
                 author=user_id,
                 message=f"Delete FunctionType {function_name}"
             )
-
-            # 캐시 무효화
-            await self.cache.invalidate(f"function_types:{branch}")
 
             return True
 
@@ -2443,9 +2296,6 @@ class SchemaService:
                 message=f"Create DataType {data.name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"data_types:{branch}")
-
             return self._doc_to_data_type(doc)
 
     async def list_data_types(
@@ -2456,12 +2306,6 @@ class SchemaService:
         tags: Optional[List[str]] = None
     ) -> List[DataType]:
         """Data Type 목록 조회"""
-        cache_key = f"data_types:{branch}:{category or 'all'}:{format or 'all'}:{':'.join(tags or [])}"
-
-        # 캐시 확인
-        cached = await self.cache.get(cache_key)
-        if cached:
-            return [DataType(**dt) for dt in cached]
 
         async with TerminusDBClient(self.tdb_endpoint) as tdb:
             # WOQL 쿼리로 Data Type 조회
@@ -2482,13 +2326,6 @@ class SchemaService:
             )
 
             data_types = [self._doc_to_data_type(doc) for doc in docs]
-
-            # 캐시 저장
-            await self.cache.set(
-                cache_key,
-                [dt.model_dump() for dt in data_types],
-                version=f"{branch}_data_types"
-            )
 
             return data_types
 
@@ -2563,9 +2400,6 @@ class SchemaService:
                 message=f"Update DataType {data_type_name}"
             )
 
-            # 캐시 무효화
-            await self.cache.invalidate(f"data_types:{branch}")
-
             return self._doc_to_data_type(doc)
 
     async def delete_data_type(
@@ -2600,9 +2434,6 @@ class SchemaService:
                 author=user_id,
                 message=f"Delete DataType {data_type_name}"
             )
-
-            # 캐시 무효화
-            await self.cache.invalidate(f"data_types:{branch}")
 
             return True
 

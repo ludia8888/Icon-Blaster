@@ -102,7 +102,6 @@ class ValidationService:
             performance_metrics = {
                 "execution_time_seconds": execution_time,
                 "rule_count": len(self.rules),
-                "cache_hit_rate": await self.cache.get_hit_rate(),
                 "schema_objects_analyzed": self._count_schema_objects(context)
             }
 
@@ -137,19 +136,9 @@ class ValidationService:
         """검증 컨텍스트 구성"""
 
         # 캐시 키 생성
-        source_cache_key = f"schema:{request.source_branch}"
-        target_cache_key = f"schema:{request.target_branch}"
-
-        # 스키마 조회 (캐시 우선)
-        source_schema = await self.cache.get(source_cache_key)
-        if not source_schema:
-            source_schema = await self._fetch_branch_schema(request.source_branch)
-            await self.cache.set(source_cache_key, source_schema, ttl=300)  # 5분 캐시
-
-        target_schema = await self.cache.get(target_cache_key)
-        if not target_schema:
-            target_schema = await self._fetch_branch_schema(request.target_branch)
-            await self.cache.set(target_cache_key, target_schema, ttl=300)
+        # 스키마 조회 (TerminusDB 내부 캐싱 활용)
+        source_schema = await self._fetch_branch_schema(request.source_branch)
+        target_schema = await self._fetch_branch_schema(request.target_branch)
 
         return ValidationContext(
             source_branch=request.source_branch,
@@ -157,7 +146,6 @@ class ValidationService:
             source_schema=source_schema,
             target_schema=target_schema,
             terminus_client=self.tdb,
-            cache=self.cache,
             event_publisher=self.events,
             metadata=request.options
         )
