@@ -8,7 +8,7 @@ sys.path.append('core/event_publisher')
 
 import json
 from datetime import datetime, timezone
-from cloudevents_enhanced import (
+from core.event_publisher.cloudevents_enhanced import (
     EnhancedCloudEvent, EventType, CloudEventBuilder, CloudEventValidator
 )
 

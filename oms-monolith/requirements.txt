@@ -64,6 +64,28 @@ flower==2.0.1
 alembic==1.12.1
 sqlalchemy==2.0.23
 
+# --- P1 Critical Missing Dependencies ---
+# Scheduling & Job Processing
+apscheduler==3.10.4
+croniter==1.4.1
+
+# Validation & JSON
+jsonschema==4.21.1
+orjson==3.9.10
+
+# Storage / MinIO
+minio==7.2.4
+
+# Security & Auth
+passlib[bcrypt]==1.7.4
+pyotp==2.9.0
+
+# Observability
+opentelemetry-instrumentation-grpc==0.43b0
+
+# GraphQL & API
+strawberry-graphql[fastapi]==0.217.1
+
 # AWS SDK for Backup
 boto3==1.28.84
 botocore==1.31.84

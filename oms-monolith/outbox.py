@@ -193,7 +193,7 @@ class OutboxProcessor:
     async def _publish_event(self, event: OutboxEvent):
         """이벤트 발행 (구현 필요)"""
         # EventService.publish 호출
-        from main_ultimate import Event, EventService
+        from core.event_publisher.main_ultimate import Event, EventService
 
         await EventService.publish(Event(
             type=event.event_type,

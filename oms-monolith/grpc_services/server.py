@@ -114,7 +114,7 @@ class SchemaServicer(schema_service_pb2_grpc.SchemaServiceServicer):
             span.set_attribute("branch", request.branch)
             
             try:
-                # Get schema from service
+                # Get schema from core.user.service
                 schema = await self.schema_service.get_schema(
                     branch=request.branch,
                     schema_id=request.schema_id

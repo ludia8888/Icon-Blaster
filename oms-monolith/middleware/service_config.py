@@ -373,7 +373,7 @@ class EnterpriseConfigManager:
         return value
     
     def _get_value_from_config(self, config: ServiceConfig, key: str) -> Any:
-        """Extract value from service config"""
+        """Extract value from core.user.service config"""
         # Check feature flags
         if key in config.feature_flags:
             return config.feature_flags[key]

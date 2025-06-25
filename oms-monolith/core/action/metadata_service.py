@@ -12,7 +12,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../database'))
 
 from .models import ActionTypeModel, ActionDefinition
-from simple_terminus_client import SimpleTerminusDBClient
+from database.clients.terminus_db_simple import SimpleTerminusDBClient
 
 logger = logging.getLogger(__name__)
 

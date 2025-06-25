@@ -1,0 +1,93 @@
+name: Shim Check
+
+on:
+  pull_request:
+    paths:
+      - 'shared/__init__.py'
+      - '**/*.py'
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  check-shims:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Count Shims
+      id: count
+      run: |
+        if [ -f "shared/__init__.py" ]; then
+          count=$(grep "_alias(" shared/__init__.py | wc -l)
+          echo "shim_count=$count" >> $GITHUB_OUTPUT
+          echo "📊 Current shim count: $count"
+        else
+          echo "shim_count=0" >> $GITHUB_OUTPUT
+          echo "✅ No shim file found"
+        fi
+    
+    - name: Generate Shim Report
+      run: |
+        python scripts/list_shims.py --format=table > shim_report.txt
+        cat shim_report.txt
+    
+    - name: Check Shim Threshold
+      run: |
+        MAX_ALLOWED_SHIMS=10  # Adjust based on your project
+        current_count=${{ steps.count.outputs.shim_count }}
+        
+        if [ "$current_count" -gt "$MAX_ALLOWED_SHIMS" ]; then
+          echo "❌ Too many shims: $current_count (max allowed: $MAX_ALLOWED_SHIMS)"
+          echo "Please reduce technical debt by removing unused shims"
+          exit 1
+        fi
+        
+        echo "✅ Shim count within threshold: $current_count <= $MAX_ALLOWED_SHIMS"
+    
+    - name: Post PR Comment
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const shimReport = fs.readFileSync('shim_report.txt', 'utf8');
+          const shimCount = ${{ steps.count.outputs.shim_count }};
+          
+          const comment = `## 🔍 Compatibility Shim Report
+          
+          **Current Shim Count**: ${shimCount}
+          
+          <details>
+          <summary>Detailed Report</summary>
+          
+          \`\`\`
+          ${shimReport}
+          \`\`\`
+          </details>
+          
+          ${shimCount === 0 ? '🎉 **Congratulations!** No shims remaining!' : '📋 Please consider removing shims as part of technical debt reduction.'}
+          `;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+    
+    - name: Fail on Production Deploy with Shims
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        if [ "${{ steps.count.outputs.shim_count }}" -gt "0" ]; then
+          echo "❌ Cannot deploy to production with active shims!"
+          echo "Please remove all compatibility shims before deploying to main branch"
+          exit 1
+        fi

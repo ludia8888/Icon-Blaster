@@ -6,12 +6,12 @@ import json
 from datetime import datetime, timezone
 
 # Import our modules
-from cloudevents_enhanced import (
+from core.event_publisher.cloudevents_enhanced import (
     EnhancedCloudEvent, EventType, CloudEventBuilder, CloudEventValidator
 )
-from cloudevents_adapter import CloudEventsFactory
-from cloudevents_migration import EventSchemaMigrator
-from enhanced_event_service import EnhancedEventService
+from core.event_publisher.cloudevents_adapter import CloudEventsFactory
+from core.event_publisher.cloudevents_migration import EventSchemaMigrator
+from core.event_publisher.enhanced_event_service import EnhancedEventService
 
 
 def test_basic_cloudevent_creation():

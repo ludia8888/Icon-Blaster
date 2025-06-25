@@ -11,12 +11,12 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from enhanced_event_service import EnhancedEventService
-from cloudevents_enhanced import (
+from core.event_publisher.enhanced_event_service import EnhancedEventService
+from core.event_publisher.cloudevents_enhanced import (
     EnhancedCloudEvent, EventType, CloudEventBuilder, CloudEventValidator
 )
-from cloudevents_adapter import CloudEventsAdapter, CloudEventsFactory
-from cloudevents_migration import EventSchemaMigrator, BackwardCompatibilityLayer
+from core.event_publisher.cloudevents_adapter import CloudEventsAdapter, CloudEventsFactory
+from core.event_publisher.cloudevents_migration import EventSchemaMigrator, BackwardCompatibilityLayer
 from models import Change, EventMetadata, OutboxEvent
 
 

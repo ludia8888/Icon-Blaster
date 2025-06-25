@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 
-from core.auth.context import get_user_context
+from api.gateway.auth import get_user_context
 from utils.logger import get_logger
 from .models import (
     RevertRequest, RevertResult, ChangeOperation, ResourceType

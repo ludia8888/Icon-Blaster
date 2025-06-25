@@ -1,0 +1,755 @@
+🔍 Scanning 191 Python files in /Users/sihyun/Desktop/ARRAKIS/SPICE/oms-monolith
+============================================================
+✅ Import compatibility shim loaded successfully
+Progress: 20/191 files...
+Progress: 40/191 files...
+Progress: 50/191 files...
+Progress: 60/191 files...
+Progress: 70/191 files...
+Progress: 80/191 files...
+Progress: 90/191 files...
+Progress: 100/191 files...
+Progress: 110/191 files...
+Progress: 120/191 files...
+Progress: 130/191 files...
+Progress: 140/191 files...
+Progress: 150/191 files...
+Progress: 160/191 files...
+Progress: 180/191 files...
+Progress: 190/191 files...
+
+============================================================
+📊 IMPORT VERIFICATION RESULTS
+============================================================
+❌ Found 239 missing modules:
+
+❌ apscheduler.events
+   └─ core/scheduler/advanced_scheduler.py:21
+
+❌ apscheduler.events.EVENT_JOB_ERROR
+   └─ core/scheduler/advanced_scheduler.py:21
+
+❌ apscheduler.events.EVENT_JOB_EXECUTED
+   └─ core/scheduler/advanced_scheduler.py:21
+
+❌ apscheduler.events.EVENT_JOB_MISSED
+   └─ core/scheduler/advanced_scheduler.py:21
+
+❌ apscheduler.events.EVENT_JOB_MODIFIED
+   └─ core/scheduler/advanced_scheduler.py:21
+
+❌ apscheduler.events.EVENT_JOB_REMOVED
+   └─ core/scheduler/advanced_scheduler.py:21
+
+❌ apscheduler.events.EVENT_JOB_SUBMITTED
+   └─ core/scheduler/advanced_scheduler.py:21
+
+❌ apscheduler.executors.asyncio
+   └─ core/scheduler/advanced_scheduler.py:17
+
+❌ apscheduler.executors.asyncio.AsyncIOExecutor
+   └─ core/scheduler/advanced_scheduler.py:17
+
+❌ apscheduler.jobstores.redis
+   └─ core/scheduler/advanced_scheduler.py:16
+
+❌ apscheduler.jobstores.redis.RedisJobStore
+   └─ core/scheduler/advanced_scheduler.py:16
+
+❌ apscheduler.schedulers.asyncio
+   └─ core/scheduler/advanced_scheduler.py:15
+
+❌ apscheduler.schedulers.asyncio.AsyncIOScheduler
+   └─ core/scheduler/advanced_scheduler.py:15
+
+❌ apscheduler.triggers.cron
+   └─ core/scheduler/advanced_scheduler.py:18
+
+❌ apscheduler.triggers.cron.CronTrigger
+   └─ core/scheduler/advanced_scheduler.py:18
+
+❌ apscheduler.triggers.date
+   └─ core/scheduler/advanced_scheduler.py:20
+
+❌ apscheduler.triggers.date.DateTrigger
+   └─ core/scheduler/advanced_scheduler.py:20
+
+❌ apscheduler.triggers.interval
+   └─ core/scheduler/advanced_scheduler.py:19
+
+❌ apscheduler.triggers.interval.IntervalTrigger
+   └─ core/scheduler/advanced_scheduler.py:19
+
+❌ client
+   └─ sdks/python/oms_event_sdk/__init__.py:8
+
+❌ client.ClientConfig
+   └─ sdks/python/oms_event_sdk/__init__.py:8
+
+❌ client.EventPublisher
+   └─ sdks/python/oms_event_sdk/__init__.py:8
+
+❌ client.EventSubscriber
+   └─ sdks/python/oms_event_sdk/__init__.py:8
+
+❌ client.OMSEventClient
+   └─ sdks/python/oms_event_sdk/__init__.py:8
+
+❌ cloudevents_adapter
+   └─ core/event_publisher/cloudevents_migration.py:10
+
+❌ cloudevents_adapter.CloudEventsAdapter
+   └─ core/event_publisher/cloudevents_migration.py:10
+
+❌ cloudevents_adapter.CloudEventsFactory
+   └─ core/event_publisher/cloudevents_migration.py:10
+
+❌ cloudevents_enhanced
+   └─ core/event_publisher/cloudevents_adapter.py:9
+
+❌ cloudevents_enhanced.CloudEventBuilder
+   └─ core/event_publisher/cloudevents_adapter.py:9
+
+❌ cloudevents_enhanced.CloudEventValidator
+   └─ core/event_publisher/cloudevents_adapter.py:9
+
+❌ cloudevents_enhanced.EnhancedCloudEvent
+   └─ core/event_publisher/cloudevents_adapter.py:9
+
+❌ cloudevents_enhanced.EventType
+   └─ core/event_publisher/cloudevents_adapter.py:9
+
+❌ cloudevents_enhanced.create_action_event
+   └─ core/event_publisher/cloudevents_adapter.py:9
+
+❌ cloudevents_enhanced.create_schema_event
+   └─ core/event_publisher/cloudevents_adapter.py:9
+
+❌ cloudevents_migration
+   └─ core/event_publisher/outbox_processor.py:18
+
+❌ cloudevents_migration.BackwardCompatibilityLayer
+   └─ core/event_publisher/enhanced_event_service.py:15
+
+❌ cloudevents_migration.EventSchemaMigrator
+   └─ core/event_publisher/outbox_processor.py:18
+
+❌ config.settings
+   └─ core/event_publisher/secure_publisher.py:12
+
+❌ core.auth.context
+   └─ core/history/routes.py:11
+
+❌ core.auth.context.get_user_context
+   └─ core/history/routes.py:11
+
+❌ core.event.publisher
+   └─ core/history/routes.py:26
+
+❌ core.event.publisher.get_event_publisher
+   └─ core/history/routes.py:26
+
+❌ core.history.models.CommitDetail
+   └─ api/graphql/history_schema.py:10
+
+❌ core.history.models.HistoryEntry
+   └─ api/graphql/history_schema.py:10
+
+❌ croniter
+   └─ core/scheduler/advanced_scheduler.py:14
+
+❌ database.clients.RedisHAClient
+   └─ middleware/service_config.py:14
+
+❌ database.clients.service_client
+   └─ api/gateway/auth.py:203
+
+❌ database.clients.service_client.create_user_client
+   └─ api/gateway/auth.py:203
+
+❌ database.clients.terminus_db.get_terminus_client
+   └─ core/history/routes.py:25
+
+❌ enhanced_event_service
+   └─ core/event_publisher/__tests__/enhanced_cloudevents_integration.test.py:14
+
+❌ enhanced_event_service.EnhancedEventService
+   └─ core/event_publisher/__tests__/enhanced_cloudevents_integration.test.py:14
+
+❌ event_publisher
+   └─ core/event_publisher/secure_publisher.py:10
+
+❌ event_publisher.EventPublisher
+   └─ core/event_publisher/secure_publisher.py:10
+
+❌ event_publisher.cloudevents_enhanced
+   └─ core/schema_generator/asyncapi_generator.py:13
+
+❌ event_publisher.cloudevents_enhanced.EnhancedCloudEvent
+   └─ core/schema_generator/asyncapi_generator.py:13
+
+❌ event_publisher.cloudevents_enhanced.EventType
+   └─ core/schema_generator/asyncapi_generator.py:13
+
+❌ eventbridge_publisher
+   └─ core/event_publisher/outbox_processor.py:20
+
+❌ eventbridge_publisher.EventBridgeCloudEventsPublisher
+   └─ core/event_publisher/multi_platform_router.py:13
+
+❌ eventbridge_publisher.EventBridgeConfig
+   └─ core/event_publisher/outbox_processor.py:20
+
+❌ grpc_reflection.v1alpha
+   └─ grpc_services/server.py:13
+
+❌ grpc_reflection.v1alpha.reflection
+   └─ grpc_services/server.py:13
+
+❌ jsonschema
+   └─ core/validation/schema_validator.py:13
+
+❌ jsonschema.ValidationError
+   └─ core/validation/schema_validator.py:13
+
+❌ jsonschema.validate
+   └─ core/validation/schema_validator.py:13
+
+❌ main.service_manager
+   └─ middleware/service_config.py:687
+
+❌ main_ultimate
+   └─ outbox.py:196
+
+❌ main_ultimate.Event
+   └─ outbox.py:196
+
+❌ main_ultimate.EventService
+   └─ outbox.py:196
+
+❌ metadata_service
+   └─ core/action/service.py:31
+
+❌ metadata_service.ActionMetadataService
+   └─ core/action/service.py:31
+
+❌ minio
+   └─ core/backup/production_backup.py:26
+
+❌ minio.Minio
+   └─ core/backup/production_backup.py:26
+
+❌ models.*
+   └─ sdks/python/oms_event_sdk/client.py:9
+
+❌ models.ActionDefinition
+   └─ core/action/metadata_service.py:14
+
+❌ models.ActionTypeModel
+   └─ core/action/metadata_service.py:14
+
+❌ models.AuditEvent
+   └─ core/history/service.py:25
+
+❌ models.Change
+   └─ core/event_publisher/cloudevents_adapter.py:8
+
+❌ models.ChangeDetail
+   └─ core/history/service.py:25
+
+❌ models.ChangeOperation
+   └─ core/history/service.py:25
+
+❌ models.CloudEvent
+   └─ core/event_publisher/cloudevents_adapter.py:8
+
+❌ models.EventMetadata
+   └─ core/event_publisher/cloudevents_adapter.py:8
+
+❌ models.OutboxEvent
+   └─ core/event_publisher/cloudevents_adapter.py:8
+
+❌ models.PublishResult
+   └─ core/event_publisher/multi_platform_router.py:14
+
+❌ models.ResourceType
+   └─ core/history/service.py:25
+
+❌ models.RevertRequest
+   └─ core/history/service.py:25
+
+❌ models.RevertResult
+   └─ core/history/service.py:25
+
+❌ models.UserContext
+   └─ grpc_services/server.py:25
+
+❌ multi_platform_router
+   └─ core/event_publisher/outbox_processor.py:19
+
+❌ multi_platform_router.MultiPlatformEventRouter
+   └─ core/event_publisher/outbox_processor.py:19
+
+❌ multi_platform_router.create_oms_multi_platform_router
+   └─ core/event_publisher/outbox_processor.py:19
+
+❌ opentelemetry.instrumentation.grpc
+   └─ grpc_services/server.py:15
+
+❌ opentelemetry.instrumentation.grpc.GrpcInstrumentorServer
+   └─ grpc_services/server.py:15
+
+❌ orjson
+   └─ core/validation/naming_config.py:12
+
+❌ pii_handler
+   └─ core/security/__init__.py:6
+
+❌ pii_handler.PIIHandler
+   └─ core/security/__init__.py:6
+
+❌ pii_handler.PIIHandlingStrategy
+   └─ core/security/__init__.py:6
+
+❌ pii_handler.PIIMatch
+   └─ core/security/__init__.py:6
+
+❌ pii_handler.PIIType
+   └─ core/security/__init__.py:6
+
+❌ pii_handler.create_pii_handler
+   └─ core/security/__init__.py:6
+
+❌ pyotp
+   └─ core/user/service.py:17
+
+❌ realtime_publisher
+   └─ api/graphql/subscriptions.py:15
+
+❌ realtime_publisher.realtime_publisher
+   └─ api/graphql/subscriptions.py:15
+
+❌ resolvers
+   └─ api/graphql/mutation_resolvers.py:10
+
+❌ resolvers.ServiceClient
+   └─ api/graphql/mutation_resolvers.py:10
+
+❌ resolvers.schema
+   └─ api/graphql/main.py:27
+
+❌ retry_strategy
+   └─ utils/__init__.py:1
+
+❌ retry_strategy.BatchRetryExecutor
+   └─ utils/__init__.py:1
+
+❌ retry_strategy.BulkheadFullError
+   └─ utils/__init__.py:1
+
+❌ retry_strategy.CircuitBreakerOpenError
+   └─ utils/__init__.py:1
+
+❌ retry_strategy.DB_CRITICAL_CONFIG
+   └─ utils/__init__.py:1
+
+❌ retry_strategy.DB_READ_CONFIG
+   └─ utils/__init__.py:1
+
+❌ retry_strategy.DB_WRITE_CONFIG
+   └─ utils/__init__.py:1
+
+❌ retry_strategy.RetryBudgetExhaustedError
+   └─ utils/__init__.py:1
+
+❌ retry_strategy.RetryConfig
+   └─ utils/__init__.py:1
+
+❌ retry_strategy.RetryStrategy
+   └─ utils/__init__.py:1
+
+❌ retry_strategy.with_retry
+   └─ utils/__init__.py:1
+
+❌ schema
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.ActionCategoryEnum
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ActionProgressEvent
+   └─ api/graphql/subscriptions.py:16
+
+❌ schema.ActionType
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ActionTypeInput
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ActionTypeReference
+   └─ api/graphql/resolvers.py:1489
+
+❌ schema.ActionTypeUpdateInput
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ApplicableObjectType
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.Branch
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.BranchChangeEvent
+   └─ api/graphql/subscriptions.py:16
+
+❌ schema.BranchStatusEnum
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.BreakingChange
+   └─ api/graphql/resolvers.py:643
+
+❌ schema.CreateBranchInput
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.DataType
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.DataTypeCategoryEnum
+   └─ api/graphql/resolvers.py:1749
+
+❌ schema.DataTypeFormatEnum
+   └─ api/graphql/resolvers.py:1137
+
+❌ schema.DataTypeInput
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.DataTypeUpdateInput
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.FunctionBehavior
+   └─ api/graphql/resolvers.py:1636
+
+❌ schema.FunctionCategoryEnum
+   └─ api/graphql/resolvers.py:1024
+
+❌ schema.FunctionExample
+   └─ api/graphql/resolvers.py:1636
+
+❌ schema.FunctionParameter
+   └─ api/graphql/resolvers.py:1636
+
+❌ schema.FunctionRuntimeEnum
+   └─ api/graphql/resolvers.py:1024
+
+❌ schema.FunctionType
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.FunctionTypeInput
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.FunctionTypeUpdateInput
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.HistoryEntry
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ImpactAnalysis
+   └─ api/graphql/resolvers.py:643
+
+❌ schema.Interface
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.LinkType
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.LinkTypeInput
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.LinkTypeUpdateInput
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.ObjectType
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ObjectTypeConnection
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ObjectTypeInput
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ObjectTypeUpdateInput
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ParameterDirectionEnum
+   └─ api/graphql/resolvers.py:1024
+
+❌ schema.ParameterSchema
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.Property
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.PropertyInput
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.PropertyUpdateInput
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.ProposalInput
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.ProposalUpdateEvent
+   └─ api/graphql/subscriptions.py:16
+
+❌ schema.ProposalUpdateInput
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.ResourceTypeEnum
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ReturnType
+   └─ api/graphql/resolvers.py:1024
+
+❌ schema.RuntimeConfig
+   └─ api/graphql/resolvers.py:1024
+
+❌ schema.SchemaChangeEvent
+   └─ api/graphql/subscriptions.py:16
+
+❌ schema.SearchItem
+   └─ api/graphql/resolvers.py:723
+
+❌ schema.SearchResult
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.SharedProperty
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.SharedPropertyInput
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.StatusEnum
+   └─ api/graphql/mutation_resolvers.py:11
+
+❌ schema.SuggestedMigration
+   └─ api/graphql/resolvers.py:643
+
+❌ schema.TransformationTypeEnum
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.TypeClassEnum
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.TypeConstraint
+   └─ api/graphql/resolvers.py:1137
+
+❌ schema.ValidationResult
+   └─ api/graphql/resolvers.py:13
+
+❌ schema.ValidationWarning
+   └─ api/graphql/resolvers.py:643
+
+❌ security.pii_handler
+   └─ core/event_publisher/secure_publisher.py:205
+
+❌ security.pii_handler.PIIHandler
+   └─ core/event_publisher/secure_publisher.py:11
+
+❌ security.pii_handler.PIIHandlingStrategy
+   └─ core/event_publisher/secure_publisher.py:11
+
+❌ security.pii_handler.PIIMatch
+   └─ core/event_publisher/secure_publisher.py:11
+
+❌ security.pii_handler.create_pii_handler
+   └─ core/event_publisher/secure_publisher.py:205
+
+❌ service
+   └─ core/user/routes.py:232
+
+❌ service.AuditLog
+   └─ core/user/routes.py:714
+
+❌ service.EnterpriseUserService
+   └─ core/user/routes.py:10
+
+❌ service.HistoryEventPublisher
+   └─ core/history/routes.py:16
+
+❌ service.LoginRequest
+   └─ core/user/routes.py:10
+
+❌ service.LoginResponse
+   └─ core/user/routes.py:10
+
+❌ service.MFASetupResponse
+   └─ core/user/routes.py:10
+
+❌ service.PasswordChangeRequest
+   └─ core/user/routes.py:10
+
+❌ service.User
+   └─ core/user/routes.py:620
+
+❌ service.UserCreate
+   └─ core/user/routes.py:10
+
+❌ service.UserStatus
+   └─ core/user/routes.py:10
+
+❌ service.UserUpdate
+   └─ core/user/routes.py:10
+
+❌ service.pwd_context
+   └─ core/user/routes.py:366
+
+❌ shared.audit.audit_logger
+   └─ core/scheduler/advanced_scheduler.py:29
+
+❌ shared.audit.audit_logger.AuditLogger
+   └─ core/scheduler/advanced_scheduler.py:29
+
+❌ shared.events.cleanup_nats
+   └─ core/event_subscriber/main.py:15
+
+❌ shared.events.get_nats_client
+   └─ core/event_subscriber/main.py:15
+
+❌ shared.events.models.OperationType
+   └─ core/schema/service.py:1292
+
+❌ shared.events.models.ResourceType
+   └─ core/schema/service.py:1292
+
+❌ shared.observability.metrics
+   └─ middleware/service_config.py:16
+
+❌ shared.observability.tracing
+   └─ core/scheduler/advanced_scheduler.py:28
+
+❌ shared.security.mtls_config.create_mtls_client
+   └─ shared/clients/secure_http_client.py:13
+
+❌ simple_terminus_client
+   └─ core/action/metadata_service.py:15
+
+❌ simple_terminus_client.SimpleTerminusDBClient
+   └─ core/action/metadata_service.py:15
+
+❌ sqlalchemy
+   └─ core/user/service.py:18
+
+❌ sqlalchemy.Boolean
+   └─ core/user/service.py:18
+
+❌ sqlalchemy.Column
+   └─ core/user/service.py:18
+
+❌ sqlalchemy.DateTime
+   └─ core/user/service.py:18
+
+❌ sqlalchemy.Index
+   └─ core/user/service.py:18
+
+❌ sqlalchemy.Integer
+   └─ core/user/service.py:18
+
+❌ sqlalchemy.JSON
+   └─ core/user/service.py:18
+
+❌ sqlalchemy.String
+   └─ core/user/service.py:18
+
+❌ sqlalchemy.and_
+   └─ core/user/routes.py:455
+
+❌ sqlalchemy.ext.asyncio
+   └─ core/user/service.py:20
+
+❌ sqlalchemy.ext.asyncio.AsyncSession
+   └─ core/user/service.py:20
+
+❌ sqlalchemy.ext.asyncio.create_async_engine
+   └─ core/user/service.py:20
+
+❌ sqlalchemy.ext.declarative
+   └─ core/user/service.py:19
+
+❌ sqlalchemy.ext.declarative.declarative_base
+   └─ core/user/service.py:19
+
+❌ sqlalchemy.future
+   └─ core/user/service.py:22
+
+❌ sqlalchemy.future.select
+   └─ core/user/service.py:22
+
+❌ sqlalchemy.or_
+   └─ core/user/routes.py:455
+
+❌ sqlalchemy.orm
+   └─ core/user/service.py:21
+
+❌ sqlalchemy.orm.sessionmaker
+   └─ core/user/service.py:21
+
+❌ sqlalchemy.sql
+   └─ core/user/service.py:23
+
+❌ sqlalchemy.sql.func
+   └─ core/user/service.py:23
+
+❌ strawberry
+   └─ api/graphql/mutation_resolvers.py:8
+
+❌ strawberry.fastapi
+   └─ api/graphql/main.py:17
+
+❌ strawberry.fastapi.GraphQLRouter
+   └─ api/graphql/main.py:17
+
+❌ strawberry.types
+   └─ api/graphql/subscriptions.py:11
+
+❌ strawberry.types.Info
+   └─ api/graphql/subscriptions.py:11
+
+❌ subscriptions
+   └─ api/graphql/resolvers.py:1797
+
+❌ subscriptions.Subscription
+   └─ api/graphql/resolvers.py:1797
+
+❌ terminus_db_simple
+   └─ shared/clients/__init__.py:2
+
+❌ terminus_db_simple.TerminusDBClient
+   └─ shared/clients/__init__.py:2
+
+❌ utils.logging
+   └─ middleware/service_config.py:15
+
+❌ validation.naming_convention
+   └─ core/schema_generator/asyncapi_generator.py:14
+
+❌ validation.naming_convention.EntityType
+   └─ core/schema_generator/asyncapi_generator.py:14
+
+❌ websocket_manager
+   └─ api/graphql/main.py:28
+
+❌ websocket_manager.websocket_manager
+   └─ api/graphql/main.py:28
+
+
+📄 Detailed report saved to: /Users/sihyun/Desktop/ARRAKIS/SPICE/oms-monolith/import_verification_report.csv
+
+📈 SUMMARY:
+   Total files scanned: 191
+   Files with issues: 35
+   Unique missing modules: 239
+   Total missing imports: 239
+
+💡 COMMON PATTERNS DETECTED:
+
+   • 9 'shared.*' imports
+     → Check if real path differs from import path

@@ -17,8 +17,8 @@ try:
     import sys
     import os
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../shared'))
-    from cache.smart_cache import SmartCacheManager
-    from clients.terminus_db import TerminusDBClient
+    from shared.cache.smart_cache import SmartCacheManager
+    from database.clients.terminus_db import TerminusDBClient
 except ImportError:
     # Fallback to stub implementations for OMS self-containment
     class SmartCacheManager:

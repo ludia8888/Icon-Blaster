@@ -9,39 +9,62 @@ from pathlib import Path
 import argparse
 from typing import Dict, List, Tuple
 
-# Import 매핑 규칙
+# Import 매핑 규칙 - 2024 P0 Critical Fix
 IMPORT_MAPPINGS = {
-    # services.* → core.*
-    r'from services\.validation_service\.core\.': r'from core.validation.',
-    r'from services\.branch_service\.core\.': r'from core.branch.',
-    r'from services\.schema_service\.core\.': r'from core.schema.',
-    r'from services\.(\w+)_service\.core\.': r'from core.\1.',
+    # P0 Critical: Fix specific module path errors from verification report
+    r'from cloudevents_adapter': r'from core.event_publisher.cloudevents_adapter',
+    r'from cloudevents_enhanced': r'from core.event_publisher.cloudevents_enhanced',
+    r'from cloudevents_migration': r'from core.event_publisher.cloudevents_migration',
+    r'from enhanced_event_service': r'from core.event_publisher.enhanced_event_service',
+    r'from event_publisher': r'from core.event_publisher',
+    r'from eventbridge_publisher': r'from core.event_publisher.eventbridge_publisher',
+    r'from multi_platform_router': r'from core.event_publisher.multi_platform_router',
+    r'from realtime_publisher': r'from core.event_publisher.realtime_publisher',
     
-    # shared.models.* → models.*
-    r'from shared\.models\.': r'from models.',
+    # Missing core modules
+    r'from metadata_service': r'from core.action.metadata_service',
+    r'from simple_terminus_client': r'from database.clients.terminus_db_simple',
+    r'from pii_handler': r'from core.security.pii_handler',
+    r'from retry_strategy': r'from utils.retry_strategy',
     
-    # shared.clients.* → database.clients.*
-    r'from shared\.clients\.': r'from database.clients.',
+    # GraphQL schema imports
+    r'from resolvers': r'from api.graphql.resolvers',
+    r'from schema(?!\.py)': r'from api.graphql.schema',
+    r'from subscriptions': r'from api.graphql.subscriptions',
+    r'from websocket_manager': r'from api.graphql.websocket_manager',
     
-    # shared.cache.* → 임시 처리 (나중에 stub으로)
-    r'from shared\.cache\.smart_cache import SmartCacheManager': 
-        r'from shared.cache.smart_cache import SmartCacheManager',
+    # Service imports
+    r'from service(?!s)': r'from core.user.service',
+    r'from main_ultimate': r'from core.event_publisher.main_ultimate',
     
-    # shared.events → 임시 처리
-    r'from shared\.events import EventPublisher': 
-        r'from shared.events import EventPublisher',
+    # Models imports
+    r'from models\.([^\.]+)$': r'from shared.models.\1',
     
-    # shared.database.* → shared.database.*
-    r'from shared\.database\.': r'from shared.database.',
+    # Config imports
+    r'from config\.settings': r'from shared.config.settings',
+    r'from validation\.naming_convention': r'from core.validation.naming_convention',
     
-    # shared.observability → shared.observability
-    r'from shared\.observability': r'from shared.observability',
+    # Database clients
+    r'from terminus_db_simple': r'from database.clients.terminus_db_simple',
+    r'from database\.clients\.service_client': r'from database.clients.service_client',
     
-    # shared.security.* → shared.security.*
-    r'from shared\.security\.': r'from shared.security.',
+    # Auth and security
+    r'from core\.auth\.context': r'from api.gateway.auth',
+    r'from shared\.security\.mtls_config': r'from shared.security.mtls_config',
     
-    # shared.utils → shared.utils
-    r'from shared\.utils': r'from shared.utils',
+    # Shared modules
+    r'from shared\.audit\.audit_logger': r'from shared.audit.audit_logger',
+    r'from shared\.events\.cleanup_nats': r'from shared.events.cleanup_nats',
+    r'from shared\.events\.get_nats_client': r'from shared.events.get_nats_client',
+    r'from shared\.events\.models': r'from shared.events.models',
+    r'from shared\.observability\.metrics': r'from shared.observability.metrics',
+    r'from shared\.observability\.tracing': r'from shared.observability.tracing',
+    
+    # Utils
+    r'from utils\.logging': r'from shared.utils.logging',
+    
+    # Client imports in SDK
+    r'from client(?!s)': r'from .client',
 }
 
 class ImportFixer:
