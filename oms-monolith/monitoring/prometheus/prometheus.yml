@@ -1,0 +1,56 @@
+# Prometheus configuration for OMS Phase 6 Load Testing
+
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+  external_labels:
+    monitor: 'oms-load-test'
+    environment: 'test'
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load rules files
+rule_files:
+  - 'rules/*.yml'
+
+# Scrape configurations
+scrape_configs:
+  # OMS Application metrics
+  - job_name: 'oms-application'
+    static_configs:
+      - targets: ['localhost:8001']
+    metrics_path: '/metrics'
+    
+  # TerminusDB metrics
+  - job_name: 'terminusdb'
+    static_configs:
+      - targets: ['localhost:6363']
+    metrics_path: '/metrics'
+    
+  # NATS metrics
+  - job_name: 'nats'
+    static_configs:
+      - targets: ['localhost:8222']
+    metrics_path: '/metrics'
+    
+  # MinIO/S3 metrics
+  - job_name: 'minio'
+    static_configs:
+      - targets: ['localhost:9000']
+    metrics_path: '/minio/v2/metrics/cluster'
+    
+  # Node exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+      
+  # Push gateway for batch job metrics
+  - job_name: 'pushgateway'
+    static_configs:
+      - targets: ['localhost:9091']
+    honor_labels: true

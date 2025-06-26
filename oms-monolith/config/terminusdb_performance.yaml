@@ -1,0 +1,154 @@
+# TerminusDB Performance Configuration for Phase 6
+# Optimized for 10k branches × 100k merges scenario
+
+server:
+  name: "oms-terminus"
+  port: 6363
+  workers: 16  # Match CPU cores for load testing
+  
+storage:
+  # TerminusDB storage backend configuration
+  path: "/var/lib/terminusdb/storage"
+  
+  # Memory settings for large-scale operations
+  memory:
+    heap_size: "8G"
+    cache_size: "4G"
+    query_cache_size: "2G"
+    
+  # Optimize for branch operations
+  branch:
+    # Enable aggressive caching for branch HEAD lookups
+    head_cache_ttl: 3600  # 1 hour
+    head_cache_size: 20000  # Support 10k+ branches
+    
+    # Delta compression settings
+    delta_compression: true
+    delta_threshold: 1000  # Bytes
+    
+    # Concurrent branch operations
+    max_concurrent_branches: 200
+    branch_lock_timeout: 30000  # 30 seconds
+    
+  # Commit optimization
+  commit:
+    # Batch commit settings for merge operations
+    batch_size: 1000
+    batch_timeout: 5000  # 5 seconds
+    
+    # WAL (Write-Ahead Logging) settings
+    wal_enabled: true
+    wal_sync_interval: 1000  # 1 second
+    wal_buffer_size: "256M"
+    
+indexing:
+  # Auto-indexing configuration
+  auto_index: true
+  index_threads: 8
+  
+  # Specific indexes for OMS operations
+  indexes:
+    - name: "object_type_by_branch"
+      fields: ["@type", "_branch"]
+      
+    - name: "property_by_object"
+      fields: ["object_type_id", "@id"]
+      
+    - name: "link_type_lookup"
+      fields: ["fromTypeId", "toTypeId"]
+      
+    - name: "version_hash_index"
+      fields: ["versionHash"]
+      
+query:
+  # Query optimization
+  timeout: 60000  # 60 seconds for complex queries
+  max_results: 10000
+  
+  # Query planner settings
+  planner:
+    enable_optimization: true
+    cache_query_plans: true
+    plan_cache_size: 5000
+    
+  # Parallel query execution
+  parallel:
+    enabled: true
+    max_threads: 8
+    min_rows_for_parallel: 1000
+    
+monitoring:
+  # Built-in metrics
+  metrics:
+    enabled: true
+    endpoint: "/metrics"
+    interval: 10
+    
+  # Slow query logging
+  slow_query:
+    enabled: true
+    threshold: 1000  # 1 second
+    log_path: "/var/log/terminusdb/slow_queries.log"
+    
+  # Performance profiling
+  profiling:
+    enabled: true
+    sample_rate: 0.01  # 1% sampling
+    
+replication:
+  # For high availability during load tests
+  enabled: false  # Enable if testing distributed setup
+  
+  # Async replication for better performance
+  mode: "async"
+  max_lag: 5000  # 5 seconds
+  
+backup:
+  # Backup settings (disable during performance tests)
+  enabled: false
+  
+  # If enabled, use incremental backups
+  type: "incremental"
+  interval: 86400  # Daily
+  
+# Connection pool settings
+connection_pool:
+  min_size: 10
+  max_size: 100
+  acquire_timeout: 5000
+  idle_timeout: 600000  # 10 minutes
+  
+# HTTP server settings
+http:
+  keep_alive: true
+  keep_alive_timeout: 65000
+  request_timeout: 300000  # 5 minutes for large operations
+  max_body_size: "100M"
+  
+# Resource limits
+limits:
+  max_transaction_size: "1G"
+  max_query_memory: "2G"
+  max_open_transactions: 1000
+  
+# Garbage collection
+gc:
+  enabled: true
+  interval: 3600  # 1 hour
+  threshold: 0.8  # 80% storage usage
+  
+# Advanced optimizations
+optimizations:
+  # Enable all performance optimizations
+  enable_jit: true
+  enable_vectorization: true
+  enable_parallel_commits: true
+  
+  # Branch-specific optimizations
+  branch_prefetch: true
+  branch_cache_preload: true
+  
+  # Merge optimizations
+  fast_forward_merge: true
+  merge_conflict_cache: true
+  merge_preview_cache: true
