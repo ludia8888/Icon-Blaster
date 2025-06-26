@@ -272,6 +272,20 @@ class LinkType(BaseModel):
     createdAt: datetime
     modifiedBy: str
     modifiedAt: datetime
+    
+    # Graph metadata fields (GF-02, GF-03)
+    permissionInheritance: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Permission propagation rules through this link"
+    )
+    statePropagation: Optional[Dict[str, Any]] = Field(
+        None,
+        description="State propagation rules through this link"
+    )
+    traversalMetadata: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Metadata for graph traversal optimization"
+    )
 
     @field_validator("name")
     @classmethod
