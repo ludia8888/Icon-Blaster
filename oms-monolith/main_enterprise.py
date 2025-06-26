@@ -351,6 +351,15 @@ async def merge_branch(branch: str, request: Dict[str, Any]):
         logger.error(f"Failed to merge branch: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
+# === Mount API Routers ===
+# Semantic Types
+from api.v1.semantic_types import router as semantic_types_router
+app.include_router(semantic_types_router, prefix="/api/v1")
+
+# Schema Generation (Phase 5)
+from api.v1.schema_generation import router as schema_generation_router
+app.include_router(schema_generation_router, prefix="/api/v1")
+
 # === Mount GraphQL ===
 # TODO: GraphQL 앱은 별도 초기화 필요
 # graphql_app = create_graphql_app(services)

@@ -1,10 +1,10 @@
-# OMS Ontology Development Plan (Revised)
+# OMS Ontology Development Plan 
 
 > **Scope Reminder**
 > OMS (Ontology Metadata Service) *declares and versions the ontology meta‑model only*.
 > Runtime concerns (object instance storage, graph traversal, permission evaluation, state propagation) are implemented by sibling services — **Object Storage**, **Object Set Service**, **Action Service**, and **Vertex**.
 > This plan therefore focuses *exclusively* on **metadata definition, validation, and contract generation**.
-
+**Always check what code already exists in the codebase**
 ---
 
 ## 100 % Compliance with *Ontology\_Requirements\_Document.md*
@@ -21,7 +21,7 @@ The roadmap is organised into phases with clear milestones and tracking mechanis
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
 | **Core Types**          | Object Type, Property, Shared Property, Link Type, Action Type, Interface, Data Type, Semantic Type, Struct Type   |                              |
 | **Metadata Extensions** | Link Meta Flags (permissionInheritance, statePropagation, traversalMetadata), Graph Metadata Generator             |                              |
-| **API Generation**      | Basic CRUD schemas, Semantic/Struct Type endpoints                                                                 | Relationship auto‑generation |
+| **API Generation**      | Basic CRUD schemas, Semantic/Struct Type endpoints, GraphQL/OpenAPI schema generation with auto link fields       |                              |
 
 > **Removed from OMS scope**: *Graph Index & Traversal*, *Runtime Permission Engine*, *Resolver Implementations*, *1 B+ instance load tests*.  These items are now tracked in the **Object Set / Action Service** backlogs.
 
@@ -204,3 +204,5 @@ Performance reports, optimisation patches, updated CI benchmarks
 | FR-GR-PERM | ✅ Complete | /core/graph/metadata_generator.py | /tests/test_graph_metadata.py | Phase 3-4 |
 | GF-02 | ✅ Complete | /core/graph/metadata_generator.py | /tests/test_graph_metadata.py | Index metadata |
 | GF-03 | ✅ Complete | /models/domain.py, /core/graph/metadata_generator.py | /tests/test_graph_metadata.py | Propagation rules |
+| API-GEN-01 | ✅ Complete | /core/api/schema_generator.py | /tests/test_schema_generator.py | Phase 5 - GraphQL/OpenAPI generation |
+| API-GEN-02 | ✅ Complete | /api/v1/schema_generation/endpoints.py | /tests/test_schema_generation_api.py | Phase 5 - API endpoints |
