@@ -124,7 +124,7 @@ class GraphQLSchemaGenerator:
                 description=link.description,
                 resolver_hints={
                     "direction": "forward",
-                    "cardinality": link.cardinality.value,
+                    "cardinality": link.cardinality.value if link.cardinality else "unknown",
                     "cascade_delete": link.cascadeDelete
                 }
             )
@@ -148,7 +148,7 @@ class GraphQLSchemaGenerator:
                 description=f"Reverse link: {link.description}",
                 resolver_hints={
                     "direction": "reverse",
-                    "cardinality": link.cardinality.value
+                    "cardinality": link.cardinality.value if link.cardinality else "unknown"
                 }
             )
             fields.append(field)
@@ -180,22 +180,34 @@ class GraphQLSchemaGenerator:
             if link.name:
                 return link.name.lower().replace(" ", "_")
             else:
-                return f"{link.toTypeId}s" if self._is_many(link.cardinality) else link.toTypeId
+                # Generate from target type if name is empty
+                target_name = link.toTypeId.lower()
+                return f"{target_name}s" if self._is_many(link.cardinality) else target_name
         else:
             # Reverse link naming
-            return f"inverse_{link.name.lower().replace(' ', '_')}"
+            if link.name:
+                return f"inverse_{link.name.lower().replace(' ', '_')}"
+            else:
+                # Generate from source type if name is empty
+                return f"inverse_{link.fromTypeId.lower()}"
     
     def _determine_field_type(self, cardinality: Cardinality) -> str:
         """Determine if field should be SingleLink or LinkSet"""
-        if cardinality == Cardinality.ONE_TO_ONE:
+        if cardinality is None:
+            # Default to LinkSet for safety
+            return "LinkSet"
+        elif cardinality == Cardinality.ONE_TO_ONE:
             return "SingleLink"
         else:
             return "LinkSet"
     
     def _determine_reverse_field_type(self, cardinality: Cardinality) -> str:
         """Determine reverse field type based on cardinality"""
+        if cardinality is None:
+            # Default to LinkSet for safety
+            return "LinkSet"
         # Reverse cardinality logic
-        if cardinality == Cardinality.ONE_TO_ONE:
+        elif cardinality == Cardinality.ONE_TO_ONE:
             return "SingleLink"
         elif cardinality == Cardinality.ONE_TO_MANY:
             return "SingleLink"  # Reverse of one-to-many is many-to-one
@@ -204,6 +216,8 @@ class GraphQLSchemaGenerator:
     
     def _is_many(self, cardinality: Cardinality) -> bool:
         """Check if cardinality represents multiple items"""
+        if cardinality is None:
+            return True  # Default to many for safety
         return cardinality in [Cardinality.ONE_TO_MANY, Cardinality.MANY_TO_MANY]
     
     def _map_data_type_to_graphql(self, data_type_id: str) -> str:
@@ -647,6 +661,8 @@ class OpenAPISchemaGenerator:
     
     def _is_many(self, cardinality: Cardinality) -> bool:
         """Check if cardinality represents multiple items"""
+        if cardinality is None:
+            return True  # Default to many for safety
         return cardinality in [Cardinality.ONE_TO_MANY, Cardinality.MANY_TO_MANY]
     
     def generate_paths(

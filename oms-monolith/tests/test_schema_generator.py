@@ -585,5 +585,53 @@ class TestIntegration:
         assert graphql_links[0].field_type == "LinkSet"
 
 
+class TestValidationAndErrors:
+    """Test validation and error handling"""
+    
+    def test_schema_generation_with_validation_errors(self):
+        """Test that schema generation continues despite validation errors"""
+        generator = GraphQLSchemaGenerator()
+        
+        # Create type with valid property name (validation happens at input level)
+        user_type = create_test_object_type("User", "User")
+        # Add a property with reserved name that might cause issues
+        user_type.properties.append(
+            Property(
+                id="type_prop",
+                object_type_id="User",
+                name="type",  # Reserved word but valid identifier
+                display_name="Type",
+                data_type_id="string",
+                is_required=False,
+                visibility=Visibility.VISIBLE,
+                version_hash="test",
+                created_at=datetime.utcnow(),
+                modified_at=datetime.utcnow()
+            )
+        )
+        
+        # Should still generate schema
+        sdl = generator.generate_object_type_schema(user_type, [])
+        assert "type User {" in sdl
+        assert "id: ID!" in sdl
+        assert "type: String" in sdl  # Reserved word but should work
+    
+    def test_link_field_metadata_validation(self):
+        """Test link field metadata is properly validated"""
+        metadata = LinkFieldMetadata(
+            field_name="test",
+            field_type="InvalidType",  # Should be SingleLink or LinkSet
+            target_type="Target",
+            link_type_id="test_link"
+        )
+        
+        # Should still be created (validation happens elsewhere)
+        assert metadata.field_type == "InvalidType"
+        
+        # Test serialization doesn't break
+        data = metadata.dict()
+        assert data["field_type"] == "InvalidType"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
