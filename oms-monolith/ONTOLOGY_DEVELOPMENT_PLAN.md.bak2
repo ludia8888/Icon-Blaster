@@ -211,9 +211,5 @@ Performance reports, optimisation patches, updated CI benchmarks
 | FR-GR-PERM | ✅ Complete | /core/graph/metadata_generator.py | /tests/test_graph_metadata.py | Phase 3-4 |
 | GF-02 | ✅ Complete | /core/graph/metadata_generator.py | /tests/test_graph_metadata.py | Index metadata |
 | GF-03 | ✅ Complete | /models/domain.py, /core/graph/metadata_generator.py | /tests/test_graph_metadata.py | Propagation rules |
-| API-GEN-01 | ✅ Complete | /core/api/schema_generator.py | /tests/test_schema_generator.py, /tests/test_schema_generator_extended.py | Phase 5 - GraphQL/OpenAPI generation |
+| API-GEN-01 | ✅ Complete | /core/api/schema_generator.py | /tests/test_schema_generator.py | Phase 5 - GraphQL/OpenAPI generation |
 | API-GEN-02 | ✅ Complete | /api/v1/schema_generation/endpoints.py | /tests/test_schema_generation_api.py | Phase 5 - API endpoints |
-| API-GEN-03 | ✅ Complete | /core/api/schema_generator.py | /tests/integration/test_link_reverse_references.py | Phase 5 - Link reverse references |
-| PERF-01 | ✅ Prepared | /tests/performance/load_test_config.py | - | Phase 6 - Load test environment |
-| PERF-02 | ✅ Prepared | /config/terminusdb_performance.yaml | - | Phase 6 - TerminusDB optimization |
-| PERF-03 | ✅ Complete | /docs/MERGE_CONFLICT_RESOLUTION_SPEC.md | - | Phase 6 - Merge conflict rules |

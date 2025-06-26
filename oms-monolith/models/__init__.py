@@ -1,6 +1,6 @@
 """
 Models module for OMS Monolith
 """
-from main import UserContext
+from api.gateway.auth import UserContext
 
 __all__ = ['UserContext']

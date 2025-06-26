@@ -37,43 +37,26 @@ class SimpleTerminusDBClient:
     async def connect(self) -> bool:
         """TerminusDB 연결"""
         try:
-            # TerminusDB 11.1.0은 인증 없이도 접근 가능할 수 있음
+            # 항상 인증과 함께 연결
             self.client = httpx.AsyncClient(
                 base_url=self.endpoint,
-                timeout=httpx.Timeout(self.timeout)
+                timeout=httpx.Timeout(self.timeout),
+                auth=(self.username, self.password)
             )
             
-            # 먼저 인증 없이 연결 테스트
             response = await self.client.get("/api/info")
             if response.status_code == 200:
                 self._connected = True
-                logger.info(f"Connected to TerminusDB at {self.endpoint} (no auth)")
+                logger.info(f"Connected to TerminusDB at {self.endpoint}")
                 
-                # admin 데이터베이스는 기본으로 존재하므로 생성 스킵
-                if self.database != "admin":
-                    await self._ensure_database_exists()
+                # OMS 데이터베이스가 이미 생성되어 있으므로 확인만
+                if self.database == "oms":
+                    db_response = await self.client.get(f"/api/db/admin/{self.database}")
+                    if db_response.status_code == 200:
+                        logger.info(f"Database {self.database} exists and accessible")
+                    else:
+                        logger.warning(f"Database {self.database} check failed: {db_response.status_code}")
                 return True
-            elif response.status_code == 401:
-                # 인증이 필요한 경우 Basic Auth 시도
-                await self.client.aclose()
-                self.client = httpx.AsyncClient(
-                    base_url=self.endpoint,
-                    timeout=httpx.Timeout(self.timeout),
-                    auth=(self.username, self.password)
-                )
-                
-                response = await self.client.get("/api/info")
-                if response.status_code == 200:
-                    self._connected = True
-                    logger.info(f"Connected to TerminusDB at {self.endpoint} (with auth)")
-                    
-                    # admin 데이터베이스는 기본으로 존재하므로 생성 스킵
-                    if self.database != "admin":
-                        await self._ensure_database_exists()
-                    return True
-                else:
-                    logger.error(f"Failed to connect to TerminusDB with auth: {response.status_code}")
-                    return False
             else:
                 logger.error(f"Failed to connect to TerminusDB: {response.status_code}")
                 return False

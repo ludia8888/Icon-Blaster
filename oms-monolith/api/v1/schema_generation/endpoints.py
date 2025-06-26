@@ -6,7 +6,7 @@ with automatic link field generation.
 """
 
 from typing import Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from pydantic import BaseModel, Field
 
 from core.api.schema_generator import (
@@ -14,7 +14,7 @@ from core.api.schema_generator import (
     openapi_generator
 )
 from core.schema.registry import schema_registry
-from api.auth import get_current_user
+from api.gateway.auth import get_current_user
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -266,7 +266,7 @@ async def get_link_metadata(
 
 @router.post("/export/{format}")
 async def export_schema(
-    format: str = Query(..., regex="^(graphql|openapi)$"),
+    format: str = Path(..., regex="^(graphql|openapi)$"),
     filename: Optional[str] = Query(None, description="Custom filename for export"),
     current_user: str = Depends(get_current_user)
 ) -> Dict[str, str]:

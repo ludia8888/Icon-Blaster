@@ -111,16 +111,16 @@ class Subscription:
                     )
 
                 # 이벤트 스트리밍
-                try:
-                    while True:
+                while True:
+                    try:
                         event = await asyncio.wait_for(event_queue.get(), timeout=30.0)
                         yield event
-                except asyncio.TimeoutError:
-                    # 30초 타임아웃으로 연결 유지 확인
-                    continue
-                except asyncio.CancelledError:
-                    logger.info(f"Schema changes subscription cancelled for user {user.user_id}")
-                    break
+                    except asyncio.TimeoutError:
+                        # 30초 타임아웃으로 연결 유지 확인
+                        continue
+                    except asyncio.CancelledError:
+                        logger.info(f"Schema changes subscription cancelled for user {user.user_id}")
+                        break
 
         except Exception as e:
             logger.error(f"Error in schema changes subscription: {e}")

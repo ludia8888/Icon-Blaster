@@ -13,7 +13,9 @@ from utils.logger import get_logger
 from .models import (
     RevertRequest, RevertResult, ChangeOperation, ResourceType
 )
-from core.user.service import HistoryEventPublisher
+# TODO: Update to use actual event publisher
+# from core.events.publisher import EventPublisher as HistoryEventPublisher
+HistoryEventPublisher = type('HistoryEventPublisher', (), {})  # Placeholder
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/schema", tags=["schema-events"])

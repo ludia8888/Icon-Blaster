@@ -28,8 +28,15 @@ class OMSIntegrationTest:
     
     def __init__(self):
         self.schema_service = SchemaService()
-        self.branch_service = BranchService(None)
-        self.validation_service = ValidationService(None, None)
+        
+        # Mock dependencies for BranchService
+        from unittest.mock import Mock
+        mock_diff_engine = Mock()
+        mock_conflict_resolver = Mock()
+        
+        self.branch_service = BranchService(None, mock_diff_engine, mock_conflict_resolver)
+        mock_event_publisher = Mock()
+        self.validation_service = ValidationService(None, None, mock_event_publisher)
         self.event_service = EnhancedEventService()
         self.test_branch = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         

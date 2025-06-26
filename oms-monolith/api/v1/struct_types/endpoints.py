@@ -14,7 +14,7 @@ from models.struct_types import (
     StructFieldDefinition,
     struct_type_registry
 )
-from api.auth import get_current_user
+from api.gateway.auth import get_current_user
 from core.events.publisher import EventPublisher
 from utils.logger import get_logger
 

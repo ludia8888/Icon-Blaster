@@ -58,34 +58,55 @@ This document defines the conflict resolution rules for schema merges in OMS, or
 
 **Scenario**: Same property has different data types in branches
 
-**Resolution Matrix**:
+**Resolution Matrix with Severity Grades**:
 
-| Branch A | Branch B | Resolution | Rationale |
-|----------|----------|------------|-----------|
-| string | text | text | More permissive |
-| integer | long | long | Larger range |
-| float | double | double | Higher precision |
-| any primitive | json | json | Most flexible |
-| enum A | enum A+B | enum A+B | Union of values |
+| Branch A | Branch B | Resolution | Severity | Rationale |
+|----------|----------|------------|----------|------------|
+| string | text | text | INFO | More permissive |
+| integer | long | long | INFO | Larger range |
+| float | double | double | INFO | Higher precision |
+| any primitive | json | json | WARN | Type safety loss |
+| enum A | enum A+B | enum A+B | INFO | Union of values |
+| string | integer | MANUAL | ERROR | Data loss risk |
+| double | integer | MANUAL | ERROR | Precision loss |
+| json | primitive | MANUAL | ERROR | Structure loss |
+| enum A+B | enum A | MANUAL | WARN | Value restriction |
+
+**Severity Levels**:
+- **INFO**: Safe automatic resolution, no data loss
+- **WARN**: Automatic resolution with potential side effects
+- **ERROR**: Manual resolution required, high risk of data loss
+- **BLOCK**: Cannot proceed without manual intervention
 
 **Breaking Changes**:
-- Narrowing conversions (e.g., string → integer) require manual resolution
-- Removing enum values requires deprecation period
+- Narrowing conversions (ERROR level) require manual resolution
+- Type safety degradation (WARN level) triggers validation
+- Removing enum values requires deprecation period and migration plan
 
 ### 4. Cardinality Conflicts
 
 **Scenario**: Link type cardinality differs between branches
 
-**Resolution Rules**:
-```
-ONE_TO_ONE + ONE_TO_MANY = ONE_TO_MANY
-ONE_TO_ONE + MANY_TO_MANY = MANY_TO_MANY  
-ONE_TO_MANY + MANY_TO_MANY = MANY_TO_MANY
-```
+**Resolution Rules with Migration Impact**:
+
+| Current | Target | Resolution | Migration Impact | Severity |
+|---------|--------|------------|------------------|----------|
+| ONE_TO_ONE | ONE_TO_MANY | ONE_TO_MANY | FK remains valid | INFO |
+| ONE_TO_ONE | MANY_TO_MANY | MANY_TO_MANY | New junction table needed | WARN |
+| ONE_TO_MANY | MANY_TO_MANY | MANY_TO_MANY | Junction table + data migration | WARN |
+| ONE_TO_MANY | ONE_TO_ONE | MANUAL | Potential data loss (multiple → single) | ERROR |
+| MANY_TO_MANY | ONE_TO_ONE | MANUAL | Junction table removal + data loss | ERROR |
+| MANY_TO_MANY | ONE_TO_MANY | MANUAL | Complex migration required | ERROR |
+
+**Migration Impact Details**:
+- **FK remains valid**: No data migration needed
+- **Junction table needed**: Create M:N relationship table, migrate FKs
+- **Data loss risk**: Multiple relationships must be reduced to single
+- **Complex migration**: Requires custom logic to preserve data integrity
 
 **Directionality**:
-- UNIDIRECTIONAL + BIDIRECTIONAL = BIDIRECTIONAL
-- Changes from BIDIRECTIONAL to UNIDIRECTIONAL require manual resolution
+- UNIDIRECTIONAL + BIDIRECTIONAL = BIDIRECTIONAL (INFO)
+- BIDIRECTIONAL → UNIDIRECTIONAL = MANUAL (WARN) - May break existing queries
 
 ### 5. Constraint Conflicts
 
@@ -168,28 +189,65 @@ When automatic resolution fails:
 {
   "conflict_id": "uuid",
   "type": "INCOMPATIBLE_CHANGE",
+  "severity": "ERROR",
   "entity_type": "Property",
   "entity_id": "User.email",
   "branch_a": {
     "change": "DELETE",
-    "reason": "GDPR compliance"
+    "reason": "GDPR compliance",
+    "author": "user123",
+    "timestamp": "2024-01-01T10:00:00Z"
   },
   "branch_b": {
     "change": "MODIFY", 
-    "details": "Add encryption, mark required"
+    "details": "Add encryption, mark required",
+    "author": "user456",
+    "timestamp": "2024-01-01T11:00:00Z"
   },
   "suggested_resolutions": [
     {
       "action": "KEEP_B_WITH_SOFT_DELETE",
-      "description": "Keep property but mark as deprecated"
+      "description": "Keep property but mark as deprecated",
+      "confidence": 0.85,
+      "migration_steps": [
+        "Mark property as deprecated",
+        "Add deprecation notice to clients",
+        "Schedule removal in 90 days"
+      ]
     },
     {
       "action": "MANUAL_MERGE",
-      "description": "Create custom resolution"
+      "description": "Create custom resolution",
+      "requires_approval": ["schema-admin", "security-team"]
     }
-  ]
+  ],
+  "resolution_sla": {
+    "severity": "ERROR",
+    "deadline": "2024-01-02T10:00:00Z",
+    "escalation_path": ["team-lead", "architect", "cto"],
+    "auto_escalate_after": "24h"
+  },
+  "permissions": {
+    "can_resolve": ["schema-admin", "branch-owner"],
+    "can_approve": ["architect", "cto"],
+    "can_override": ["cto"]
+  },
+  "async_resolution": {
+    "webhook_url": "https://api.oms.com/conflicts/webhook",
+    "notification_channels": ["email", "slack", "jira"],
+    "status_endpoint": "/api/v1/conflicts/uuid/status"
+  }
 }
 ```
+
+**Resolution Workflow**:
+1. Conflict detected → Notification sent to relevant parties
+2. SLA timer starts based on severity
+3. Authorized users review and select resolution
+4. If approval required, request sent to approvers
+5. Resolution applied with full audit trail
+6. Post-resolution validation and impact assessment
+7. Notification of completion with rollback option
 
 ## Validation After Merge
 
@@ -240,7 +298,7 @@ merge:
 
 ## Audit Trail
 
-All merge operations generate audit events:
+All merge operations generate comprehensive audit events:
 
 ```json
 {
@@ -255,7 +313,32 @@ All merge operations generate audit events:
     "rule_based": 1,
     "manual": 1
   },
+  "severity_summary": {
+    "INFO": 2,
+    "WARN": 2,
+    "ERROR": 1,
+    "BLOCK": 0
+  },
   "validation_results": "PASSED",
-  "commit_hash": "abc123"
+  "validation_warnings": [
+    {
+      "type": "TYPE_SAFETY_DEGRADATION",
+      "property": "User.metadata",
+      "change": "string → json",
+      "affected_clients": ["mobile-v1.2", "web-v2.0"]
+    }
+  ],
+  "breaking_change_flags": [
+    {
+      "type": "CARDINALITY_REDUCTION",
+      "link": "User.addresses",
+      "from": "ONE_TO_MANY",
+      "to": "ONE_TO_ONE",
+      "migration_required": true,
+      "estimated_impact": "5000 records"
+    }
+  ],
+  "commit_hash": "abc123",
+  "rollback_snapshot": "snapshot-12345"
 }
 ```

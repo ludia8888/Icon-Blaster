@@ -16,16 +16,27 @@ from opentelemetry.instrumentation.grpc import GrpcInstrumentorServer
 from prometheus_client import Counter, Histogram, Gauge
 
 # Import generated proto files
-from . import schema_service_pb2, schema_service_pb2_grpc
-from . import branch_service_pb2, branch_service_pb2_grpc
+# TODO: Generate protobuf files first with: protoc --python_out=. --grpc_python_out=. *.proto
+try:
+    from . import schema_service_pb2, schema_service_pb2_grpc
+    from . import branch_service_pb2, branch_service_pb2_grpc
+    PROTO_AVAILABLE = True
+except ImportError:
+    # Proto files not generated yet
+    schema_service_pb2 = None
+    schema_service_pb2_grpc = None
+    branch_service_pb2 = None
+    branch_service_pb2_grpc = None
+    PROTO_AVAILABLE = False
+    print("Warning: Protobuf files not found. Run 'protoc --python_out=. --grpc_python_out=. *.proto' to generate them.")
 
 # Import service implementations
 from core.schema.service import SchemaService
 from core.branch.service import BranchService
 from models import UserContext
-from utils import logging as custom_logging
+from utils.logger import get_logger
 
-logger = custom_logging.get_logger(__name__)
+logger = get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 
 # Metrics
