@@ -5,7 +5,7 @@ No circular dependencies
 """
 import os
 from typing import Optional, Callable, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from fastapi import Request, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -51,9 +51,17 @@ class MSAAuthMiddleware(BaseHTTPMiddleware):
         self._token_cache: Dict[str, tuple[UserContext, datetime]] = {}
         self.cache_ttl = int(os.getenv("AUTH_CACHE_TTL", "300"))  # 5 minutes
         
-        # Configuration
-        self.require_auth = os.getenv("REQUIRE_AUTH", "true").lower() == "true"
-        self.validate_scopes = os.getenv("VALIDATE_SCOPES", "true").lower() == "true"
+        # Configuration - SECURITY: Force auth in production
+        env = os.getenv("ENVIRONMENT", "production")
+        if env == "production":
+            self.require_auth = True  # Cannot be disabled in production
+            self.validate_scopes = True
+        else:
+            # Development only - still defaults to true
+            self.require_auth = os.getenv("REQUIRE_AUTH", "true").lower() == "true"
+            self.validate_scopes = os.getenv("VALIDATE_SCOPES", "true").lower() == "true"
+        
+        self._log_security_config(env)
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -64,9 +72,19 @@ class MSAAuthMiddleware(BaseHTTPMiddleware):
             request.state.user = None
             return await call_next(request)
         
-        # Skip auth if disabled (development only)
+        # SECURITY: No auth bypass in production
         if not self.require_auth:
-            request.state.user = self._get_default_user()
+            env = os.getenv("ENVIRONMENT", "production")
+            if env == "production":
+                logger.critical("SECURITY: Auth bypass attempted in production!")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Security configuration error"
+                )
+            
+            # Development only - log warning
+            logger.warning("⚠️  AUTH BYPASSED - Development mode only!")
+            request.state.user = self._get_default_dev_user()
             return await call_next(request)
         
         try:
@@ -139,7 +157,7 @@ class MSAAuthMiddleware(BaseHTTPMiddleware):
         cache_key = token[:20]  # Use first 20 chars as key
         if cache_key in self._token_cache:
             user_context, expires_at = self._token_cache[cache_key]
-            if datetime.utcnow() < expires_at:
+            if datetime.now(timezone.utc) < expires_at:
                 logger.debug(f"Cache hit for user {user_context.user_id}")
                 return user_context
             else:
@@ -150,7 +168,7 @@ class MSAAuthMiddleware(BaseHTTPMiddleware):
             user_context = await self.iam_integration.validate_jwt_enhanced(token)
             
             # Cache the result
-            expires_at = datetime.utcnow() + timedelta(seconds=self.cache_ttl)
+            expires_at = datetime.now(timezone.utc) + timedelta(seconds=self.cache_ttl)
             self._token_cache[cache_key] = (user_context, expires_at)
             
             # Clean old cache entries periodically
@@ -161,11 +179,11 @@ class MSAAuthMiddleware(BaseHTTPMiddleware):
             
         except ValueError as e:
             logger.warning(f"Token validation failed: {e}")
-            return None
+            raise  # Re-raise - don't hide validation errors
     
     def _clean_cache(self):
         """Remove expired cache entries"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expired_keys = [
             key for key, (_, expires_at) in self._token_cache.items()
             if expires_at < now
@@ -227,24 +245,36 @@ class MSAAuthMiddleware(BaseHTTPMiddleware):
         
         return None
     
-    def _get_default_user(self) -> UserContext:
-        """Get default user for development"""
+    def _get_default_dev_user(self) -> UserContext:
+        """Get LIMITED default user for development ONLY"""
+        # SECURITY: No admin privileges in default user
         return UserContext(
-            user_id="dev-user",
-            username="developer",
+            user_id="dev-user-limited",
+            username="dev_readonly",
             email="dev@example.com",
-            roles=["admin"],
+            roles=["viewer"],  # CHANGED: Only viewer role
             metadata={
                 "scopes": [
-                    IAMScope.SYSTEM_ADMIN,
-                    IAMScope.ONTOLOGIES_ADMIN,
-                    IAMScope.SCHEMAS_WRITE,
-                    IAMScope.BRANCHES_WRITE,
-                    IAMScope.PROPOSALS_APPROVE
+                    IAMScope.SCHEMAS_READ,    # Read only
+                    IAMScope.BRANCHES_READ,   # Read only
+                    IAMScope.PROPOSALS_READ   # Read only
                 ],
-                "auth_method": "dev-bypass"
+                "auth_method": "dev-bypass-limited",
+                "warning": "LIMITED DEVELOPMENT USER - NO WRITE ACCESS"
             }
         )
+    
+    def _log_security_config(self, env: str):
+        """Log security configuration for audit"""
+        logger.info(f"Auth middleware initialized - Environment: {env}")
+        logger.info(f"Auth required: {self.require_auth}")
+        logger.info(f"Scope validation: {self.validate_scopes}")
+        
+        if not self.require_auth and env != "development":
+            logger.warning("⚠️  Authentication disabled in non-development environment!")
+        
+        if env == "production" and not self.require_auth:
+            raise RuntimeError("SECURITY: Cannot disable auth in production")
 
 
 async def get_current_user(request: Request) -> UserContext:

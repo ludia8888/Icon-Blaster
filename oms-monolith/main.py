@@ -23,7 +23,7 @@ from core.history import HistoryService
 from database.simple_terminus_client import SimpleTerminusDBClient
 
 # Event System
-from core.event_publisher.enhanced_event_service import EnhancedEventService
+from core.event_publisher import get_event_publisher, EnhancedEventService
 from shared.events import EventPublisher
 
 # Cache
@@ -42,7 +42,7 @@ class ServiceContainer:
     def __init__(self):
         self.db_client = None
         self.cache = None
-        self.event_publisher = EventPublisher()
+        self.event_publisher = None
         
         # Core Services
         self.schema_service = None
@@ -65,11 +65,17 @@ class ServiceContainer:
             )
             
             # DB 연결
-            connected = await self.db_client.connect()
+            connected = await self.db_client.connect(timeout=30)
             if not connected:
                 logger.error("Failed to connect to TerminusDB")
             else:
                 logger.info("✅ Connected to TerminusDB successfully")
+            
+            # Initialize event publisher
+            self.event_publisher = get_event_publisher()
+            if hasattr(self.event_publisher, 'connect'):
+                await self.event_publisher.connect(timeout=30)
+                logger.info("✅ Event publisher connected")
             
             # 수정된 Schema Service 사용
             self.schema_service = SchemaService(
@@ -95,6 +101,9 @@ class ServiceContainer:
         """모든 서비스 정리"""
         logger.info("Shutting down services...")
         
+        if self.event_publisher and hasattr(self.event_publisher, 'close'):
+            await self.event_publisher.close()
+            
         if self.db_client:
             await self.db_client.disconnect()
         
@@ -407,3 +416,21 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+
+# LIFE-CRITICAL STARTUP TIMEOUT PROTECTION
+import signal
+import sys
+
+def startup_timeout_handler(signum, frame):
+    """Handle startup timeout - prevent infinite hangs during service start"""
+    print("FATAL: Service startup timed out after 60 seconds")
+    print("This indicates a deadlock or infinite loop that could be fatal in production")
+    sys.exit(1)
+
+# Set startup timeout - service MUST start within 60 seconds
+signal.signal(signal.SIGALRM, startup_timeout_handler)
+signal.alarm(60)
+
+def startup_completed():
+    """Call this when startup is complete to disable timeout"""
+    signal.alarm(0)  # Disable startup timeout
