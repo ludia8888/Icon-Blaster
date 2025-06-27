@@ -10,7 +10,7 @@ from typing import AsyncGenerator, Optional
 import strawberry
 from strawberry.types import Info
 
-from api.gateway.auth import User
+from core.auth import UserContext as User
 
 from .realtime_publisher import realtime_publisher
 from .schema import (
@@ -188,15 +188,15 @@ class Subscription:
                     )
 
                 # 이벤트 스트리밍
-                try:
-                    while True:
+                while True:
+                    try:
                         event = await asyncio.wait_for(event_queue.get(), timeout=30.0)
                         yield event
-                except asyncio.TimeoutError:
-                    continue
-                except asyncio.CancelledError:
-                    logger.info(f"Branch changes subscription cancelled for user {user.user_id}")
-                    break
+                    except asyncio.TimeoutError:
+                        continue
+                    except asyncio.CancelledError:
+                        logger.info(f"Branch changes subscription cancelled for user {user.user_id}")
+                        break
 
         except Exception as e:
             logger.error(f"Error in branch changes subscription: {e}")
@@ -268,15 +268,15 @@ class Subscription:
                     )
 
                 # 이벤트 스트리밍
-                try:
-                    while True:
+                while True:
+                    try:
                         event = await asyncio.wait_for(event_queue.get(), timeout=30.0)
                         yield event
-                except asyncio.TimeoutError:
-                    continue
-                except asyncio.CancelledError:
-                    logger.info(f"Proposal updates subscription cancelled for user {user.user_id}")
-                    break
+                    except asyncio.TimeoutError:
+                        continue
+                    except asyncio.CancelledError:
+                        logger.info(f"Proposal updates subscription cancelled for user {user.user_id}")
+                        break
 
         except Exception as e:
             logger.error(f"Error in proposal updates subscription: {e}")
@@ -350,15 +350,15 @@ class Subscription:
                     )
 
                 # 이벤트 스트리밍
-                try:
-                    while True:
+                while True:
+                    try:
                         event = await asyncio.wait_for(event_queue.get(), timeout=30.0)
                         yield event
-                except asyncio.TimeoutError:
-                    continue
-                except asyncio.CancelledError:
-                    logger.info(f"Action progress subscription cancelled for user {user.user_id}")
-                    break
+                    except asyncio.TimeoutError:
+                        continue
+                    except asyncio.CancelledError:
+                        logger.info(f"Action progress subscription cancelled for user {user.user_id}")
+                        break
 
         except Exception as e:
             logger.error(f"Error in action progress subscription: {e}")

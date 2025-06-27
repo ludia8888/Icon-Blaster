@@ -43,7 +43,7 @@ class UserContext(BaseModel):
     """IdP에서 전달받은 사용자 컨텍스트"""
     user_id: str
     username: str
-    email: str
+    email: Optional[str] = None
     roles: List[str] = []
     permissions: List[str] = []
     teams: List[str] = []

@@ -13,6 +13,7 @@ from typing import Any, Dict
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from shared.events import cleanup_nats, get_nats_client
+from core.event_consumer.funnel_indexing_handler import get_funnel_indexing_handler
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -25,6 +26,7 @@ class EventSubscriber:
     def __init__(self):
         self.running = False
         self.nats_client = None
+        self.funnel_handler = get_funnel_indexing_handler()
 
     async def start(self):
         """구독자 시작"""
@@ -123,6 +125,21 @@ class EventSubscriber:
             self._handle_validation_completed,
             durable_name="validation-audit-consumer",
             queue_group="validation-consumers"
+        )
+
+        # Funnel Service 인덱싱 이벤트 구독
+        await self.nats_client.subscribe(
+            "funnel.indexing.completed",
+            self._handle_funnel_indexing_completed,
+            durable_name="funnel-indexing-consumer",
+            queue_group="indexing-consumers"
+        )
+
+        await self.nats_client.subscribe(
+            "funnel.indexing.failed",
+            self._handle_funnel_indexing_completed,  # Same handler for both
+            durable_name="funnel-indexing-failed-consumer",
+            queue_group="indexing-consumers"
         )
 
         logger.info("All event subscriptions configured")
@@ -282,6 +299,23 @@ class EventSubscriber:
         """검증 통계 업데이트"""
         # TODO: 검증 통계 업데이트
         logger.debug(f"Updating validation stats: {event_data}")
+
+    async def _handle_funnel_indexing_completed(self, event_data: Dict[str, Any]):
+        """Funnel Service 인덱싱 완료/실패 이벤트 처리"""
+        try:
+            logger.info(f"Funnel indexing event received: {event_data}")
+            
+            # Delegate to specialized handler
+            success = await self.funnel_handler.handle_indexing_completed(event_data)
+            
+            if success:
+                logger.info(f"Successfully processed indexing event: {event_data.get('id')}")
+            else:
+                logger.error(f"Failed to process indexing event: {event_data.get('id')}")
+            
+        except Exception as e:
+            logger.error(f"Error handling funnel indexing event: {e}")
+            # Don't re-raise - we don't want to break the entire event processing
 
 
 async def main():

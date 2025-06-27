@@ -14,7 +14,9 @@ from core.api.schema_generator import (
     openapi_generator
 )
 from core.schema.registry import schema_registry
-from api.gateway.auth import get_current_user
+# Use real auth from middleware in production
+# For testing, this can be overridden with dependency injection
+from middleware.auth_middleware import get_current_user
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

@@ -15,7 +15,9 @@ from models.semantic_types import (
     ValidationRule,
     semantic_type_registry
 )
-from api.gateway.auth import get_current_user
+# Use real auth from middleware in production
+# For testing, this can be overridden with dependency injection
+from middleware.auth_middleware import get_current_user
 from core.events.publisher import EventPublisher
 from utils.logger import get_logger
 

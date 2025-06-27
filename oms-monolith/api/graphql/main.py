@@ -24,7 +24,8 @@ from middleware.rbac_middleware import create_rbac_middleware
 # shared 모듈 import를 위한 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from api.gateway.auth import User, get_current_user_optional, GraphQLWebSocketAuth, AuthenticationManager
+from api.graphql.auth import get_current_user_optional, GraphQLWebSocketAuth, AuthenticationManager
+from core.auth import UserContext
 
 from .realtime_publisher import realtime_publisher
 from .resolvers import schema
@@ -116,7 +117,7 @@ app.middleware("http")(rbac_middleware)
 
 async def get_context(
     request: Request,
-    current_user: User = Depends(get_current_user_optional)
+    current_user: UserContext = Depends(get_current_user_optional)
 ):
     """GraphQL 컨텍스트 생성"""
     return {
