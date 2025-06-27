@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for OMS
+  oms-postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: oms_user
+      POSTGRES_PASSWORD: oms_password
+      POSTGRES_DB: oms_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - oms_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oms_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL for User Service
+  user-postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user_service
+      POSTGRES_PASSWORD: user_password
+      POSTGRES_DB: userdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - user_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis (shared)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # User Service (IAM)
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://user_service:user_password@user-postgres:5432/userdb
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: shared-jwt-secret-for-integration-testing
+      JWT_ISSUER: iam.company
+      JWT_AUDIENCE: oms
+      OMS_SERVICE_SECRET: oms-integration-secret
+      PORT: 8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      user-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./user-service:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+
+  # OMS Monolith
+  oms-monolith:
+    build:
+      context: ./oms-monolith
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://oms_user:oms_password@oms-postgres:5432/oms_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: shared-jwt-secret-for-integration-testing
+      JWT_ISSUER: iam.company
+      JWT_AUDIENCE: oms
+      IAM_SERVICE_URL: http://user-service:8001
+      IAM_SERVICE_ID: oms-service
+      IAM_SERVICE_SECRET: oms-integration-secret
+      USE_MSA_AUTH: "true"
+      USE_GRADUAL_MIGRATION: "true"
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      oms-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    volumes:
+      - ./oms-monolith:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  oms_postgres_data:
+  user_postgres_data:

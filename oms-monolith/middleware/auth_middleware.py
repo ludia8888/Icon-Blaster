@@ -2,6 +2,7 @@
 Enhanced Authentication Middleware
 User Service와 연동하여 JWT 토큰 검증 및 사용자 컨텍스트 주입
 """
+import os
 from typing import Optional, Callable
 from fastapi import Request, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -10,6 +11,7 @@ from starlette.responses import Response
 
 from core.auth import get_permission_checker, UserContext
 from core.integrations.user_service_client import validate_jwt_token, UserServiceError
+from core.iam.iam_integration import get_iam_integration
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -34,18 +36,24 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/metrics", 
             "/docs",
             "/openapi.json",
-            "/redoc",
-            "/"
+            "/redoc"
         ]
         self.permission_checker = get_permission_checker()
         # 토큰 캐시 (실제 환경에서는 Redis 사용 권장)
         self._token_cache = {}
         self.cache_ttl = 300  # 5분
+        
+        # IAM integration for enhanced JWT validation
+        self.iam_integration = get_iam_integration()
+        self.use_enhanced_validation = os.getenv("USE_IAM_VALIDATION", "false").lower() == "true"
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # 공개 경로는 인증 스킵
-        if any(request.url.path.startswith(path) for path in self.public_paths):
+        # Check exact match for root path, startswith for others
+        if request.url.path == "/" or any(request.url.path.startswith(path) for path in self.public_paths):
             return await call_next(request)
+        
+        logger.debug(f"AuthMiddleware processing {request.url.path}")
         
         # Authorization 헤더 확인
         authorization = request.headers.get("Authorization")
@@ -75,13 +83,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 user = cached_user
                 logger.debug(f"Using cached user {user.username} for {request.url.path}")
             else:
-                # User Service를 통한 토큰 검증
-                user = await validate_jwt_token(token)
+                # Choose validation method based on configuration
+                if self.use_enhanced_validation:
+                    # Enhanced IAM validation with scope support
+                    user = await self.iam_integration.validate_jwt_enhanced(token)
+                    logger.info(f"Authenticated user {user.username} via IAM Service (with scopes) for {request.url.path}")
+                else:
+                    # Standard User Service validation
+                    user = await validate_jwt_token(token)
+                    logger.info(f"Authenticated user {user.username} via User Service for {request.url.path}")
+                
                 self._cache_user(token, user)
-                logger.info(f"Authenticated user {user.username} via User Service for {request.url.path}")
             
             # 사용자 컨텍스트를 request.state에 저장
+            logger.debug(f"About to set user in request.state: {user}")
             request.state.user = user
+            logger.debug(f"User {user.username} set in request.state for {request.url.path}")
+            logger.debug(f"Verify - request.state.user is now: {getattr(request.state, 'user', 'NOT SET')}")
             
         except UserServiceError as e:
             logger.warning(f"User Service authentication failed for {request.url.path}: {e}")
@@ -92,8 +110,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
             )
         except Exception as e:
             logger.error(f"Unexpected authentication error for {request.url.path}: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return Response(
-                content='{"detail": "Internal authentication error"}',
+                content=f'{{"detail": "Internal authentication error: {str(e)}"}}',
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         

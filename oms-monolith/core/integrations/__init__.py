@@ -1,3 +1,1 @@
-"""
-Integration modules for external services
-"""
+# Core integrations package
