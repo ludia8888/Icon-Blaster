@@ -12,9 +12,10 @@ from models.audit_events import (
     AuditEventV1, AuditAction, ActorInfo, TargetInfo, 
     ChangeDetails, ComplianceInfo, create_audit_event
 )
-# from core.event_publisher.outbox_service import OutboxService  # TODO: Implement outbox pattern
+from core.event_publisher.outbox_service import OutboxService, get_outbox_service
 from core.auth import UserContext
 from utils.logger import get_logger
+from utils.safe_json_encoder import safe_dict_conversion
 
 logger = get_logger(__name__)
 
@@ -25,8 +26,8 @@ class AuditPublisher:
     Dual-write: Database storage + Event stream for guaranteed delivery
     """
     
-    def __init__(self, outbox_service: Optional[Any] = None):
-        self.outbox_service = outbox_service  # or OutboxService() when implemented
+    def __init__(self, outbox_service: Optional[OutboxService] = None):
+        self.outbox_service = outbox_service
         self.enabled = True  # Can be disabled for testing
         self.pii_fields = self._load_pii_fields()
         self._audit_service = None  # Lazy loaded to avoid circular imports
@@ -75,6 +76,9 @@ class AuditPublisher:
         
         try:
             # Create actor info from user context
+            # Make metadata safe for JSON serialization
+            safe_metadata = safe_dict_conversion(user.metadata) if hasattr(user, 'metadata') else {}
+            
             actor = ActorInfo(
                 id=user.user_id,
                 username=user.username,
@@ -92,7 +96,9 @@ class AuditPublisher:
             if changes and changes.new_values:
                 changes.new_values = self._mask_pii(changes.new_values)
             
-            # Create audit event
+            # Create audit event with safe metadata
+            safe_event_metadata = safe_dict_conversion(metadata) if metadata else {}
+            
             audit_event = AuditEventV1(
                 id=str(uuid4()),
                 action=action,
@@ -105,7 +111,7 @@ class AuditPublisher:
                 duration_ms=duration_ms,
                 request_id=request_id,
                 time=datetime.now(timezone.utc),
-                metadata=metadata or {}
+                metadata=safe_event_metadata
             )
             
             # Dual-write: Store in database and publish to event stream
@@ -121,6 +127,9 @@ class AuditPublisher:
             
             # 2. Publish to event stream via Outbox (for real-time processing)
             try:
+                if not self.outbox_service:
+                    self.outbox_service = await get_outbox_service()
+                
                 cloudevent = audit_event.to_cloudevent()
                 await self.outbox_service.publish_event(
                     event_type="audit.activity.v1",
@@ -156,6 +165,9 @@ class AuditPublisher:
             return False
         
         try:
+            if not self.outbox_service:
+                self.outbox_service = await get_outbox_service()
+            
             # Publish to event stream via Outbox
             cloudevent = audit_event.to_cloudevent()
             await self.outbox_service.publish_event(
@@ -173,17 +185,29 @@ class AuditPublisher:
             logger.error(f"Failed to publish audit event {audit_event.id} to stream: {e}")
             return False
     
-    def _mask_pii(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Mask PII fields in data"""
-        masked_data = data.copy()
-        for key, value in data.items():
-            if key.lower() in self.pii_fields:
-                masked_data[key] = "***MASKED***"
-            elif isinstance(value, dict):
-                masked_data[key] = self._mask_pii(value)
-            elif isinstance(value, list) and value and isinstance(value[0], dict):
-                masked_data[key] = [self._mask_pii(item) for item in value]
-        return masked_data
+    def _mask_pii(self, data: Dict[str, Any], _seen=None) -> Dict[str, Any]:
+        """Mask PII fields in data with circular reference handling"""
+        if _seen is None:
+            _seen = set()
+        
+        # Handle circular references
+        data_id = id(data)
+        if data_id in _seen:
+            return {"***CIRCULAR_REFERENCE***": True}
+        _seen.add(data_id)
+        
+        try:
+            masked_data = data.copy()
+            for key, value in data.items():
+                if key.lower() in self.pii_fields:
+                    masked_data[key] = "***MASKED***"
+                elif isinstance(value, dict):
+                    masked_data[key] = self._mask_pii(value, _seen)
+                elif isinstance(value, list) and value and isinstance(value[0], dict):
+                    masked_data[key] = [self._mask_pii(item, _seen) for item in value]
+            return masked_data
+        finally:
+            _seen.discard(data_id)
     
     async def audit_schema_change(
         self,

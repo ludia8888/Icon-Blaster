@@ -3,7 +3,7 @@ Shared IAM Contracts and DTOs
 This module defines the interface between OMS and IAM service
 No circular dependencies - only data structures
 """
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional, Set, Any
 from enum import Enum
 from dataclasses import dataclass
 from pydantic import BaseModel, Field
@@ -54,7 +54,7 @@ class TokenValidationResponse(BaseModel):
     roles: List[str] = Field(default_factory=list, description="User's roles")
     tenant_id: Optional[str] = Field(None, description="Tenant ID")
     expires_at: Optional[str] = Field(None, description="Token expiration time")
-    metadata: Dict[str, any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
     error: Optional[str] = Field(None, description="Error message if validation failed")
 
 

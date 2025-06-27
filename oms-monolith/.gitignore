@@ -165,3 +165,24 @@ ehthumbs_vista.db
 *.bak
 .env.local
 .env.*.local
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak*
+backup_*/
+
+# PID files
+*_pid.txt
+*.pid
+
+# CSV reports
+*.csv
+
+# Log files
+
+# Development reports
+docs/archive/

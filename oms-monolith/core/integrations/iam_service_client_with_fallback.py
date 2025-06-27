@@ -5,7 +5,7 @@ MSA 통합 + 로컬 JWT 검증 fallback
 import os
 import asyncio
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 import httpx
 import jwt
 from jwt import PyJWKClient
@@ -23,6 +23,22 @@ from utils.logger import get_logger
 from prometheus_client import Counter, Histogram, Gauge
 
 logger = get_logger(__name__)
+
+
+# Custom exceptions for explicit error handling
+class ServiceUnavailableError(Exception):
+    """Raised when service is unavailable (circuit breaker open, network down)"""
+    pass
+
+
+class ServiceTimeoutError(Exception):
+    """Raised when service request times out"""
+    pass
+
+
+class IAMServiceError(Exception):
+    """General IAM service error"""
+    pass
 
 # Prometheus metrics
 iam_fallback_counter = Counter(
@@ -45,7 +61,15 @@ class LocalJWTValidator:
     """Local JWT validation fallback"""
     
     def __init__(self):
-        self.secret_key = os.getenv("JWT_SECRET", "your-secret-key")
+        # FIXED: Fail fast on missing JWT_SECRET
+        secret = os.getenv("JWT_SECRET")
+        if not secret:
+            raise ValueError("SECURITY: JWT_SECRET environment variable is required")
+        
+        # FIXED: Validate secret security
+        self._validate_secret_security(secret)
+        
+        self.secret_key = secret
         self.expected_issuer = os.getenv("JWT_ISSUER", "iam.company")
         self.expected_audience = os.getenv("JWT_AUDIENCE", "oms")
         self.jwks_client = None
@@ -57,6 +81,66 @@ class LocalJWTValidator:
                 self.jwks_client = PyJWKClient(jwks_url)
             except Exception as e:
                 logger.warning(f"Failed to initialize JWKS client: {e}")
+    
+    def _validate_secret_security(self, secret):
+        """Comprehensive but not overly strict secret validation"""
+        
+        # Length check
+        if len(secret) < 32:
+            raise ValueError("SECURITY: JWT_SECRET must be at least 32 characters")
+        
+        # Common weak secrets (case insensitive)
+        weak_secrets = {
+            "your-secret-key",
+            "your-super-secret-key-change-in-production",
+            "change-in-production",
+            "secret", "default", "password", "123456789",
+            "admin", "test", "demo"
+        }
+        
+        if secret.lower() in {s.lower() for s in weak_secrets}:
+            raise ValueError("SECURITY: JWT_SECRET cannot be a common weak value")
+        
+        # Check for obviously dangerous patterns (injection attempts)
+        dangerous_patterns = ["drop", "delete", "script", "<script", "rm -rf", "../"]
+        if any(pattern in secret.lower() for pattern in dangerous_patterns):
+            raise ValueError("SECURITY: JWT_SECRET contains suspicious patterns")
+        
+        # FIXED: More reasonable entropy check
+        if self._has_critically_low_entropy(secret):
+            raise ValueError("SECURITY: JWT_SECRET has insufficient entropy")
+    
+    def _has_critically_low_entropy(self, secret):
+        """Check for CRITICALLY low entropy only - not overly strict"""
+        
+        # Check 1: Too few unique characters (very basic check)
+        unique_chars = len(set(secret))
+        if unique_chars < 6:  # Reduced from 8 to 6
+            return True
+        
+        # Check 2: All same character
+        if len(set(secret)) == 1:
+            return True
+        
+        # Check 3: Only simple repeating patterns (like "abcabcabc...")
+        if len(secret) >= 9:  # Only check longer secrets
+            # Check for very simple patterns (2-4 chars repeating)
+            for pattern_length in range(2, 5):  # Reduced range
+                if len(secret) % pattern_length == 0:  # Only check if divisible
+                    pattern = secret[:pattern_length]
+                    expected_repetitions = len(secret) // pattern_length
+                    repeated = pattern * expected_repetitions
+                    
+                    if secret == repeated:
+                        return True  # Found simple repetition like "abababab"
+        
+        # Check 4: All digits or all letters (but allow mixed)
+        if secret.isdigit() or secret.isalpha():
+            if len(secret) < 40:  # Allow long all-letter passphrases
+                return True
+        
+        # If we get here, entropy is acceptable
+        return False
     
     async def validate_token(self, token: str) -> TokenValidationResponse:
         """Validate JWT token locally"""
@@ -91,6 +175,13 @@ class LocalJWTValidator:
             )
             
             # Extract user info
+            # Build metadata dict with only non-None values
+            metadata = {"validation_method": "local_fallback"}
+            if payload.get("auth_time") is not None:
+                metadata["auth_time"] = payload.get("auth_time")
+            if payload.get("jti") is not None:
+                metadata["jti"] = payload.get("jti")
+            
             return TokenValidationResponse(
                 valid=True,
                 user_id=payload.get("sub"),
@@ -100,11 +191,7 @@ class LocalJWTValidator:
                 roles=payload.get("roles", []),
                 tenant_id=payload.get("tenant_id"),
                 expires_at=datetime.fromtimestamp(payload.get("exp", 0)).isoformat(),
-                metadata={
-                    "auth_time": payload.get("auth_time"),
-                    "jti": payload.get("jti"),
-                    "validation_method": "local_fallback"
-                }
+                metadata=metadata
             )
             
         except jwt.ExpiredSignatureError:
@@ -153,24 +240,54 @@ class IAMServiceClientWithFallback:
         self._circuit_reset_time = None
         self._circuit_timeout = 60  # seconds
     
-    def _check_circuit_breaker(self) -> bool:
+    async def _check_circuit_breaker(self) -> bool:
         """Check if circuit breaker should be open"""
         if self._circuit_open:
-            if self._circuit_reset_time and datetime.utcnow() > self._circuit_reset_time:
-                # Try to close circuit
-                self._circuit_open = False
-                self._circuit_failures = 0
-                logger.info("Circuit breaker closed, retrying IAM service")
+            if self._circuit_reset_time and datetime.now(timezone.utc) > self._circuit_reset_time:
+                # FIXED: Only reset if health check passes
+                logger.info("Circuit breaker reset time reached, performing health check...")
+                
+                is_healthy = await self._perform_health_check()
+                
+                if is_healthy:
+                    self._circuit_open = False
+                    self._circuit_failures = 0
+                    logger.info("Circuit breaker closed after successful health check")
+                    return False
+                else:
+                    # Service still unhealthy - extend reset time
+                    self._circuit_reset_time = datetime.now(timezone.utc) + timedelta(seconds=self._circuit_timeout)
+                    logger.warning("Health check failed, circuit remains open")
+                    return True
             else:
                 return True
         return False
+    
+    async def _perform_health_check(self) -> bool:
+        """Perform health check before resetting circuit breaker"""
+        try:
+            logger.debug("Performing health check on IAM service")
+            
+            # Try a lightweight health check endpoint
+            response = await self._client.get("/health", timeout=2)
+            
+            if response.status_code == 200:
+                logger.debug("Health check passed")
+                return True
+            else:
+                logger.debug(f"Health check failed with status {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.debug(f"Health check failed: {e}")
+            return False
     
     def _record_failure(self):
         """Record a failure for circuit breaker"""
         self._circuit_failures += 1
         if self._circuit_failures >= self._circuit_threshold:
             self._circuit_open = True
-            self._circuit_reset_time = datetime.utcnow() + timedelta(seconds=self._circuit_timeout)
+            self._circuit_reset_time = datetime.now(timezone.utc) + timedelta(seconds=self._circuit_timeout)
             logger.warning(f"Circuit breaker opened due to {self._circuit_failures} failures")
             iam_service_health.set(0)
     
@@ -187,7 +304,7 @@ class IAMServiceClientWithFallback:
         2. Fallback to local validation if service fails
         """
         # Check circuit breaker
-        if self._check_circuit_breaker():
+        if await self._check_circuit_breaker():
             logger.info("Circuit breaker open, using local validation")
             iam_fallback_counter.labels(reason="circuit_breaker").inc()
             with iam_validation_duration.labels(method="local").time():
@@ -237,12 +354,17 @@ class IAMServiceClientWithFallback:
     
     async def get_user_info(self, user_id: str) -> Optional[UserInfoResponse]:
         """
-        Get user info - no fallback available for this
-        Returns None if service is unavailable
+        Get user info with explicit error handling
+        Returns None only when user is not found (404)
+        Raises exceptions for all other error cases
         """
-        if self._check_circuit_breaker():
-            logger.warning("Circuit breaker open, cannot get user info")
-            return None
+        # Input validation
+        if not user_id or not isinstance(user_id, str):
+            raise ValueError(f"Invalid user_id: {user_id}")
+        
+        if await self._check_circuit_breaker():
+            logger.warning(f"Circuit breaker open, cannot get user info for {user_id}")
+            raise ServiceUnavailableError("IAM service circuit breaker is open")
         
         try:
             response = await self._client.post(
@@ -251,16 +373,37 @@ class IAMServiceClientWithFallback:
                 timeout=self.timeout
             )
             
+            if response.status_code == 404:
+                # User not found is not an error - return None as documented
+                logger.info(f"User {user_id} not found")
+                return None
+                
             if response.status_code == 200:
                 self._record_success()
                 return UserInfoResponse(**response.json())
             
-            return None
+            # Other status codes are errors
+            logger.error(f"IAM service returned {response.status_code} for user {user_id}")
+            raise IAMServiceError(f"IAM service returned status {response.status_code}")
+            
+        except httpx.TimeoutError as e:
+            logger.warning(f"Timeout getting user info for {user_id}: {e}")
+            self._record_failure()
+            raise ServiceTimeoutError(f"IAM service timeout after {self.timeout}s") from e
+            
+        except httpx.RequestError as e:
+            logger.error(f"Network error getting user info for {user_id}: {e}")
+            self._record_failure()
+            raise ServiceUnavailableError(f"Cannot reach IAM service: {e}") from e
+            
+        except (ValueError, IAMServiceError, ServiceTimeoutError, ServiceUnavailableError):
+            # Re-raise our explicit exceptions
+            raise
             
         except Exception as e:
-            logger.error(f"Failed to get user info: {e}")
+            logger.error(f"Unexpected error getting user info for {user_id}: {e}", exc_info=True)
             self._record_failure()
-            return None
+            raise IAMServiceError(f"Unexpected IAM service error: {type(e).__name__}") from e
     
     def create_user_context(self, validation_response: TokenValidationResponse) -> UserContext:
         """Create UserContext from validation response"""
@@ -281,7 +424,15 @@ class IAMServiceClientWithFallback:
         )
     
     async def health_check(self) -> Dict[str, Any]:
-        """Check IAM service health"""
+        """Check IAM service health with explicit error tracking"""
+        health_status = {
+            "status": "unhealthy",
+            "circuit_breaker": "open" if self._circuit_open else "closed",
+            "failures": self._circuit_failures,
+            "fallback_available": True,
+            "last_error": None
+        }
+        
         try:
             response = await self._client.get("/health", timeout=2)
             if response.status_code == 200:
@@ -289,17 +440,26 @@ class IAMServiceClientWithFallback:
                 return {
                     "status": "healthy",
                     "circuit_breaker": "closed",
-                    "failures": self._circuit_failures
+                    "failures": self._circuit_failures,
+                    "response_time_ms": response.elapsed.total_seconds() * 1000
                 }
-        except Exception:
-            pass
+            else:
+                logger.warning(f"Health check returned status {response.status_code}")
+                health_status["last_error"] = f"HTTP {response.status_code}"
+                
+        except httpx.TimeoutError as e:
+            logger.debug(f"Health check timeout: {e}")
+            health_status["last_error"] = "Timeout"
+            
+        except httpx.RequestError as e:
+            logger.debug(f"Health check network error: {e}")
+            health_status["last_error"] = f"Network error: {type(e).__name__}"
+            
+        except Exception as e:
+            logger.error(f"Unexpected health check error: {e}", exc_info=True)
+            health_status["last_error"] = f"Unexpected error: {type(e).__name__}"
         
-        return {
-            "status": "unhealthy",
-            "circuit_breaker": "open" if self._circuit_open else "closed",
-            "failures": self._circuit_failures,
-            "fallback_available": True
-        }
+        return health_status
     
     async def close(self):
         """Close client connections"""

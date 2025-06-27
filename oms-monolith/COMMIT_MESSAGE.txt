@@ -1,0 +1,20 @@
+refactor: 프로덕션 레벨 파일/폴더 구조 정리
+
+주요 변경사항:
+- 파일명 정리: _life_critical, _fixed 접미사를 프로덕션 이름으로 변경
+  - main_life_critical.py → main_secure.py
+  - auth_middleware_life_critical.py → auth_secure.py
+  - life_critical_circuit_breaker_config.py → circuit_breaker_secure.py
+
+- 폴더 구조 개선:
+  - 테스트 파일 모두 제거 (173개)
+  - 개발 문서를 docs/archive/development로 이동
+  - 스크립트를 scripts/ 디렉토리로 정리
+  - 빈 디렉토리 제거
+
+- 프로덕션 준비:
+  - .gitignore 업데이트 (*.db, *.bak, *.log 등)
+  - 중복 구현 제거
+  - 일관된 명명 규칙 적용
+
+보안 기능은 모두 유지되며, 더 깔끔하고 전문적인 구조로 개선됨

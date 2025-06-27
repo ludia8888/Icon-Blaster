@@ -47,6 +47,8 @@ class UserContext(BaseModel):
     roles: List[str] = []
     permissions: List[str] = []
     teams: List[str] = []
+    tenant_id: Optional[str] = None  # For multi-tenant support (needed for audit events)
+    metadata: Dict[str, Any] = {}  # Additional user metadata
     token_exp: Optional[int] = None
     
     @property
@@ -55,6 +57,15 @@ class UserContext(BaseModel):
         if not self.token_exp:
             return True
         return datetime.now(timezone.utc).timestamp() < self.token_exp
+    
+    @property
+    def is_service_account(self) -> bool:
+        """Check if user is a service account (needed for audit events)"""
+        return "service_account" in self.roles
+    
+    def has_role(self, role: str) -> bool:
+        """Check if user has specific role"""
+        return role in self.roles
 
 
 class ResourcePermissionChecker:
