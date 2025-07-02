@@ -5,6 +5,7 @@ from typing import Dict, Any, List, Optional
 import httpx
 
 from core.events.unified_publisher import EventPublisherBackend, PublisherConfig
+from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client, HTTPClientConfig
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class HTTPEventBackend(EventPublisherBackend):
     def __init__(self, config: PublisherConfig):
         self.config = config
         self.endpoint = config.endpoint or "http://localhost:8000"
-        self.client: Optional[httpx.AsyncClient] = None
+        self.client: Optional[UnifiedHTTPClient] = None
     
     async def connect(self) -> None:
         """Create HTTP client"""
@@ -23,17 +24,18 @@ class HTTPEventBackend(EventPublisherBackend):
         if self.config.api_key:
             headers["X-API-Key"] = self.config.api_key
         
-        self.client = httpx.AsyncClient(
+        http_config = HTTPClientConfig(
             base_url=self.endpoint,
-            headers=headers,
-            timeout=self.config.timeout
+            timeout=self.config.timeout,
+            headers=headers
         )
+        self.client = UnifiedHTTPClient(http_config)
         logger.info(f"Connected to HTTP endpoint: {self.endpoint}")
     
     async def disconnect(self) -> None:
         """Close HTTP client"""
         if self.client:
-            await self.client.aclose()
+            await self.client.close()
             self.client = None
             logger.info("Disconnected from HTTP endpoint")
     

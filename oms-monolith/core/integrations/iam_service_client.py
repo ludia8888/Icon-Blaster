@@ -27,6 +27,7 @@ from shared.iam_contracts import (
 )
 from core.auth import UserContext
 from utils.logger import get_logger
+from database.clients.unified_http_client import UnifiedHTTPClient, HTTPClientConfig
 import redis.asyncio as redis
 
 logger = get_logger(__name__)
@@ -42,15 +43,16 @@ class IAMServiceClient:
         self.config = config or self._load_config()
         
         # HTTP client with connection pooling
-        self._client = httpx.AsyncClient(
+        http_config = HTTPClientConfig(
             base_url=self.config.iam_service_url,
             timeout=self.config.timeout,
-            verify=self.config.verify_ssl,
+            verify_ssl=self.config.verify_ssl,
             headers={
                 "Content-Type": "application/json",
                 "X-Service-ID": self.config.service_id
             }
         )
+        self._client = UnifiedHTTPClient(http_config)
         
         # JWKS client for key rotation
         self._jwks_client = None
@@ -130,7 +132,12 @@ class IAMServiceClient:
             json=data,
             headers=headers
         )
-        response.raise_for_status()
+        if response.status_code >= 400:
+            raise httpx.HTTPStatusError(
+                message=f"HTTP {response.status_code}",
+                request=None,
+                response=response
+            )
         return response.json()
     
     async def validate_token(self, token: str, required_scopes: Optional[List[str]] = None) -> TokenValidationResponse:
@@ -370,7 +377,7 @@ class IAMServiceClient:
     
     async def close(self):
         """Close client connections"""
-        await self._client.aclose()
+        await self._client.close()
         if self._redis_client:
             await self._redis_client.close()
     

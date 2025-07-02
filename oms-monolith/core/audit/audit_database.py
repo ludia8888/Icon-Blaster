@@ -108,119 +108,78 @@ class AuditDatabase:
             )
             
             # Define migrations
-            migrations = ["""
-                
+            migrations = [
                 # Create audit_events table
-                await db.execute("""
-                    CREATE TABLE IF NOT EXISTS audit_events (
-                        id TEXT PRIMARY KEY,
-                        created_at TIMESTAMP NOT NULL,
-                        action TEXT NOT NULL,
-                        actor_id TEXT NOT NULL,
-                        actor_username TEXT NOT NULL,
-                        actor_is_service BOOLEAN NOT NULL DEFAULT FALSE,
-                        target_resource_type TEXT NOT NULL,
-                        target_resource_id TEXT NOT NULL,
-                        target_resource_name TEXT,
-                        target_branch TEXT,
-                        success BOOLEAN NOT NULL DEFAULT TRUE,
-                        error_code TEXT,
-                        error_message TEXT,
-                        duration_ms INTEGER,
-                        request_id TEXT,
-                        correlation_id TEXT,
-                        causation_id TEXT,
-                        ip_address TEXT,
-                        user_agent TEXT,
-                        changes_json TEXT,
-                        metadata_json TEXT,
-                        tags_json TEXT,
-                        compliance_json TEXT,
-                        event_hash TEXT NOT NULL,
-                        retention_until TIMESTAMP NOT NULL,
-                        archived BOOLEAN NOT NULL DEFAULT FALSE,
-                        created_year INTEGER GENERATED ALWAYS AS (strftime('%Y', created_at)) STORED,
-                        created_month INTEGER GENERATED ALWAYS AS (strftime('%m', created_at)) STORED
-                    )
-                """)
-                
+                """
+                CREATE TABLE IF NOT EXISTS audit_events (
+                    id TEXT PRIMARY KEY,
+                    created_at TIMESTAMP NOT NULL,
+                    action TEXT NOT NULL,
+                    actor_id TEXT NOT NULL,
+                    actor_username TEXT NOT NULL,
+                    actor_is_service BOOLEAN NOT NULL DEFAULT FALSE,
+                    target_resource_type TEXT NOT NULL,
+                    target_resource_id TEXT NOT NULL,
+                    target_resource_name TEXT,
+                    target_branch TEXT,
+                    success BOOLEAN NOT NULL DEFAULT TRUE,
+                    error_code TEXT,
+                    error_message TEXT,
+                    duration_ms INTEGER,
+                    request_id TEXT,
+                    correlation_id TEXT,
+                    causation_id TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    changes_json TEXT,
+                    metadata_json TEXT,
+                    tags_json TEXT,
+                    compliance_json TEXT,
+                    event_hash TEXT NOT NULL,
+                    retention_until TIMESTAMP NOT NULL,
+                    archived BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_year INTEGER GENERATED ALWAYS AS (strftime('%Y', created_at)) STORED,
+                    created_month INTEGER GENERATED ALWAYS AS (strftime('%m', created_at)) STORED
+                )
+                """,
                 # Create performance indexes
-                await db.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_audit_created_at 
-                    ON audit_events(created_at)
-                """)
-                
-                await db.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_audit_action 
-                    ON audit_events(action)
-                """)
-                
-                await db.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_audit_actor 
-                    ON audit_events(actor_id, created_at)
-                """)
-                
-                await db.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_audit_target 
-                    ON audit_events(target_resource_type, target_resource_id)
-                """)
-                
-                await db.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_audit_branch 
-                    ON audit_events(target_branch, created_at) 
-                    WHERE target_branch IS NOT NULL
-                """)
-                
-                await db.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_audit_request 
-                    ON audit_events(request_id) 
-                    WHERE request_id IS NOT NULL
-                """)
-                
-                await db.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_audit_correlation 
-                    ON audit_events(correlation_id) 
-                    WHERE correlation_id IS NOT NULL
-                """)
-                
-                await db.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_audit_retention 
-                    ON audit_events(retention_until, archived)
-                """)
-                
-                # Partitioning support index for large datasets
-                await db.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_audit_partition 
-                    ON audit_events(created_year, created_month, created_at)
-                """)
-                
+                "CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_events(created_at)",
+                "CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_events(action)",
+                "CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_events(actor_id, created_at)",
+                "CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_events(target_resource_type, target_resource_id)",
+                "CREATE INDEX IF NOT EXISTS idx_audit_branch ON audit_events(target_branch, created_at) WHERE target_branch IS NOT NULL",
+                "CREATE INDEX IF NOT EXISTS idx_audit_request ON audit_events(request_id) WHERE request_id IS NOT NULL",
+                "CREATE INDEX IF NOT EXISTS idx_audit_correlation ON audit_events(correlation_id) WHERE correlation_id IS NOT NULL",
+                "CREATE INDEX IF NOT EXISTS idx_audit_retention ON audit_events(retention_until, archived)",
+                "CREATE INDEX IF NOT EXISTS idx_audit_partition ON audit_events(created_year, created_month, created_at)",
                 # Create audit_integrity table for tamper detection
-                await db.execute("""
-                    CREATE TABLE IF NOT EXISTS audit_integrity (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        batch_start_time TIMESTAMP NOT NULL,
-                        batch_end_time TIMESTAMP NOT NULL,
-                        event_count INTEGER NOT NULL,
-                        batch_hash TEXT NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                
+                """
+                CREATE TABLE IF NOT EXISTS audit_integrity (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    batch_start_time TIMESTAMP NOT NULL,
+                    batch_end_time TIMESTAMP NOT NULL,
+                    event_count INTEGER NOT NULL,
+                    batch_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """,
                 # Create audit_retention_log table
-                await db.execute("""
-                    CREATE TABLE IF NOT EXISTS audit_retention_log (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        action TEXT NOT NULL,
-                        event_count INTEGER NOT NULL,
-                        cutoff_date TIMESTAMP NOT NULL,
-                        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        metadata_json TEXT
-                    )
-                """)
-                
-                await db.commit()
-                self._initialized = True
-                logger.info(f"Audit database initialized: {self.db_path}")
+                """
+                CREATE TABLE IF NOT EXISTS audit_retention_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    action TEXT NOT NULL,
+                    event_count INTEGER NOT NULL,
+                    cutoff_date TIMESTAMP NOT NULL,
+                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    metadata_json TEXT
+                )
+                """
+            ]
+            
+            # Initialize with migrations
+            await self._connector.initialize(migrations=migrations)
+            self._initialized = True
+            logger.info(f"Audit database initialized with SQLiteConnector")
     
     async def store_audit_event(self, event: AuditEventV1) -> bool:
         """Store a single audit event with integrity verification"""
@@ -236,48 +195,60 @@ class AuditDatabase:
                 event.time or datetime.now(timezone.utc)
             )
             
-            async with aiosqlite.connect(self.db_path) as db:
-                await db.execute("""
-                    INSERT INTO audit_events (
-                        id, created_at, action, actor_id, actor_username, actor_is_service,
-                        target_resource_type, target_resource_id, target_resource_name, target_branch,
-                        success, error_code, error_message, duration_ms,
-                        request_id, correlation_id, causation_id,
-                        ip_address, user_agent,
-                        changes_json, metadata_json, tags_json, compliance_json,
-                        event_hash, retention_until
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    event.id,
-                    (event.time or datetime.now(timezone.utc)).isoformat(),
-                    event.action.value,
-                    event.actor.id,
-                    event.actor.username,
-                    event.actor.service_account,
-                    event.target.resource_type.value,
-                    event.target.resource_id,
-                    event.target.resource_name,
-                    event.target.branch,
-                    event.success,
-                    event.error_code,
-                    event.error_message,
-                    event.duration_ms,
-                    event.request_id,
-                    event.correlation_id,
-                    event.causation_id,
-                    event.actor.ip_address,
-                    event.actor.user_agent,
-                    json.dumps(event.changes.dict()) if event.changes else None,
-                    json.dumps(event.metadata) if event.metadata else None,
-                    json.dumps(event.tags) if event.tags else None,
-                    json.dumps(event.compliance.dict()) if event.compliance else None,
-                    event_hash,
-                    retention_until.isoformat()
-                ))
-                await db.commit()
-                
-                logger.debug(f"Stored audit event: {event.id}")
-                return True
+            # Use SQLiteConnector for better connection management
+            params = {
+                "id": event.id,
+                "created_at": (event.time or datetime.now(timezone.utc)).isoformat(),
+                "action": event.action.value,
+                "actor_id": event.actor.id,
+                "actor_username": event.actor.username,
+                "actor_is_service": event.actor.service_account,
+                "target_resource_type": event.target.resource_type.value,
+                "target_resource_id": event.target.resource_id,
+                "target_resource_name": event.target.resource_name,
+                "target_branch": event.target.branch,
+                "success": event.success,
+                "error_code": event.error_code,
+                "error_message": event.error_message,
+                "duration_ms": event.duration_ms,
+                "request_id": event.request_id,
+                "correlation_id": event.correlation_id,
+                "causation_id": event.causation_id,
+                "ip_address": event.actor.ip_address,
+                "user_agent": event.actor.user_agent,
+                "changes_json": json.dumps(event.changes.dict()) if event.changes else None,
+                "metadata_json": json.dumps(event.metadata) if event.metadata else None,
+                "tags_json": json.dumps(event.tags) if event.tags else None,
+                "compliance_json": json.dumps(event.compliance.dict()) if event.compliance else None,
+                "event_hash": event_hash,
+                "retention_until": retention_until.isoformat()
+            }
+            
+            await self._connector.execute(
+                """
+                INSERT INTO audit_events (
+                    id, created_at, action, actor_id, actor_username, actor_is_service,
+                    target_resource_type, target_resource_id, target_resource_name, target_branch,
+                    success, error_code, error_message, duration_ms,
+                    request_id, correlation_id, causation_id,
+                    ip_address, user_agent,
+                    changes_json, metadata_json, tags_json, compliance_json,
+                    event_hash, retention_until
+                ) VALUES (
+                    :id, :created_at, :action, :actor_id, :actor_username, :actor_is_service,
+                    :target_resource_type, :target_resource_id, :target_resource_name, :target_branch,
+                    :success, :error_code, :error_message, :duration_ms,
+                    :request_id, :correlation_id, :causation_id,
+                    :ip_address, :user_agent,
+                    :changes_json, :metadata_json, :tags_json, :compliance_json,
+                    :event_hash, :retention_until
+                )
+                """,
+                params
+            )
+            
+            logger.debug(f"Stored audit event: {event.id}")
+            return True
                 
         except Exception as e:
             logger.error(f"Failed to store audit event {event.id}: {e}")
@@ -293,72 +264,88 @@ class AuditDatabase:
         stored_count = 0
         
         try:
-            async with aiosqlite.connect(self.db_path) as db:
-                # Calculate integrity hash for this batch
-                batch_start = min(e.time or datetime.now(timezone.utc) for e in events)
-                batch_end = max(e.time or datetime.now(timezone.utc) for e in events)
+            # Calculate integrity hash for this batch
+            batch_start = min(e.time or datetime.now(timezone.utc) for e in events)
+            batch_end = max(e.time or datetime.now(timezone.utc) for e in events)
                 
-                # Prepare batch data
-                batch_data = []
-                for event in events:
-                    event_hash = self._calculate_event_hash(event)
-                    retention_until = self.retention_policy.calculate_expiry_date(
-                        event.action, 
-                        event.time or datetime.now(timezone.utc)
-                    )
-                    
-                    batch_data.append((
-                        event.id,
-                        (event.time or datetime.now(timezone.utc)).isoformat(),
-                        event.action.value,
-                        event.actor.id,
-                        event.actor.username,
-                        event.actor.service_account,
-                        event.target.resource_type.value,
-                        event.target.resource_id,
-                        event.target.resource_name,
-                        event.target.branch,
-                        event.success,
-                        event.error_code,
-                        event.error_message,
-                        event.duration_ms,
-                        event.request_id,
-                        event.correlation_id,
-                        event.causation_id,
-                        event.actor.ip_address,
-                        event.actor.user_agent,
-                        json.dumps(event.changes.dict()) if event.changes else None,
-                        json.dumps(event.metadata) if event.metadata else None,
-                        json.dumps(event.tags) if event.tags else None,
-                        json.dumps(event.compliance.dict()) if event.compliance else None,
-                        event_hash,
-                        retention_until.isoformat()
-                    ))
+            # Prepare batch data
+            batch_data = []
+            for event in events:
+                event_hash = self._calculate_event_hash(event)
+                retention_until = self.retention_policy.calculate_expiry_date(
+                    event.action, 
+                    event.time or datetime.now(timezone.utc)
+                )
                 
-                # Insert batch
-                await db.executemany("""
-                    INSERT INTO audit_events (
-                        id, created_at, action, actor_id, actor_username, actor_is_service,
-                        target_resource_type, target_resource_id, target_resource_name, target_branch,
-                        success, error_code, error_message, duration_ms,
-                        request_id, correlation_id, causation_id,
-                        ip_address, user_agent,
-                        changes_json, metadata_json, tags_json, compliance_json,
-                        event_hash, retention_until
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, batch_data)
-                
-                # Store batch integrity record
-                batch_hash = self._calculate_batch_hash(events)
-                await db.execute("""
-                    INSERT INTO audit_integrity (batch_start_time, batch_end_time, event_count, batch_hash)
-                    VALUES (?, ?, ?, ?)
-                """, (batch_start.isoformat(), batch_end.isoformat(), len(events), batch_hash))
-                
-                await db.commit()
-                stored_count = len(events)
-                
-                logger.info(f"Stored {stored_count} audit events in batch")
+                batch_data.append({
+                    "id": event.id,
+                    "created_at": (event.time or datetime.now(timezone.utc)).isoformat(),
+                    "action": event.action.value,
+                    "actor_id": event.actor.id,
+                    "actor_username": event.actor.username,
+                    "actor_is_service": event.actor.service_account,
+                    "target_resource_type": event.target.resource_type.value,
+                    "target_resource_id": event.target.resource_id,
+                    "target_resource_name": event.target.resource_name,
+                    "target_branch": event.target.branch,
+                    "success": event.success,
+                    "error_code": event.error_code,
+                    "error_message": event.error_message,
+                    "duration_ms": event.duration_ms,
+                    "request_id": event.request_id,
+                    "correlation_id": event.correlation_id,
+                    "causation_id": event.causation_id,
+                    "ip_address": event.actor.ip_address,
+                    "user_agent": event.actor.user_agent,
+                    "changes_json": json.dumps(event.changes.dict()) if event.changes else None,
+                    "metadata_json": json.dumps(event.metadata) if event.metadata else None,
+                    "tags_json": json.dumps(event.tags) if event.tags else None,
+                    "compliance_json": json.dumps(event.compliance.dict()) if event.compliance else None,
+                    "event_hash": event_hash,
+                    "retention_until": retention_until.isoformat()
+                })
+            
+            # Use SQLiteConnector for batch insert
+            await self._connector.execute_many(
+                """
+                INSERT INTO audit_events (
+                    id, created_at, action, actor_id, actor_username, actor_is_service,
+                    target_resource_type, target_resource_id, target_resource_name, target_branch,
+                    success, error_code, error_message, duration_ms,
+                    request_id, correlation_id, causation_id,
+                    ip_address, user_agent,
+                    changes_json, metadata_json, tags_json, compliance_json,
+                    event_hash, retention_until
+                ) VALUES (
+                    :id, :created_at, :action, :actor_id, :actor_username, :actor_is_service,
+                    :target_resource_type, :target_resource_id, :target_resource_name, :target_branch,
+                    :success, :error_code, :error_message, :duration_ms,
+                    :request_id, :correlation_id, :causation_id,
+                    :ip_address, :user_agent,
+                    :changes_json, :metadata_json, :tags_json, :compliance_json,
+                    :event_hash, :retention_until
+                )
+                """,
+                batch_data
+            )
+            
+            # Store batch integrity record
+            batch_hash = self._calculate_batch_hash(events)
+            await self._connector.execute(
+                """
+                INSERT INTO audit_integrity (batch_start_time, batch_end_time, event_count, batch_hash)
+                VALUES (:batch_start_time, :batch_end_time, :event_count, :batch_hash)
+                """,
+                {
+                    "batch_start_time": batch_start.isoformat(),
+                    "batch_end_time": batch_end.isoformat(),
+                    "event_count": len(events),
+                    "batch_hash": batch_hash
+                }
+            )
+            
+            stored_count = len(events)
+            logger.info(f"Stored {stored_count} audit events in batch")
                 
         except Exception as e:
             logger.error(f"Failed to store audit events batch: {e}")
@@ -423,36 +410,53 @@ class AuditDatabase:
         params.extend([filter_criteria.limit, filter_criteria.offset])
         
         try:
-            async with aiosqlite.connect(self.db_path) as db:
-                db.row_factory = aiosqlite.Row
+            # Convert params list to dict for SQLiteConnector
+            count_params = {}
+            main_params = {}
+            param_idx = 0
+            
+            if filter_criteria.start_time:
+                count_params["start_time"] = params[param_idx]
+                main_params["start_time"] = params[param_idx]
+                param_idx += 1
+            
+            if filter_criteria.end_time:
+                count_params["end_time"] = params[param_idx]
+                main_params["end_time"] = params[param_idx]
+                param_idx += 1
+            
+            # Get total count
+            count_result = await self._connector.fetch_one(count_query, count_params)
+            total_count = count_result["COUNT(*)"] if count_result else 0
+            
+            # Add pagination params
+            main_params["limit"] = filter_criteria.limit
+            main_params["offset"] = filter_criteria.offset
+            
+            # Get paginated results
+            rows = await self._connector.fetch_all(main_query, main_params)
+            events = []
+            
+            for row in rows:
+                event_dict = dict(row)
                 
-                # Get total count
-                async with db.execute(count_query, params[:-2]) as cursor:
-                    total_count = (await cursor.fetchone())[0]
+                # Parse JSON fields
+                if event_dict.get('changes_json'):
+                    event_dict['changes'] = json.loads(event_dict['changes_json'])
+                if event_dict.get('metadata_json'):
+                    event_dict['metadata'] = json.loads(event_dict['metadata_json'])
+                if event_dict.get('tags_json'):
+                    event_dict['tags'] = json.loads(event_dict['tags_json'])
+                if event_dict.get('compliance_json'):
+                    event_dict['compliance'] = json.loads(event_dict['compliance_json'])
                 
-                # Get paginated results
-                events = []
-                async with db.execute(main_query, params) as cursor:
-                    async for row in cursor:
-                        event_dict = dict(row)
-                        
-                        # Parse JSON fields
-                        if event_dict['changes_json']:
-                            event_dict['changes'] = json.loads(event_dict['changes_json'])
-                        if event_dict['metadata_json']:
-                            event_dict['metadata'] = json.loads(event_dict['metadata_json'])
-                        if event_dict['tags_json']:
-                            event_dict['tags'] = json.loads(event_dict['tags_json'])
-                        if event_dict['compliance_json']:
-                            event_dict['compliance'] = json.loads(event_dict['compliance_json'])
-                        
-                        # Remove raw JSON fields
-                        for field in ['changes_json', 'metadata_json', 'tags_json', 'compliance_json']:
-                            event_dict.pop(field, None)
-                        
-                        events.append(event_dict)
+                # Remove raw JSON fields
+                for field in ['changes_json', 'metadata_json', 'tags_json', 'compliance_json']:
+                    event_dict.pop(field, None)
                 
-                return events, total_count
+                events.append(event_dict)
+            
+            return events, total_count
                 
         except Exception as e:
             logger.error(f"Failed to query audit events: {e}")
@@ -463,32 +467,29 @@ class AuditDatabase:
         await self.initialize()
         
         try:
-            async with aiosqlite.connect(self.db_path) as db:
-                db.row_factory = aiosqlite.Row
+            row = await self._connector.fetch_one(
+                "SELECT * FROM audit_events WHERE id = :event_id",
+                {"event_id": event_id}
+            )
+            
+            if row:
+                event_dict = dict(row)
                 
-                async with db.execute(
-                    "SELECT * FROM audit_events WHERE id = ?", 
-                    (event_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    if row:
-                        event_dict = dict(row)
-                        
-                        # Parse JSON fields
-                        if event_dict['changes_json']:
-                            event_dict['changes'] = json.loads(event_dict['changes_json'])
-                        if event_dict['metadata_json']:
-                            event_dict['metadata'] = json.loads(event_dict['metadata_json'])
-                        if event_dict['tags_json']:
-                            event_dict['tags'] = json.loads(event_dict['tags_json'])
-                        if event_dict['compliance_json']:
-                            event_dict['compliance'] = json.loads(event_dict['compliance_json'])
-                        
-                        # Remove raw JSON fields
-                        for field in ['changes_json', 'metadata_json', 'tags_json', 'compliance_json']:
-                            event_dict.pop(field, None)
-                        
-                        return event_dict
+                # Parse JSON fields
+                if event_dict.get('changes_json'):
+                    event_dict['changes'] = json.loads(event_dict['changes_json'])
+                if event_dict.get('metadata_json'):
+                    event_dict['metadata'] = json.loads(event_dict['metadata_json'])
+                if event_dict.get('tags_json'):
+                    event_dict['tags'] = json.loads(event_dict['tags_json'])
+                if event_dict.get('compliance_json'):
+                    event_dict['compliance'] = json.loads(event_dict['compliance_json'])
+                
+                # Remove raw JSON fields
+                for field in ['changes_json', 'metadata_json', 'tags_json', 'compliance_json']:
+                    event_dict.pop(field, None)
+                
+                return event_dict
                 
         except Exception as e:
             logger.error(f"Failed to get audit event {event_id}: {e}")
@@ -518,21 +519,33 @@ class AuditDatabase:
             params.append(end_time.isoformat())
         
         try:
-            async with aiosqlite.connect(self.db_path) as db:
-                stats = {}
-                
-                # Total events
-                async with db.execute(f"SELECT COUNT(*) FROM audit_events {where_clause}", params) as cursor:
-                    stats['total_events'] = (await cursor.fetchone())[0]
-                
-                # Events by action
-                async with db.execute(f"""
-                    SELECT action, COUNT(*) as count 
-                    FROM audit_events {where_clause}
-                    GROUP BY action 
-                    ORDER BY count DESC
-                """, params) as cursor:
-                    stats['events_by_action'] = {row[0]: row[1] async for row in cursor}
+            stats = {}
+            
+            # Convert params to dict for SQLiteConnector
+            query_params = {}
+            if start_time:
+                query_params["start_time"] = start_time.isoformat()
+            if end_time:
+                query_params["end_time"] = end_time.isoformat()
+            
+            # Total events
+            total_result = await self._connector.fetch_one(
+                f"SELECT COUNT(*) as total FROM audit_events {where_clause}",
+                query_params
+            )
+            stats['total_events'] = total_result['total'] if total_result else 0
+            
+            # Events by action
+            action_rows = await self._connector.fetch_all(
+                f"""
+                SELECT action, COUNT(*) as count 
+                FROM audit_events {where_clause}
+                GROUP BY action 
+                ORDER BY count DESC
+                """,
+                query_params
+            )
+            stats['events_by_action'] = {row['action']: row['count'] for row in action_rows}
                 
                 # Events by actor
                 async with db.execute(f"""
@@ -581,32 +594,36 @@ class AuditDatabase:
         try:
             current_time = datetime.now(timezone.utc)
             
-            async with aiosqlite.connect(self.db_path) as db:
-                # First, get count of events to be deleted
-                async with db.execute(
-                    "SELECT COUNT(*) FROM audit_events WHERE retention_until <= ? AND archived = FALSE",
-                    (current_time.isoformat(),)
-                ) as cursor:
-                    delete_count = (await cursor.fetchone())[0]
+            # First, get count of events to be deleted
+            count_result = await self._connector.fetch_one(
+                "SELECT COUNT(*) as count FROM audit_events WHERE retention_until <= :current_time AND archived = FALSE",
+                {"current_time": current_time.isoformat()}
+            )
+            delete_count = count_result['count'] if count_result else 0
+            
+            if delete_count > 0:
+                # Archive events first (for compliance)
+                await self._connector.execute(
+                    "UPDATE audit_events SET archived = TRUE WHERE retention_until <= :current_time AND archived = FALSE",
+                    {"current_time": current_time.isoformat()}
+                )
                 
-                if delete_count > 0:
-                    # Archive events first (for compliance)
-                    await db.execute(
-                        "UPDATE audit_events SET archived = TRUE WHERE retention_until <= ? AND archived = FALSE",
-                        (current_time.isoformat(),)
-                    )
-                    
-                    # Log retention action
-                    await db.execute("""
-                        INSERT INTO audit_retention_log (action, event_count, cutoff_date)
-                        VALUES (?, ?, ?)
-                    """, ("ARCHIVE", delete_count, current_time.isoformat()))
-                    
-                    await db.commit()
-                    
-                    logger.info(f"Archived {delete_count} expired audit events")
+                # Log retention action
+                await self._connector.execute(
+                    """
+                    INSERT INTO audit_retention_log (action, event_count, cutoff_date)
+                    VALUES (:action, :event_count, :cutoff_date)
+                    """,
+                    {
+                        "action": "ARCHIVE",
+                        "event_count": delete_count,
+                        "cutoff_date": current_time.isoformat()
+                    }
+                )
                 
-                return delete_count
+                logger.info(f"Archived {delete_count} expired audit events")
+            
+            return delete_count
                 
         except Exception as e:
             logger.error(f"Failed to cleanup expired audit events: {e}")
@@ -617,13 +634,17 @@ class AuditDatabase:
         await self.initialize()
         
         try:
-            async with aiosqlite.connect(self.db_path) as db:
-                # Verify event hashes
-                corrupted_events = []
-                
-                async with db.execute("SELECT id, event_hash FROM audit_events WHERE archived = FALSE") as cursor:
-                    async for row in cursor:
-                        event_id, stored_hash = row
+            # Verify event hashes
+            corrupted_events = []
+            
+            # Get all non-archived events for verification
+            events = await self._connector.fetch_all(
+                "SELECT * FROM audit_events WHERE archived = FALSE"
+            )
+            
+            for row in events:
+                event_id = row['id']
+                stored_hash = row['event_hash']
                         
                         # Get full event and recalculate hash
                         event_data = await self.get_audit_event_by_id(event_id)

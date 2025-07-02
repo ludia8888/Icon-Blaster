@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import logging
 
 from .models import ServiceInstance, ServiceStatus
+from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class HealthChecker:
         self._failure_counts: Dict[str, int] = {}
         self._success_counts: Dict[str, int] = {}
         self._check_tasks: Dict[str, asyncio.Task] = {}
+        self._http_client = create_basic_client(timeout=timeout)
     
     async def start_monitoring(
         self,
@@ -67,41 +69,41 @@ class HealthChecker:
         health_endpoint = f"{instance.endpoint.url}/health"
         
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                start_time = asyncio.get_event_loop().time()
-                response = await client.get(health_endpoint)
-                response_time = (asyncio.get_event_loop().time() - start_time) * 1000
+            start_time = asyncio.get_event_loop().time()
+            response = await self._http_client.get(health_endpoint)
+            response_time = (asyncio.get_event_loop().time() - start_time) * 1000
+            
+            # Update response time metric
+            instance.response_time_ms = response_time
+            
+            if response.status_code == 200:
+                # Try to parse health response
+                try:
+                    data = response.json()
+                    if isinstance(data, dict) and data.get("status") == "healthy":
+                        return ServiceStatus.HEALTHY
+                except:
+                    # If not JSON or no status field, just check status code
+                    pass
                 
-                # Update response time metric
-                instance.response_time_ms = response_time
+                return ServiceStatus.HEALTHY
+            else:
+                self.logger.warning(
+                    f"Health check failed for {instance.id}: "
+                    f"HTTP {response.status_code}"
+                )
+                return ServiceStatus.UNHEALTHY
                 
-                if response.status_code == 200:
-                    # Try to parse health response
-                    try:
-                        data = response.json()
-                        if isinstance(data, dict) and data.get("status") == "healthy":
-                            return ServiceStatus.HEALTHY
-                    except:
-                        # If not JSON or no status field, just check status code
-                        pass
-                    
-                    return ServiceStatus.HEALTHY
-                else:
-                    self.logger.warning(
-                        f"Health check failed for {instance.id}: "
-                        f"HTTP {response.status_code}"
-                    )
-                    return ServiceStatus.UNHEALTHY
-                    
-        except httpx.TimeoutException:
-            self.logger.warning(
-                f"Health check timeout for {instance.id}"
-            )
-            return ServiceStatus.UNHEALTHY
         except Exception as e:
-            self.logger.error(
-                f"Health check error for {instance.id}: {e}"
-            )
+            # UnifiedHTTPClient handles timeouts and other exceptions uniformly
+            if "timeout" in str(e).lower():
+                self.logger.warning(
+                    f"Health check timeout for {instance.id}"
+                )
+            else:
+                self.logger.error(
+                    f"Health check error for {instance.id}: {e}"
+                )
             return ServiceStatus.UNHEALTHY
     
     async def _monitor_instance(

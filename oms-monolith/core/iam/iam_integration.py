@@ -13,6 +13,7 @@ from jwt import PyJWKClient
 
 from core.auth import UserContext
 from utils.logger import get_logger
+from database.clients.unified_http_client import create_iam_client
 
 logger = get_logger(__name__)
 
@@ -35,6 +36,15 @@ class IAMIntegration:
         self.jwks_url = f"{self.iam_base_url}/.well-known/jwks.json"
         self.expected_issuer = os.getenv("JWT_ISSUER", "iam.company")
         self.expected_audience = os.getenv("JWT_AUDIENCE", "oms")
+        
+        # Initialize HTTP client for IAM communication
+        verify_ssl = not os.getenv("IAM_VERIFY_SSL", "true").lower() == "false"
+        self._http_client = create_iam_client(
+            base_url=self.iam_base_url,
+            verify_ssl=verify_ssl,
+            enable_fallback=True,
+            timeout=10.0
+        )
         
         # Initialize JWKS client for key rotation support
         self.jwks_client = None
@@ -167,49 +177,45 @@ class IAMIntegration:
         Get detailed user information from IAM service
         Uses the standard OIDC userinfo endpoint
         """
-        async with httpx.AsyncClient(verify=False) as client:
-            try:
-                response = await client.get(
-                    f"{self.iam_base_url}/userinfo",
-                    headers={"Authorization": f"Bearer {token}"},
-                    timeout=10.0
-                )
-                
-                if response.status_code == 200:
-                    return response.json()
-                else:
-                    logger.error(f"Failed to get user info: {response.status_code}")
-                    return {}
-                    
-            except Exception as e:
-                logger.error(f"Error getting user info: {e}")
+        try:
+            response = await self._http_client.get(
+                "/userinfo",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"Failed to get user info: {response.status_code}")
                 return {}
+                
+        except Exception as e:
+            logger.error(f"Error getting user info: {e}")
+            return {}
     
     async def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
         """
         Refresh access token using refresh token
         Returns new access token and optionally new refresh token
         """
-        async with httpx.AsyncClient(verify=False) as client:
-            try:
-                response = await client.post(
-                    f"{self.iam_base_url}/token",
-                    data={
-                        "grant_type": "refresh_token",
-                        "refresh_token": refresh_token,
-                        "client_id": os.getenv("OAUTH_CLIENT_ID", "oms-service")
-                    },
-                    timeout=10.0
-                )
+        try:
+            response = await self._http_client.post(
+                "/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                    "client_id": os.getenv("OAUTH_CLIENT_ID", "oms-service")
+                }
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise ValueError(f"Token refresh failed: {response.status_code}")
                 
-                if response.status_code == 200:
-                    return response.json()
-                else:
-                    raise ValueError(f"Token refresh failed: {response.status_code}")
-                    
-            except Exception as e:
-                logger.error(f"Error refreshing token: {e}")
-                raise
+        except Exception as e:
+            logger.error(f"Error refreshing token: {e}")
+            raise
     
     @lru_cache(maxsize=1000)
     def get_required_scopes(self, resource_type: str, action: str) -> List[str]:

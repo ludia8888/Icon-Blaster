@@ -21,6 +21,7 @@ from shared.iam_contracts import (
 from core.auth import UserContext
 from utils.logger import get_logger
 from prometheus_client import Counter, Histogram, Gauge
+from database.clients.unified_http_client import create_iam_client
 
 logger = get_logger(__name__)
 
@@ -223,17 +224,21 @@ class IAMServiceClientWithFallback:
         self.timeout = int(os.getenv("IAM_TIMEOUT", "5"))  # Shorter timeout for faster fallback
         self.max_retries = int(os.getenv("IAM_MAX_RETRIES", "2"))
         
-        # HTTP client
-        self._client = httpx.AsyncClient(
+        # HTTP client using UnifiedHTTPClient (but with internal CB disabled)
+        self._client = create_iam_client(
             base_url=self.iam_service_url,
+            verify_ssl=True,
+            enable_fallback=False,  # We handle fallback ourselves
             timeout=self.timeout,
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
+            enable_circuit_breaker=False,  # Use our custom CB logic
+            max_retries=0  # We handle retries ourselves
         )
         
         # Local validator for fallback
         self._local_validator = LocalJWTValidator()
         
-        # Circuit breaker state
+        # Circuit breaker state (keeping existing logic)
         self._circuit_open = False
         self._circuit_failures = 0
         self._circuit_threshold = 5
@@ -269,7 +274,7 @@ class IAMServiceClientWithFallback:
             logger.debug("Performing health check on IAM service")
             
             # Try a lightweight health check endpoint
-            response = await self._client.get("/health", timeout=2)
+            response = await self._client.get("/health")
             
             if response.status_code == 200:
                 logger.debug("Health check passed")
@@ -321,8 +326,7 @@ class IAMServiceClientWithFallback:
                 
                 response = await self._client.post(
                     "/api/v1/auth/validate",
-                    json=request.dict(),
-                    timeout=self.timeout
+                    json=request.dict()
                 )
                 
                 if response.status_code == 200:
@@ -369,8 +373,7 @@ class IAMServiceClientWithFallback:
         try:
             response = await self._client.post(
                 "/api/v1/users/info",
-                json={"user_id": user_id},
-                timeout=self.timeout
+                json={"user_id": user_id}
             )
             
             if response.status_code == 404:
@@ -434,14 +437,14 @@ class IAMServiceClientWithFallback:
         }
         
         try:
-            response = await self._client.get("/health", timeout=2)
+            response = await self._client.get("/health")
             if response.status_code == 200:
                 self._record_success()
                 return {
                     "status": "healthy",
                     "circuit_breaker": "closed",
                     "failures": self._circuit_failures,
-                    "response_time_ms": response.elapsed.total_seconds() * 1000
+                    "response_time_ms": response.elapsed.total_seconds() * 1000 if hasattr(response, 'elapsed') else 0
                 }
             else:
                 logger.warning(f"Health check returned status {response.status_code}")
@@ -463,7 +466,7 @@ class IAMServiceClientWithFallback:
     
     async def close(self):
         """Close client connections"""
-        await self._client.aclose()
+        await self._client.close()
 
 
 # Global instance with fallback support

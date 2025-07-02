@@ -11,6 +11,7 @@ from urllib.parse import urljoin
 import httpx
 
 from api.gateway.models import RequestContext, ServiceRoute
+from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client, HTTPClientConfig
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class RequestRouter:
         self.routes = routes
         self.circuit_breaker = circuit_breaker
         self.route_map = self._build_route_map()
-        self.http_client = httpx.AsyncClient(timeout=30.0)
+        self.http_client = create_basic_client(timeout=30.0)
 
     def _build_route_map(self) -> Dict[str, ServiceRoute]:
         """라우트 맵 구성"""

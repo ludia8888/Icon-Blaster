@@ -13,6 +13,7 @@ import jwt
 from datetime import datetime, timezone
 
 from utils.logger import get_logger
+from database.clients.unified_http_client import create_iam_client
 
 logger = get_logger(__name__)
 
@@ -87,6 +88,16 @@ class ResourcePermissionChecker:
         self.jwt_algorithm = jwt_algorithm
         self.idp_endpoint = idp_endpoint or os.getenv("IDP_ENDPOINT")
         self.cache_ttl = cache_ttl
+        
+        # Initialize HTTP client for IdP calls
+        self.http_client = None
+        if self.idp_endpoint:
+            self.http_client = create_iam_client(
+                base_url=self.idp_endpoint,
+                timeout=5.0,
+                verify_ssl=True,
+                enable_fallback=True
+            )
         
         # 기본 권한 매핑 (Role -> Permissions)
         self.role_permissions = {
@@ -204,8 +215,7 @@ class ResourcePermissionChecker:
         )
         return False
     
-    @lru_cache(maxsize=1000)
-    def check_permission_with_idp(
+    async def check_permission_with_idp(
         self,
         user_id: str,
         resource_type: str,
@@ -217,21 +227,20 @@ class ResourcePermissionChecker:
         
         실제 운영환경에서는 IdP 서비스를 호출하여 권한 확인
         """
-        if not self.idp_endpoint:
+        if not self.http_client:
             # IdP 설정이 없으면 로컬 체크만 수행
             return True
         
         try:
-            # IdP API 호출
-            response = httpx.post(
-                f"{self.idp_endpoint}/check-permission",
+            # IdP API 호출 - UnifiedHTTPClient 사용
+            response = await self.http_client.post(
+                "/check-permission",
                 json={
                     "user_id": user_id,
                     "resource_type": resource_type,
                     "resource_id": resource_id,
                     "action": action
-                },
-                timeout=5.0
+                }
             )
             
             if response.status_code == 200:
@@ -291,6 +300,11 @@ class ResourcePermissionChecker:
             return ["*"]
         
         return list(resources)
+    
+    async def close(self):
+        """Close HTTP client connections"""
+        if self.http_client:
+            await self.http_client.close()
 
 
 # 싱글톤 인스턴스

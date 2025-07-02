@@ -15,6 +15,7 @@ from datetime import datetime, timezone, timedelta
 import asyncio
 import httpx
 from utils.logger import get_logger
+from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client, HTTPClientConfig
 
 logger = get_logger(__name__)
 
@@ -276,17 +277,18 @@ class LifeCriticalCircuitBreaker:
         
         # Perform health check
         try:
-            async with httpx.AsyncClient(timeout=self.config.health_check_timeout) as client:
-                response = await client.get(self.config.health_check_url)
-                self.health_check_passed = response.status_code == 200
-                self.last_health_check = current_time
-                
-                if self.health_check_passed:
-                    logger.debug(f"Circuit {self.config.name}: Health check passed")
-                else:
-                    logger.warning(f"Circuit {self.config.name}: Health check failed - {response.status_code}")
-                
-                return self.health_check_passed
+            http_client = create_basic_client(timeout=self.config.health_check_timeout)
+            response = await http_client.get(self.config.health_check_url)
+            self.health_check_passed = response.status_code == 200
+            self.last_health_check = current_time
+            
+            if self.health_check_passed:
+                logger.debug(f"Circuit {self.config.name}: Health check passed")
+            else:
+                logger.warning(f"Circuit {self.config.name}: Health check failed - {response.status_code}")
+            
+            await http_client.close()
+            return self.health_check_passed
                 
         except Exception as e:
             logger.warning(f"Circuit {self.config.name}: Health check error - {e}")

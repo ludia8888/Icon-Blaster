@@ -114,3 +114,92 @@ groups:
         annotations:
           summary: "Disk I/O exceeds 100MB/s"
           description: "Disk I/O is {{ $value }}MB/s"
+
+  - name: http_client
+    interval: 30s
+    rules:
+      # HTTP Client error rate
+      - alert: HTTPClientHighErrorRate
+        expr: |
+          (
+            sum(rate(http_client_requests_total{status=~"5.."}[5m])) 
+            / 
+            sum(rate(http_client_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP client error rate exceeds 5%"
+          description: "HTTP client error rate is {{ $value | humanizePercentage }}"
+
+      # Circuit breaker open
+      - alert: HTTPClientCircuitBreakerOpen
+        expr: http_client_circuit_breaker_state == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HTTP client circuit breaker is OPEN"
+          description: "Circuit breaker opened for service {{ $labels.service }} endpoint {{ $labels.endpoint }}"
+
+      # High response time
+      - alert: HTTPClientHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_client_request_duration_seconds_bucket[5m])) by (endpoint, le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP client P95 latency exceeds 5s"
+          description: "P95 latency for {{ $labels.endpoint }} is {{ $value }}s"
+
+      # Connection pool exhaustion
+      - alert: HTTPClientConnectionPoolExhausted
+        expr: |
+          http_client_connection_pool_usage{pool_type="active"} 
+          / 
+          http_client_connection_pool_usage{pool_type="max"} > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP connection pool near exhaustion"
+          description: "Connection pool for {{ $labels.endpoint }} is {{ $value | humanizePercentage }} utilized"
+
+      # High retry rate
+      - alert: HTTPClientHighRetryRate
+        expr: |
+          sum(rate(http_client_retry_attempts_total[5m])) by (endpoint) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP client retry rate"
+          description: "Retry rate for {{ $labels.endpoint }} is {{ $value }} retries/sec"
+
+      # mTLS fallback rate
+      - alert: HTTPClientMTLSFallbackHigh
+        expr: |
+          sum(rate(http_client_fallback_total{fallback_type="mtls"}[5m])) by (endpoint) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High mTLS fallback rate"
+          description: "mTLS fallback rate for {{ $labels.endpoint }} is {{ $value }}/sec, reason: {{ $labels.reason }}"
+
+      # Streaming performance
+      - alert: HTTPClientStreamingSlowTransfer
+        expr: |
+          rate(http_client_stream_bytes_total[5m]) > 0 
+          and 
+          rate(http_client_stream_bytes_total[5m]) < 1048576
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow streaming transfer detected"
+          description: "Streaming rate for {{ $labels.endpoint }} is only {{ $value | humanize }}B/s"

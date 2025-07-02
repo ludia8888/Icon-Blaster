@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 from graphql import DocumentNode, parse
 from graphql.language import ast
+from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client, HTTPClientConfig
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class GraphQLProxy:
 
     def __init__(self, service_endpoints: Dict[str, str]):
         self.service_endpoints = service_endpoints
-        self.http_client = httpx.AsyncClient(timeout=30.0)
+        self.http_client = create_basic_client(timeout=30.0)
         self.schema_cache = {}
         self._federated_schema = None
 

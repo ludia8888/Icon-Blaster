@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 
 import httpx
 import redis.asyncio as redis
+from database.clients.unified_http_client import create_streaming_client
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import BackgroundTasks, FastAPI, HTTPException
@@ -37,6 +38,7 @@ class BackupOrchestrator:
     def __init__(self):
         self.redis_client: Optional[redis.Redis] = None
         self.minio_client: Optional[Minio] = None
+        self.http_client = None  # Will be initialized with basic auth
         self.terminusdb_url = os.getenv('TERMINUSDB_URL', 'http://terminusdb:6363')
         self.terminusdb_user = os.getenv('TERMINUSDB_ADMIN_USER', 'admin')
         self.terminusdb_pass = os.getenv('TERMINUSDB_ADMIN_PASS', 'changeme-admin-pass')
@@ -62,41 +64,42 @@ class BackupOrchestrator:
         if not self.minio_client.bucket_exists(self.bucket_name):
             self.minio_client.make_bucket(self.bucket_name)
 
+        # Initialize HTTP client with basic auth for TerminusDB calls
+        self.http_client = create_streaming_client(
+            base_url=self.terminusdb_url,
+            auth=(self.terminusdb_user, self.terminusdb_pass),
+            timeout=30.0,  # Standard timeout for simple backup operations
+            stream_support=False  # Simple TerminusDB calls don't need streaming
+        )
+
     async def backup_terminusdb(self, backup_type: str = 'full') -> Dict:
         """Backup TerminusDB"""
         start_time = datetime.utcnow()
 
         try:
-            async with httpx.AsyncClient() as client:
-                # Get all databases
-                response = await client.get(
-                    f"{self.terminusdb_url}/api/db/_system",
-                    auth=(self.terminusdb_user, self.terminusdb_pass)
-                )
+            # Get all databases using UnifiedHTTPClient (auth is already configured)
+            response = await self.http_client.get("/api/db/_system")
 
-                if response.status_code != 200:
-                    raise Exception(f"Failed to list databases: {response.text}")
+            if response.status_code != 200:
+                raise Exception(f"Failed to list databases: {response.text}")
 
-                databases = response.json()
+            databases = response.json()
 
-                backup_data = {
-                    'timestamp': start_time.isoformat(),
-                    'type': backup_type,
-                    'databases': {}
-                }
+            backup_data = {
+                'timestamp': start_time.isoformat(),
+                'type': backup_type,
+                'databases': {}
+            }
 
-                # Backup each database
-                for db in databases:
-                    db_name = db.get('name', '')
-                    if db_name:
-                        # Export database
-                        export_response = await client.get(
-                            f"{self.terminusdb_url}/api/db/_system/{db_name}",
-                            auth=(self.terminusdb_user, self.terminusdb_pass)
-                        )
+            # Backup each database
+            for db in databases:
+                db_name = db.get('name', '')
+                if db_name:
+                    # Export database
+                    export_response = await self.http_client.get(f"/api/db/_system/{db_name}")
 
-                        if export_response.status_code == 200:
-                            backup_data['databases'][db_name] = export_response.json()
+                    if export_response.status_code == 200:
+                        backup_data['databases'][db_name] = export_response.json()
 
                 # Store backup in MinIO
                 backup_key = f"terminusdb/{backup_type}/{start_time.strftime('%Y%m%d_%H%M%S')}.json"
@@ -408,6 +411,13 @@ class BackupOrchestrator:
 
         results['duration_minutes'] = duration
 
+    async def close(self):
+        """Close all connections"""
+        if self.http_client:
+            await self.http_client.close()
+        if self.redis_client:
+            await self.redis_client.close()
+
 # Initialize orchestrator
 orchestrator = BackupOrchestrator()
 
@@ -439,8 +449,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     scheduler.shutdown()
-    if orchestrator.redis_client:
-        await orchestrator.redis_client.close()
+    await orchestrator.close()
 
 # Create FastAPI app
 app = FastAPI(

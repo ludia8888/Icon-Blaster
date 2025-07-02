@@ -27,6 +27,7 @@ from minio import Minio
 from prometheus_client import Counter, Gauge, Histogram
 
 from shared.utils import DB_CRITICAL_CONFIG, with_retry
+from database.clients.unified_http_client import create_streaming_client
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +146,7 @@ class ProductionBackupOrchestrator:
         self.terminusdb_url = os.getenv('TERMINUSDB_URL', 'http://terminusdb:6363')
         self.bucket_name = 'oms-backups'
         self.chunk_size = 10 * 1024 * 1024  # 10MB chunks
+        self.http_client = None  # Will be initialized with streaming support
 
     async def initialize(self):
         """Initialize all connections"""
@@ -162,6 +164,18 @@ class ProductionBackupOrchestrator:
 
         if not self.minio_client.bucket_exists(self.bucket_name):
             self.minio_client.make_bucket(self.bucket_name)
+
+        # Initialize HTTP client with streaming support for large backups (300s timeout, 500MB+ files)
+        self.http_client = create_streaming_client(
+            base_url=self.terminusdb_url,
+            auth=(
+                os.getenv('TERMINUSDB_ADMIN_USER', 'admin'),
+                os.getenv('TERMINUSDB_ADMIN_PASS', 'changeme-admin-pass')
+            ),
+            timeout=300.0,  # 5-minute timeout for large backup operations
+            stream_support=True,
+            enable_large_file_streaming=True
+        )
 
         self.change_tracker = IncrementalBackupTracker(self.redis_client)
 
@@ -250,18 +264,17 @@ class ProductionBackupOrchestrator:
         self, backup_type: str, parent_backup_id: Optional[str], start_time: datetime
     ) -> Dict:
         """Collect data for backup based on type"""
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            if backup_type == 'incremental' and parent_backup_id:
-                return await self._collect_incremental_data(
-                    client, parent_backup_id, start_time
-                )
-            else:
-                return await self._collect_full_backup_data(
-                    client, start_time
-                )
+        if backup_type == 'incremental' and parent_backup_id:
+            return await self._collect_incremental_data(
+                self.http_client, parent_backup_id, start_time
+            )
+        else:
+            return await self._collect_full_backup_data(
+                self.http_client, start_time
+            )
 
     async def _collect_incremental_data(
-        self, client: httpx.AsyncClient, parent_backup_id: str, start_time: datetime
+        self, client, parent_backup_id: str, start_time: datetime
     ) -> Dict:
         """Collect incremental backup data"""
         parent_metadata = await self.get_backup_metadata(parent_backup_id)
@@ -283,7 +296,7 @@ class ProductionBackupOrchestrator:
         return backup_data
 
     async def _fetch_changed_documents(
-        self, client: httpx.AsyncClient, changes: List[Dict], backup_data: Dict
+        self, client, changes: List[Dict], backup_data: Dict
     ):
         """Fetch documents that have changed"""
         for change in changes:
@@ -297,7 +310,7 @@ class ProductionBackupOrchestrator:
                     backup_data['documents'][change['entity_id']] = doc
 
     async def _collect_full_backup_data(
-        self, client: httpx.AsyncClient, start_time: datetime
+        self, client, start_time: datetime
     ) -> Dict:
         """Collect full backup data"""
         databases = await self._get_databases(client)
@@ -313,18 +326,14 @@ class ProductionBackupOrchestrator:
 
         return backup_data
 
-    async def _get_databases(self, client: httpx.AsyncClient) -> List[Dict]:
+    async def _get_databases(self, client) -> List[Dict]:
         """Get list of databases from TerminusDB"""
-        response = await client.get(
-            f"{self.terminusdb_url}/api/db/_system",
-            auth=(os.getenv('TERMINUSDB_ADMIN_USER', 'admin'),
-                  os.getenv('TERMINUSDB_ADMIN_PASS', 'changeme-admin-pass'))
-        )
+        response = await client.get("/api/db/_system")
         response.raise_for_status()
         return response.json()
 
     async def _export_databases_parallel(
-        self, client: httpx.AsyncClient, databases: List[Dict], backup_data: Dict
+        self, client, databases: List[Dict], backup_data: Dict
     ):
         """Export databases in parallel"""
         export_tasks = [
@@ -594,3 +603,45 @@ class ProductionBackupOrchestrator:
                 }
 
         return status
+
+    async def export_database(self, client, db_name: str) -> Dict:
+        """Export a single database from TerminusDB"""
+        try:
+            # Export database using TerminusDB API
+            response = await client.get(f"/api/export/admin/{db_name}")
+            response.raise_for_status()
+            return {
+                'name': db_name,
+                'data': response.json(),
+                'exported_at': datetime.utcnow().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Failed to export database {db_name}: {e}")
+            return {
+                'name': db_name,
+                'error': str(e),
+                'exported_at': datetime.utcnow().isoformat()
+            }
+
+    async def fetch_document(self, client, entity_type: str, entity_id: str) -> Optional[Dict]:
+        """Fetch a specific document from TerminusDB"""
+        try:
+            # Construct document fetch URL
+            response = await client.get(f"/api/document/admin/oms/{entity_type}/{entity_id}")
+            if response.status_code == 200:
+                return response.json()
+            elif response.status_code == 404:
+                logger.debug(f"Document {entity_type}/{entity_id} not found")
+                return None
+            else:
+                response.raise_for_status()
+        except Exception as e:
+            logger.error(f"Failed to fetch document {entity_type}/{entity_id}: {e}")
+            return None
+
+    async def close(self):
+        """Close all connections"""
+        if self.http_client:
+            await self.http_client.close()
+        if self.redis_client:
+            await self.redis_client.close()

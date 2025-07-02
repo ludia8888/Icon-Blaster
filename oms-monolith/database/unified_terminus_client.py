@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 from enum import Enum
 import httpx
 from datetime import datetime
+from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client, HTTPClientConfig
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +158,7 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
     
     def __init__(self, config: TerminusDBConfig):
         self.config = config
-        self.client: Optional[httpx.AsyncClient] = None
+        self.client: Optional[UnifiedHTTPClient] = None
         self._headers = {
             "Authorization": f"Basic {self._encode_auth()}",
             "Content-Type": "application/json"
@@ -179,16 +180,21 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
     async def connect(self) -> bool:
         """Establish connection to database"""
         try:
-            self.client = httpx.AsyncClient(headers=self._headers, timeout=30.0)
+            http_config = HTTPClientConfig(
+                base_url=self.config.endpoint,
+                timeout=30.0,
+                headers=self._headers
+            )
+            self.client = UnifiedHTTPClient(http_config)
             
             # Check if database exists, create if not
             db_path = f"/api/db/{self.config.team}/{self.config.db}"
-            response = await self.client.get(self._build_url(db_path))
+            response = await self.client.get(db_path)
             
             if response.status_code == 404:
                 # Create database
                 create_response = await self.client.post(
-                    self._build_url(f"/api/db/{self.config.team}"),
+                    f"/api/db/{self.config.team}",
                     json={
                         "db_id": self.config.db,
                         "label": f"{self.config.db} Database",
@@ -212,7 +218,7 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
     async def disconnect(self) -> None:
         """Close database connection"""
         if self.client:
-            await self.client.aclose()
+            await self.client.close()
             self.client = None
         self._is_connected = False
         logger.info("Disconnected from TerminusDB")
@@ -223,7 +229,7 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
             return True
             
         try:
-            response = await self.client.get(self._build_url("/api/status"))
+            response = await self.client.get("/api/status")
             return response.status_code == 200
         except:
             return False
@@ -241,7 +247,7 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
         path = f"/api/document/{self.config.team}/{self.config.db}?graph_type={graph_type}&author=system"
         
         try:
-            response = await self.client.post(self._build_url(path), json=document)
+            response = await self.client.post(path, json=document)
             if response.status_code in [200, 201]:
                 return document.get("@id", "")
             else:
@@ -258,7 +264,7 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
         path = f"/api/document/{self.config.team}/{self.config.db}/{doc_id}"
         
         try:
-            response = await self.client.get(self._build_url(path))
+            response = await self.client.get(path)
             if response.status_code == 200:
                 return response.json()
             return None
@@ -278,7 +284,7 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
         path = f"/api/document/{self.config.team}/{self.config.db}?graph_type={graph_type}&author=system"
         
         try:
-            response = await self.client.put(self._build_url(path), json=document)
+            response = await self.client.put(path, json=document)
             return response.status_code in [200, 204]
         except Exception as e:
             logger.error(f"Error updating document: {e}")
@@ -295,7 +301,7 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
         path = f"/api/document/{self.config.team}/{self.config.db}/{doc_id}?graph_type={graph_type}&author=system"
         
         try:
-            response = await self.client.delete(self._build_url(path))
+            response = await self.client.delete(path)
             return response.status_code in [200, 204]
         except Exception as e:
             logger.error(f"Error deleting document: {e}")
@@ -323,7 +329,7 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
         
         try:
             response = await self.client.post(
-                self._build_url(path),
+                path,
                 json={
                     "db_id": db_id,
                     "label": label,
@@ -340,7 +346,7 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
         path = f"/api/db/{self.config.team}/{db_id}"
         
         try:
-            response = await self.client.delete(self._build_url(path))
+            response = await self.client.delete(path)
             return response.status_code in [200, 204]
         except Exception as e:
             logger.error(f"Error deleting database: {e}")
@@ -355,7 +361,7 @@ class SimpleTerminusDBClient(TerminusDBClientBase):
         
         try:
             response = await self.client.post(
-                self._build_url(path),
+                path,
                 json={"query": woql_query}
             )
             if response.status_code == 200:

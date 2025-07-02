@@ -6,6 +6,7 @@ import logging
 from typing import Optional, Dict, Any
 import httpx
 from core.auth import UserContext as User
+from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client, HTTPClientConfig
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ class ServiceClient:
         self.branch_service_url = os.getenv("BRANCH_SERVICE_URL", "http://branch-service:8000")
         self.validation_service_url = os.getenv("VALIDATION_SERVICE_URL", "http://validation-service:8000")
         self.action_service_url = os.getenv("ACTION_SERVICE_URL", "http://action-service:8000")
+        self._http_client = create_basic_client(timeout=30.0)
         self.function_service_url = os.getenv("FUNCTION_SERVICE_URL", "http://function-service:8000")
         self.data_service_url = os.getenv("DATA_SERVICE_URL", "http://data-service:8000")
 
@@ -40,16 +42,15 @@ class ServiceClient:
         headers = await self.get_auth_headers(user)
         headers["Content-Type"] = "application/json"
 
-        async with httpx.AsyncClient() as client:
-            response = await client.request(
-                method, 
-                url, 
-                json=json_data, 
-                headers=headers,
-                timeout=30.0
-            )
-            response.raise_for_status()
-            return response.json()
+        response = await self._http_client.request(
+            method, 
+            url, 
+            json=json_data, 
+            headers=headers
+        )
+        if response.status_code >= 400:
+            raise Exception(f"Service call failed: {response.status_code}")
+        return response.json()
 
 
 class BaseResolver:

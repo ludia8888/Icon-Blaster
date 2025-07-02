@@ -8,13 +8,13 @@ import os
 import time
 from typing import Optional, Dict, Any, List, Callable, TypeVar, Generic
 from datetime import datetime, timezone, timedelta
-import aiosqlite
 
 from models.idempotency import (
     IdempotencyKey, EventProcessingRecord, EventEnvelope,
     ConsumerState, IdempotentResult, ConsumerCheckpoint,
     calculate_state_hash, is_event_expired
 )
+from shared.database.sqlite_connector import SQLiteConnector, get_sqlite_connector
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -40,11 +40,13 @@ class IdempotentConsumer(Generic[T]):
         self.checkpoint_interval = checkpoint_interval
         self.state_class = state_class or dict
         
-        self.db_path = db_path or os.path.join(
+        self.db_name = f"idempotent_{consumer_id}.db"
+        self.db_dir = db_path or os.path.join(
             os.path.dirname(__file__),
-            "..", "..", "data", f"idempotent_{consumer_id}.db"
+            "..", "..", "data"
         )
         
+        self._connector: Optional[SQLiteConnector] = None
         self._initialized = False
         self._consumer_state: Optional[ConsumerState] = None
         self._processing_lock = asyncio.Lock()
@@ -62,89 +64,102 @@ class IdempotentConsumer(Generic[T]):
         if self._initialized:
             return
         
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        # Get or create connector
+        self._connector = await get_sqlite_connector(
+            self.db_name,
+            db_dir=self.db_dir,
+            enable_wal=True
+        )
         
-        # Create tables
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.executescript("""
-                CREATE TABLE IF NOT EXISTS processing_records (
-                    event_id TEXT PRIMARY KEY,
-                    event_type TEXT NOT NULL,
-                    event_version INTEGER NOT NULL,
-                    consumer_id TEXT NOT NULL,
-                    consumer_version TEXT NOT NULL,
-                    input_commit_hash TEXT NOT NULL,
-                    output_commit_hash TEXT NOT NULL,
-                    processed_at TIMESTAMP NOT NULL,
-                    processing_duration_ms INTEGER NOT NULL,
-                    status TEXT NOT NULL,
-                    error_message TEXT,
-                    retry_count INTEGER DEFAULT 0,
-                    side_effects TEXT,  -- JSON array
-                    created_resources TEXT,  -- JSON array
-                    updated_resources TEXT,  -- JSON array
-                    idempotency_key TEXT NOT NULL,
-                    is_duplicate BOOLEAN DEFAULT FALSE,
-                    
-                    UNIQUE(idempotency_key)
-                );
+        # Define migrations
+        migrations = [
+            """
+            CREATE TABLE IF NOT EXISTS processing_records (
+                event_id TEXT PRIMARY KEY,
+                event_type TEXT NOT NULL,
+                event_version INTEGER NOT NULL,
+                consumer_id TEXT NOT NULL,
+                consumer_version TEXT NOT NULL,
+                input_commit_hash TEXT NOT NULL,
+                output_commit_hash TEXT NOT NULL,
+                processed_at TIMESTAMP NOT NULL,
+                processing_duration_ms INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                error_message TEXT,
+                retry_count INTEGER DEFAULT 0,
+                side_effects TEXT,  -- JSON array
+                created_resources TEXT,  -- JSON array
+                updated_resources TEXT,  -- JSON array
+                idempotency_key TEXT NOT NULL,
+                is_duplicate BOOLEAN DEFAULT FALSE,
                 
-                CREATE INDEX IF NOT EXISTS idx_processed_at ON processing_records (processed_at);
-                CREATE INDEX IF NOT EXISTS idx_status ON processing_records (status);
-                
-                CREATE TABLE IF NOT EXISTS consumer_state (
-                    consumer_id TEXT PRIMARY KEY,
-                    consumer_version TEXT NOT NULL,
-                    last_processed_event_id TEXT,
-                    last_processed_timestamp TIMESTAMP,
-                    last_sequence_number INTEGER,
-                    state_commit_hash TEXT NOT NULL,
-                    state_version INTEGER DEFAULT 0,
-                    events_processed INTEGER DEFAULT 0,
-                    events_skipped INTEGER DEFAULT 0,
-                    events_failed INTEGER DEFAULT 0,
-                    last_heartbeat TIMESTAMP NOT NULL,
-                    is_healthy BOOLEAN DEFAULT TRUE,
-                    error_count INTEGER DEFAULT 0,
-                    current_state TEXT  -- JSON serialized state
-                );
-                
-                CREATE TABLE IF NOT EXISTS checkpoints (
-                    checkpoint_id TEXT PRIMARY KEY,
-                    consumer_id TEXT NOT NULL,
-                    event_id TEXT NOT NULL,
-                    sequence_number INTEGER,
-                    timestamp TIMESTAMP NOT NULL,
-                    state_commit_hash TEXT NOT NULL,
-                    state_data TEXT,  -- JSON
-                    events_since_last INTEGER NOT NULL,
-                    created_at TIMESTAMP NOT NULL,
-                    expires_at TIMESTAMP
-                );
-                
-                CREATE INDEX IF NOT EXISTS idx_checkpoint_consumer ON checkpoints (consumer_id, created_at);
-                
-                CREATE TABLE IF NOT EXISTS replay_history (
-                    replay_id TEXT PRIMARY KEY,
-                    consumer_id TEXT NOT NULL,
-                    started_at TIMESTAMP NOT NULL,
-                    completed_at TIMESTAMP,
-                    from_event_id TEXT,
-                    to_event_id TEXT,
-                    events_replayed INTEGER DEFAULT 0,
-                    events_skipped INTEGER DEFAULT 0,
-                    status TEXT NOT NULL,
-                    error_message TEXT
-                );
-            """)
-            await db.commit()
+                UNIQUE(idempotency_key)
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_processed_at ON processing_records (processed_at)",
+            "CREATE INDEX IF NOT EXISTS idx_status ON processing_records (status)",
+            """
+            CREATE TABLE IF NOT EXISTS consumer_state (
+                consumer_id TEXT PRIMARY KEY,
+                consumer_version TEXT NOT NULL,
+                last_processed_event_id TEXT,
+                last_processed_timestamp TIMESTAMP,
+                last_sequence_number INTEGER,
+                state_commit_hash TEXT NOT NULL,
+                state_version INTEGER DEFAULT 0,
+                events_processed INTEGER DEFAULT 0,
+                events_skipped INTEGER DEFAULT 0,
+                events_failed INTEGER DEFAULT 0,
+                last_heartbeat TIMESTAMP NOT NULL,
+                is_healthy BOOLEAN DEFAULT TRUE,
+                error_count INTEGER DEFAULT 0,
+                current_state TEXT  -- JSON serialized state
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS checkpoints (
+                checkpoint_id TEXT PRIMARY KEY,
+                consumer_id TEXT NOT NULL,
+                event_id TEXT NOT NULL,
+                sequence_number INTEGER,
+                timestamp TIMESTAMP NOT NULL,
+                state_commit_hash TEXT NOT NULL,
+                state_data TEXT,  -- JSON
+                events_since_last INTEGER NOT NULL,
+                created_at TIMESTAMP NOT NULL,
+                expires_at TIMESTAMP
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_checkpoint_consumer ON checkpoints (consumer_id, created_at)",
+            """
+            CREATE TABLE IF NOT EXISTS replay_history (
+                replay_id TEXT PRIMARY KEY,
+                consumer_id TEXT NOT NULL,
+                started_at TIMESTAMP NOT NULL,
+                completed_at TIMESTAMP,
+                from_event_id TEXT,
+                to_event_id TEXT,
+                events_replayed INTEGER DEFAULT 0,
+                events_skipped INTEGER DEFAULT 0,
+                status TEXT NOT NULL,
+                error_message TEXT
+            )
+            """
+        ]
+        
+        # Initialize with migrations
+        await self._connector.initialize(migrations=migrations)
         
         # Load or create consumer state
         await self._load_consumer_state()
         
         self._initialized = True
         logger.info(f"Idempotent consumer {self.consumer_id} initialized")
+    
+    async def _ensure_initialized(self):
+        """Ensure database is initialized"""
+        if not self._initialized:
+            await self.initialize()
     
     def register_handler(self, event_type: str, handler: Callable):
         """Register event handler for specific event type"""
@@ -153,6 +168,7 @@ class IdempotentConsumer(Generic[T]):
     
     async def process_event(self, event: EventEnvelope) -> IdempotentResult:
         """Process an event idempotently"""
+        await self._ensure_initialized()
         start_time = time.time()
         
         # Check if event is expired
@@ -358,14 +374,10 @@ class IdempotentConsumer(Generic[T]):
     
     async def _load_consumer_state(self):
         """Load consumer state from database"""
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
-            
-            cursor = await db.execute("""
-                SELECT * FROM consumer_state WHERE consumer_id = ?
-            """, (self.consumer_id,))
-            
-            row = await cursor.fetchone()
+        row = await self._connector.fetch_one(
+            "SELECT * FROM consumer_state WHERE consumer_id = :consumer_id",
+            {"consumer_id": self.consumer_id}
+        )
             
             if row:
                 # Load existing state
@@ -418,47 +430,49 @@ class IdempotentConsumer(Generic[T]):
     
     async def _save_consumer_state(self):
         """Save consumer state to database"""
-        async with aiosqlite.connect(self.db_path) as db:
-            state_data = json.dumps(self._serialize_state(self._current_state))
-            
-            await db.execute("""
-                INSERT OR REPLACE INTO consumer_state (
-                    consumer_id, consumer_version, last_processed_event_id,
-                    last_processed_timestamp, last_sequence_number,
-                    state_commit_hash, state_version, events_processed,
-                    events_skipped, events_failed, last_heartbeat,
-                    is_healthy, error_count, current_state
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                self._consumer_state.consumer_id,
-                self._consumer_state.consumer_version,
-                self._consumer_state.last_processed_event_id,
-                self._consumer_state.last_processed_timestamp.isoformat()
+        state_data = json.dumps(self._serialize_state(self._current_state))
+        
+        await self._connector.execute(
+            """
+            INSERT OR REPLACE INTO consumer_state (
+                consumer_id, consumer_version, last_processed_event_id,
+                last_processed_timestamp, last_sequence_number,
+                state_commit_hash, state_version, events_processed,
+                events_skipped, events_failed, last_heartbeat,
+                is_healthy, error_count, current_state
+            ) VALUES (
+                :consumer_id, :consumer_version, :last_processed_event_id,
+                :last_processed_timestamp, :last_sequence_number,
+                :state_commit_hash, :state_version, :events_processed,
+                :events_skipped, :events_failed, :last_heartbeat,
+                :is_healthy, :error_count, :current_state
+            )
+            """,
+            {
+                "consumer_id": self._consumer_state.consumer_id,
+                "consumer_version": self._consumer_state.consumer_version,
+                "last_processed_event_id": self._consumer_state.last_processed_event_id,
+                "last_processed_timestamp": self._consumer_state.last_processed_timestamp.isoformat()
                     if self._consumer_state.last_processed_timestamp else None,
-                self._consumer_state.last_sequence_number,
-                self._consumer_state.state_commit_hash,
-                self._consumer_state.state_version,
-                self._consumer_state.events_processed,
-                self._consumer_state.events_skipped,
-                self._consumer_state.events_failed,
-                datetime.now(timezone.utc).isoformat(),
-                self._consumer_state.is_healthy,
-                self._consumer_state.error_count,
-                state_data
-            ))
-            
-            await db.commit()
+                "last_sequence_number": self._consumer_state.last_sequence_number,
+                "state_commit_hash": self._consumer_state.state_commit_hash,
+                "state_version": self._consumer_state.state_version,
+                "events_processed": self._consumer_state.events_processed,
+                "events_skipped": self._consumer_state.events_skipped,
+                "events_failed": self._consumer_state.events_failed,
+                "last_heartbeat": datetime.now(timezone.utc).isoformat(),
+                "is_healthy": self._consumer_state.is_healthy,
+                "error_count": self._consumer_state.error_count,
+                "current_state": state_data
+            }
+        )
     
     async def _get_processing_record(self, event_id: str) -> Optional[EventProcessingRecord]:
         """Get processing record for an event"""
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
-            
-            cursor = await db.execute("""
-                SELECT * FROM processing_records WHERE event_id = ?
-            """, (event_id,))
-            
-            row = await cursor.fetchone()
+        row = await self._connector.fetch_one(
+            "SELECT * FROM processing_records WHERE event_id = :event_id",
+            {"event_id": event_id}
+        )
             
             if row:
                 return EventProcessingRecord(
@@ -485,37 +499,44 @@ class IdempotentConsumer(Generic[T]):
     
     async def _save_processing_record(self, record: EventProcessingRecord):
         """Save processing record"""
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("""
-                INSERT INTO processing_records (
-                    event_id, event_type, event_version, consumer_id,
-                    consumer_version, input_commit_hash, output_commit_hash,
-                    processed_at, processing_duration_ms, status,
-                    error_message, retry_count, side_effects,
-                    created_resources, updated_resources,
-                    idempotency_key, is_duplicate
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                record.event_id,
-                record.event_type,
-                record.event_version,
-                record.consumer_id,
-                record.consumer_version,
-                record.input_commit_hash,
-                record.output_commit_hash,
-                record.processed_at.isoformat(),
-                record.processing_duration_ms,
-                record.status,
-                record.error_message,
-                record.retry_count,
-                json.dumps(record.side_effects),
-                json.dumps(record.created_resources),
-                json.dumps(record.updated_resources),
-                record.idempotency_key,
-                record.is_duplicate
-            ))
-            
-            await db.commit()
+        await self._connector.execute(
+            """
+            INSERT INTO processing_records (
+                event_id, event_type, event_version, consumer_id,
+                consumer_version, input_commit_hash, output_commit_hash,
+                processed_at, processing_duration_ms, status,
+                error_message, retry_count, side_effects,
+                created_resources, updated_resources,
+                idempotency_key, is_duplicate
+            ) VALUES (
+                :event_id, :event_type, :event_version, :consumer_id,
+                :consumer_version, :input_commit_hash, :output_commit_hash,
+                :processed_at, :processing_duration_ms, :status,
+                :error_message, :retry_count, :side_effects,
+                :created_resources, :updated_resources,
+                :idempotency_key, :is_duplicate
+            )
+            """,
+            {
+                "event_id": record.event_id,
+                "event_type": record.event_type,
+                "event_version": record.event_version,
+                "consumer_id": record.consumer_id,
+                "consumer_version": record.consumer_version,
+                "input_commit_hash": record.input_commit_hash,
+                "output_commit_hash": record.output_commit_hash,
+                "processed_at": record.processed_at.isoformat(),
+                "processing_duration_ms": record.processing_duration_ms,
+                "status": record.status,
+                "error_message": record.error_message,
+                "retry_count": record.retry_count,
+                "side_effects": json.dumps(record.side_effects),
+                "created_resources": json.dumps(record.created_resources),
+                "updated_resources": json.dumps(record.updated_resources),
+                "idempotency_key": record.idempotency_key,
+                "is_duplicate": record.is_duplicate
+            }
+        )
     
     async def _create_checkpoint(self):
         """Create a state checkpoint"""
@@ -529,27 +550,31 @@ class IdempotentConsumer(Generic[T]):
                 events_since_last=self._events_since_checkpoint
             )
             
-            async with aiosqlite.connect(self.db_path) as db:
-                await db.execute("""
-                    INSERT INTO checkpoints (
-                        checkpoint_id, consumer_id, event_id,
-                        sequence_number, timestamp, state_commit_hash,
-                        state_data, events_since_last, created_at, expires_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    checkpoint.checkpoint_id,
-                    checkpoint.consumer_id,
-                    checkpoint.event_id,
-                    checkpoint.sequence_number,
-                    checkpoint.timestamp.isoformat(),
-                    checkpoint.state_commit_hash,
-                    json.dumps(checkpoint.state_data),
-                    checkpoint.events_since_last,
-                    checkpoint.created_at.isoformat(),
-                    checkpoint.expires_at.isoformat() if checkpoint.expires_at else None
-                ))
-                
-                await db.commit()
+            await self._connector.execute(
+                """
+                INSERT INTO checkpoints (
+                    checkpoint_id, consumer_id, event_id,
+                    sequence_number, timestamp, state_commit_hash,
+                    state_data, events_since_last, created_at, expires_at
+                ) VALUES (
+                    :checkpoint_id, :consumer_id, :event_id,
+                    :sequence_number, :timestamp, :state_commit_hash,
+                    :state_data, :events_since_last, :created_at, :expires_at
+                )
+                """,
+                {
+                    "checkpoint_id": checkpoint.checkpoint_id,
+                    "consumer_id": checkpoint.consumer_id,
+                    "event_id": checkpoint.event_id,
+                    "sequence_number": checkpoint.sequence_number,
+                    "timestamp": checkpoint.timestamp.isoformat(),
+                    "state_commit_hash": checkpoint.state_commit_hash,
+                    "state_data": json.dumps(checkpoint.state_data),
+                    "events_since_last": checkpoint.events_since_last,
+                    "created_at": checkpoint.created_at.isoformat(),
+                    "expires_at": checkpoint.expires_at.isoformat() if checkpoint.expires_at else None
+                }
+            )
             
             self._events_since_checkpoint = 0
             logger.info(f"Created checkpoint {checkpoint.checkpoint_id}")

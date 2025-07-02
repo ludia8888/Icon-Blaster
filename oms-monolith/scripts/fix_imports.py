@@ -15,7 +15,7 @@ IMPORT_MAPPINGS = {
     # 사용자 2차 분석 기반 마지막 내부 오타 수정
     r'^from core\.event\.publisher': r'from core.event_publisher',
     r'^from core\.event_publisher\.main_ultimate': r'from core.event_publisher.enhanced_event_service',
-    r'^from database\.clients\.service_client': r'from shared.clients.service_client',
+    # Removed deprecated mapping - service_client no longer exists
     r'^from security\.pii_handler': r'from core.security.pii_handler',
     r'^from pii_handler': r'from core.security.pii_handler',
     r'^from retry_strategy': r'from utils.retry_strategy',

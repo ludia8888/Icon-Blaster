@@ -6,7 +6,6 @@ import json
 import os
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime, timezone, timedelta
-from contextlib import asynccontextmanager
 
 from models.issue_tracking import (
     ChangeIssueLink, IssueReference, IssueProvider
@@ -23,10 +22,12 @@ class IssueTrackingDatabase:
     """
     
     def __init__(self, db_path: Optional[str] = None):
-        self.db_path = db_path or os.path.join(
+        self.db_name = "issue_tracking.db"
+        self.db_dir = db_path or os.path.join(
             os.path.dirname(__file__), 
-            "..", "..", "data", "issue_tracking.db"
+            "..", "..", "data"
         )
+        self._connector: Optional[SQLiteConnector] = None
         self._initialized = False
     
     async def initialize(self):
@@ -34,104 +35,122 @@ class IssueTrackingDatabase:
         if self._initialized:
             return
         
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        # Get or create connector
+        self._connector = await get_sqlite_connector(
+            self.db_name,
+            db_dir=self.db_dir,
+            enable_wal=True
+        )
         
-        # Read and execute migration
+        # Read migration file
         migration_path = os.path.join(
             os.path.dirname(__file__),
             "..", "..", "database", "migrations", "create_issue_tracking_tables.sql"
         )
         
+        migrations = []
         if os.path.exists(migration_path):
             with open(migration_path, 'r') as f:
-                migration_sql = f.read()
-            
-            async with aiosqlite.connect(self.db_path) as db:
-                await db.executescript(migration_sql)
-                await db.commit()
+                migrations.append(f.read())
         
+        # Initialize with migrations
+        await self._connector.initialize(migrations=migrations)
         self._initialized = True
-        logger.info(f"Issue tracking database initialized at {self.db_path}")
+        logger.info(f"Issue tracking database initialized with SQLiteConnector")
     
-    @asynccontextmanager
-    async def get_connection(self):
-        """Get database connection"""
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
-            yield db
+    async def _ensure_initialized(self):
+        """Ensure database is initialized"""
+        if not self._initialized:
+            await self.initialize()
     
     async def store_change_issue_link(self, link: ChangeIssueLink) -> int:
         """Store a change-issue link"""
-        async with self.get_connection() as db:
-            # Insert main link record
-            cursor = await db.execute("""
-                INSERT INTO change_issue_links (
-                    change_id, change_type, branch_name,
-                    primary_issue_provider, primary_issue_id,
-                    emergency_override, override_justification, override_approver,
-                    linked_by, linked_at, validation_result
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                link.change_id,
-                link.change_type,
-                link.branch_name,
-                link.primary_issue.provider.value,
-                link.primary_issue.issue_id,
-                link.emergency_override,
-                link.override_justification,
-                link.override_approver,
-                link.linked_by,
-                link.linked_at,
-                json.dumps(link.validation_result) if link.validation_result else None
-            ))
-            
-            link_id = cursor.lastrowid
-            
-            # Insert related issues
+        await self._ensure_initialized()
+        
+        # Insert main link record
+        link_id = await self._connector.execute(
+            """
+            INSERT INTO change_issue_links (
+                change_id, change_type, branch_name,
+                primary_issue_provider, primary_issue_id,
+                emergency_override, override_justification, override_approver,
+                linked_by, linked_at, validation_result
+            ) VALUES (
+                :change_id, :change_type, :branch_name,
+                :primary_issue_provider, :primary_issue_id,
+                :emergency_override, :override_justification, :override_approver,
+                :linked_by, :linked_at, :validation_result
+            )
+            """,
+            {
+                "change_id": link.change_id,
+                "change_type": link.change_type,
+                "branch_name": link.branch_name,
+                "primary_issue_provider": link.primary_issue.provider.value,
+                "primary_issue_id": link.primary_issue.issue_id,
+                "emergency_override": link.emergency_override,
+                "override_justification": link.override_justification,
+                "override_approver": link.override_approver,
+                "linked_by": link.linked_by,
+                "linked_at": link.linked_at,
+                "validation_result": json.dumps(link.validation_result) if link.validation_result else None
+            }
+        )
+        
+        # Get the last inserted row id
+        result = await self._connector.fetch_one("SELECT last_insert_rowid() as id")
+        link_id = result['id'] if result else None
+        
+        # Insert related issues
+        if link_id and link.related_issues:
             for related_issue in link.related_issues:
-                await db.execute("""
+                await self._connector.execute(
+                    """
                     INSERT INTO change_related_issues (
                         link_id, issue_provider, issue_id
-                    ) VALUES (?, ?, ?)
-                """, (
-                    link_id,
-                    related_issue.provider.value,
-                    related_issue.issue_id
-                ))
-            
-            await db.commit()
-            
-            logger.info(
-                f"Stored change-issue link: {link.change_id} -> "
-                f"{link.primary_issue.get_display_name()}"
-            )
-            
-            return link_id
+                    ) VALUES (:link_id, :issue_provider, :issue_id)
+                    """,
+                    {
+                        "link_id": link_id,
+                        "issue_provider": related_issue.provider.value,
+                        "issue_id": related_issue.issue_id
+                    }
+                )
+        
+        logger.info(
+            f"Stored change-issue link: {link.change_id} -> "
+            f"{link.primary_issue.get_display_name()}"
+        )
+        
+        return link_id
     
     async def get_issues_for_change(self, change_id: str) -> Optional[ChangeIssueLink]:
         """Get issues linked to a change"""
-        async with self.get_connection() as db:
-            # Get main link
-            cursor = await db.execute("""
-                SELECT * FROM change_issue_links
-                WHERE change_id = ?
-                ORDER BY linked_at DESC
-                LIMIT 1
-            """, (change_id,))
-            
-            row = await cursor.fetchone()
-            if not row:
-                return None
-            
-            # Get related issues
-            related_cursor = await db.execute("""
-                SELECT issue_provider, issue_id
-                FROM change_related_issues
-                WHERE link_id = ?
-            """, (row['id'],))
-            
-            related_rows = await related_cursor.fetchall()
+        await self._ensure_initialized()
+        
+        # Get main link
+        row = await self._connector.fetch_one(
+            """
+            SELECT * FROM change_issue_links
+            WHERE change_id = :change_id
+            ORDER BY linked_at DESC
+            LIMIT 1
+            """,
+            {"change_id": change_id}
+        )
+        
+        if not row:
+            return None
+        
+        # Get related issues
+        related_rows = await self._connector.fetch_all(
+            """
+            SELECT issue_provider, issue_id
+            FROM change_related_issues
+            WHERE link_id = :link_id
+            """,
+            {"link_id": row['id']}
+        )
             
             # Reconstruct link
             primary_issue = IssueReference(
@@ -167,25 +186,28 @@ class IssueTrackingDatabase:
         issue_id: str
     ) -> List[Dict[str, Any]]:
         """Get all changes linked to an issue"""
-        async with self.get_connection() as db:
-            # Check primary issues
-            cursor = await db.execute("""
-                SELECT * FROM change_issue_links
-                WHERE primary_issue_provider = ? AND primary_issue_id = ?
-                ORDER BY linked_at DESC
-            """, (issue_provider.value, issue_id))
-            
-            primary_changes = await cursor.fetchall()
-            
-            # Check related issues
-            related_cursor = await db.execute("""
-                SELECT l.* FROM change_issue_links l
-                JOIN change_related_issues r ON l.id = r.link_id
-                WHERE r.issue_provider = ? AND r.issue_id = ?
-                ORDER BY l.linked_at DESC
-            """, (issue_provider.value, issue_id))
-            
-            related_changes = await related_cursor.fetchall()
+        await self._ensure_initialized()
+        
+        # Check primary issues
+        primary_changes = await self._connector.fetch_all(
+            """
+            SELECT * FROM change_issue_links
+            WHERE primary_issue_provider = :provider AND primary_issue_id = :issue_id
+            ORDER BY linked_at DESC
+            """,
+            {"provider": issue_provider.value, "issue_id": issue_id}
+        )
+        
+        # Check related issues
+        related_changes = await self._connector.fetch_all(
+            """
+            SELECT l.* FROM change_issue_links l
+            JOIN change_related_issues r ON l.id = r.link_id
+            WHERE r.issue_provider = :provider AND r.issue_id = :issue_id
+            ORDER BY l.linked_at DESC
+            """,
+            {"provider": issue_provider.value, "issue_id": issue_id}
+        )
             
             # Combine and deduplicate
             all_changes = []
@@ -214,38 +236,38 @@ class IssueTrackingDatabase:
         change_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """Get compliance statistics"""
-        async with self.get_connection() as db:
-            # Build query
-            query = """
-                SELECT 
-                    COUNT(*) as total_changes,
-                    COUNT(DISTINCT primary_issue_id) as unique_issues,
-                    SUM(CASE WHEN emergency_override = 1 THEN 1 ELSE 0 END) as emergency_overrides,
-                    COUNT(DISTINCT linked_by) as unique_users,
-                    COUNT(DISTINCT branch_name) as unique_branches
-                FROM change_issue_links
-                WHERE 1=1
-            """
-            params = []
-            
-            if start_date:
-                query += " AND linked_at >= ?"
-                params.append(start_date.isoformat())
-            
-            if end_date:
-                query += " AND linked_at <= ?"
-                params.append(end_date.isoformat())
-            
-            if branch_name:
-                query += " AND branch_name = ?"
-                params.append(branch_name)
-            
-            if change_type:
-                query += " AND change_type = ?"
-                params.append(change_type)
-            
-            cursor = await db.execute(query, params)
-            row = await cursor.fetchone()
+        await self._ensure_initialized()
+        
+        # Build query with named parameters
+        query = """
+            SELECT 
+                COUNT(*) as total_changes,
+                COUNT(DISTINCT primary_issue_id) as unique_issues,
+                SUM(CASE WHEN emergency_override = 1 THEN 1 ELSE 0 END) as emergency_overrides,
+                COUNT(DISTINCT linked_by) as unique_users,
+                COUNT(DISTINCT branch_name) as unique_branches
+            FROM change_issue_links
+            WHERE 1=1
+        """
+        params = {}
+        
+        if start_date:
+            query += " AND linked_at >= :start_date"
+            params["start_date"] = start_date.isoformat()
+        
+        if end_date:
+            query += " AND linked_at <= :end_date"
+            params["end_date"] = end_date.isoformat()
+        
+        if branch_name:
+            query += " AND branch_name = :branch_name"
+            params["branch_name"] = branch_name
+        
+        if change_type:
+            query += " AND change_type = :change_type"
+            params["change_type"] = change_type
+        
+        row = await self._connector.fetch_one(query, params)
             
             return {
                 'total_changes': row['total_changes'],
@@ -265,40 +287,43 @@ class IssueTrackingDatabase:
         start_date: Optional[datetime] = None
     ) -> Dict[str, Any]:
         """Get compliance statistics for a specific user"""
-        async with self.get_connection() as db:
-            query = """
-                SELECT 
-                    COUNT(*) as total_changes,
-                    COUNT(DISTINCT primary_issue_id) as unique_issues,
+        await self._ensure_initialized()
+        
+        query = """
+            SELECT 
+                COUNT(*) as total_changes,
+                COUNT(DISTINCT primary_issue_id) as unique_issues,
                     SUM(CASE WHEN emergency_override = 1 THEN 1 ELSE 0 END) as emergency_overrides,
                     MIN(linked_at) as first_change,
                     MAX(linked_at) as last_change
-                FROM change_issue_links
-                WHERE linked_by = ?
+            FROM change_issue_links
+            WHERE linked_by = :user
+        """
+        params = {"user": user}
+        
+        if start_date:
+            query += " AND linked_at >= :start_date"
+            params["start_date"] = start_date.isoformat()
+        
+        row = await self._connector.fetch_one(query, params)
+        
+        # Get breakdown by change type
+        type_rows = await self._connector.fetch_all(
             """
-            params = [user]
-            
-            if start_date:
-                query += " AND linked_at >= ?"
-                params.append(start_date.isoformat())
-            
-            cursor = await db.execute(query, params)
-            row = await cursor.fetchone()
-            
-            # Get breakdown by change type
-            type_cursor = await db.execute("""
-                SELECT 
-                    change_type,
-                    COUNT(*) as count
-                FROM change_issue_links
-                WHERE linked_by = ?
-                GROUP BY change_type
-            """, (user,))
-            
-            type_breakdown = {
-                row['change_type']: row['count']
-                for row in await type_cursor.fetchall()
-            }
+            SELECT 
+                change_type,
+                COUNT(*) as count
+            FROM change_issue_links
+            WHERE linked_by = :user
+            GROUP BY change_type
+            """,
+            {"user": user}
+        )
+        
+        type_breakdown = {
+            row['change_type']: row['count']
+            for row in type_rows
+        }
             
             return {
                 'user': user,
@@ -324,27 +349,29 @@ class IssueTrackingDatabase:
         """Cache issue metadata"""
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
         
-        async with self.get_connection() as db:
-            await db.execute("""
-                INSERT OR REPLACE INTO issue_metadata_cache (
-                    issue_provider, issue_id, title, status, issue_type,
-                    priority, assignee, issue_url, metadata, cached_at, expires_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                provider.value,
-                issue_id,
-                metadata.get('title'),
-                metadata.get('status'),
-                metadata.get('issue_type'),
-                metadata.get('priority'),
-                metadata.get('assignee'),
-                metadata.get('issue_url'),
-                json.dumps(metadata),
-                datetime.now(timezone.utc).isoformat(),
-                expires_at.isoformat()
-            ))
-            
-            await db.commit()
+        await self._ensure_initialized()
+        
+        await self._connector.execute(
+            """
+            INSERT OR REPLACE INTO issue_metadata_cache (
+                issue_provider, issue_id, title, status, issue_type,
+                priority, assignee, issue_url, metadata, cached_at, expires_at
+            ) VALUES (:provider, :issue_id, :title, :status, :issue_type, :priority, :assignee, :issue_url, :metadata, :cached_at, :expires_at)
+            """,
+            {
+                "provider": provider.value,
+                "issue_id": issue_id,
+                "title": metadata.get('title'),
+                "status": metadata.get('status'),
+                "issue_type": metadata.get('issue_type'),
+                "priority": metadata.get('priority'),
+                "assignee": metadata.get('assignee'),
+                "issue_url": metadata.get('issue_url'),
+                "metadata": json.dumps(metadata),
+                "cached_at": datetime.now(timezone.utc).isoformat(),
+                "expires_at": expires_at.isoformat()
+            }
+        )
     
     async def get_cached_issue_metadata(
         self,
@@ -352,32 +379,37 @@ class IssueTrackingDatabase:
         issue_id: str
     ) -> Optional[Dict[str, Any]]:
         """Get cached issue metadata"""
-        async with self.get_connection() as db:
-            cursor = await db.execute("""
-                SELECT * FROM issue_metadata_cache
-                WHERE issue_provider = ? AND issue_id = ?
-                AND expires_at > ?
-            """, (
-                provider.value,
-                issue_id,
-                datetime.now(timezone.utc).isoformat()
-            ))
-            
-            row = await cursor.fetchone()
-            if row:
-                return json.loads(row['metadata'])
-            
-            return None
+        await self._ensure_initialized()
+        
+        row = await self._connector.fetch_one(
+            """
+            SELECT * FROM issue_metadata_cache
+            WHERE issue_provider = :provider AND issue_id = :issue_id
+            AND expires_at > :now
+            """,
+            {
+                "provider": provider.value,
+                "issue_id": issue_id,
+                "now": datetime.now(timezone.utc).isoformat()
+            }
+        )
+        
+        if row:
+            return json.loads(row['metadata'])
+        
+        return None
     
     async def cleanup_expired_cache(self):
         """Clean up expired cache entries"""
-        async with self.get_connection() as db:
-            await db.execute("""
-                DELETE FROM issue_metadata_cache
-                WHERE expires_at < ?
-            """, (datetime.now(timezone.utc).isoformat(),))
-            
-            await db.commit()
+        await self._ensure_initialized()
+        
+        await self._connector.execute(
+            """
+            DELETE FROM issue_metadata_cache
+            WHERE expires_at < :now
+            """,
+            {"now": datetime.now(timezone.utc).isoformat()}
+        )
 
 
 # Global instance

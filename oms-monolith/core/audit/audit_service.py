@@ -293,7 +293,20 @@ class AuditService:
             # Publish to event stream (best effort)
             try:
                 if self.publisher:
-                    await self.publisher.publish_audit_event_direct(event)
+                    # Convert AuditEventV1 to dict for publisher
+                    event_dict = {
+                        "event_type": "audit.event",
+                        "data": event.model_dump(),
+                        "metadata": {
+                            "source": "audit_service",
+                            "immediate": True
+                        }
+                    }
+                    await self.publisher.publish(
+                        event_type="audit.event",
+                        data=event.model_dump(),
+                        metadata={"source": "audit_service", "immediate": True}
+                    )
             except Exception as e:
                 logger.warning(f"Failed to publish audit event to stream: {e}")
             
@@ -354,11 +367,29 @@ class AuditService:
             
             # Publish events to stream (best effort)
             if self.publisher:
+                # Convert batch to event list for publisher
+                event_dicts = []
                 for event in batch:
-                    try:
-                        await self.publisher.publish_audit_event_direct(event)
-                    except Exception as e:
-                        logger.warning(f"Failed to publish audit event {event.id}: {e}")
+                    event_dicts.append({
+                        "event_type": "audit.event",
+                        "data": event.model_dump(),
+                        "metadata": {
+                            "source": "audit_service",
+                            "batch": True
+                        }
+                    })
+                
+                try:
+                    # Use batch publish for efficiency
+                    await self.publisher.publish_batch(
+                        [{
+                            "type": "audit.event",
+                            "data": event.model_dump(),
+                            "metadata": {"source": "audit_service", "batch": True}
+                        } for event in batch]
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to publish audit event batch: {e}")
             
             # Check for alerts in batch
             if self.enable_realtime_alerts:

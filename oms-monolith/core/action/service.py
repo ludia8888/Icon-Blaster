@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 import asyncio
+from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client, HTTPClientConfig
 
 # Lightweight imports - OMS should be self-contained
 try:
@@ -54,6 +55,13 @@ class ActionService:
         
         # 메타데이터 서비스만 초기화
         self.metadata_service = ActionMetadataService(tdb_client, redis_client)
+        
+        # Initialize HTTP client for Actions Service MSA communication
+        http_config = HTTPClientConfig(
+            base_url=self.actions_service_url,
+            timeout=30.0
+        )
+        self._http_client = UnifiedHTTPClient(http_config)
 
     # ActionType 메타데이터 관리 (CRUD)
     async def create_action_type(self, action_definition: Dict[str, Any]) -> str:
@@ -93,44 +101,41 @@ class ActionService:
         """
         액션 실행 - Actions Service MSA로 위임
         """
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.actions_service_url}/actions/apply",
-                json={
-                    "action_type_id": action_type_id,
-                    "object_ids": object_ids,
-                    "parameters": parameters,
-                    "user": user,
-                    "execution_options": execution_options or {}
-                },
-                timeout=30.0
-            )
-            response.raise_for_status()
-            return response.json()
+        response = await self._http_client.post(
+            "/actions/apply",
+            json={
+                "action_type_id": action_type_id,
+                "object_ids": object_ids,
+                "parameters": parameters,
+                "user": user,
+                "execution_options": execution_options or {}
+            }
+        )
+        if response.status_code >= 400:
+            raise Exception(f"Action execution failed: {response.status_code}")
+        return response.json()
 
     async def get_execution_status(self, execution_id: str) -> Dict[str, Any]:
         """
         실행 상태 조회 - Actions Service MSA로 위임
         """
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.actions_service_url}/actions/execution/{execution_id}/status",
-                timeout=10.0
-            )
-            response.raise_for_status()
-            return response.json()
+        response = await self._http_client.get(
+            f"/actions/execution/{execution_id}/status"
+        )
+        if response.status_code >= 400:
+            raise Exception(f"Execution status query failed: {response.status_code}")
+        return response.json()
 
     async def get_job_status(self, job_id: str) -> Dict[str, Any]:
         """
         Job 상태 조회 - Actions Service MSA로 위임
         """
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.actions_service_url}/actions/job/{job_id}/status",
-                timeout=10.0
-            )
-            response.raise_for_status()
-            return response.json()
+        response = await self._http_client.get(
+            f"/actions/job/{job_id}/status"
+        )
+        if response.status_code >= 400:
+            raise Exception(f"Job status query failed: {response.status_code}")
+        return response.json()
 
     # 테스트 호환성 메서드들
     async def start_workers(self, num_workers: int = 3):
@@ -145,17 +150,16 @@ class ActionService:
 
     async def get_worker_status(self) -> Dict[str, Any]:
         """워커 상태 조회 - Actions Service MSA로 위임"""
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.get(
-                    f"{self.actions_service_url}/actions/workers/status",
-                    timeout=5.0
-                )
-                response.raise_for_status()
-                return response.json()
-            except Exception as e:
-                logger.warning(f"Failed to get worker status from Actions Service: {e}")
-                return {"status": "unknown", "workers": 0}
+        try:
+            response = await self._http_client.get(
+                "/actions/workers/status"
+            )
+            if response.status_code >= 400:
+                raise Exception(f"Worker status query failed: {response.status_code}")
+            return response.json()
+        except Exception as e:
+            logger.warning(f"Failed to get worker status from Actions Service: {e}")
+            return {"status": "unknown", "workers": 0}
 
     # Legacy 호환성 메서드들
     def register_action_type(self, action_type: Any) -> str:

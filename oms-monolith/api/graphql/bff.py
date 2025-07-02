@@ -8,12 +8,12 @@ from enum import Enum
 import asyncio
 from collections import defaultdict
 
-import httpx
 from pydantic import BaseModel
 
 from api.graphql.dataloaders import DataLoaderRegistry
 from api.graphql.cache import GraphQLCache, CacheLevel
 from utils.logger import get_logger
+from database.clients.unified_http_client import UnifiedHTTPClient, HTTPClientConfig
 
 logger = get_logger(__name__)
 
@@ -139,7 +139,7 @@ class DataAggregator:
         self,
         loader_registry: DataLoaderRegistry,
         cache: GraphQLCache,
-        service_clients: Dict[str, httpx.AsyncClient]
+        service_clients: Dict[str, UnifiedHTTPClient]
     ):
         self.loaders = loader_registry
         self.cache = cache

@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 
 from core.auth import UserContext
 from utils.logger import get_logger
+from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client, HTTPClientConfig
 
 logger = get_logger(__name__)
 
@@ -42,6 +43,14 @@ class UserServiceClient:
         
         # For development/testing, we can validate JWTs locally
         self.local_validation = os.getenv("JWT_LOCAL_VALIDATION", "true").lower() == "true"
+        
+        # Initialize HTTP client
+        http_config = HTTPClientConfig(
+            base_url=self.base_url,
+            timeout=self.timeout,
+            verify_ssl=False  # Maintaining original verify=False behavior
+        )
+        self._http_client = UnifiedHTTPClient(http_config)
     
     async def validate_jwt_token(self, token: str) -> UserContext:
         """
@@ -106,30 +115,29 @@ class UserServiceClient:
         """
         Validate JWT token via User Service API
         """
-        async with httpx.AsyncClient(verify=False) as client:
-            try:
-                response = await client.post(
-                    f"{self.base_url}/api/v1/auth/validate",
-                    headers={
-                        "Authorization": f"Bearer {token}",
-                        "Content-Type": "application/json"
-                    },
-                    timeout=self.timeout
+        try:
+            response = await self._http_client.post(
+                "/api/v1/auth/validate",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return UserContext(**data)
+            elif response.status_code == 401:
+                raise UserServiceError("Invalid or expired token")
+            else:
+                raise UserServiceError(
+                    f"User service returned {response.status_code}: {response.text}"
                 )
                 
-                if response.status_code == 200:
-                    data = response.json()
-                    return UserContext(**data)
-                elif response.status_code == 401:
-                    raise UserServiceError("Invalid or expired token")
-                else:
-                    raise UserServiceError(
-                        f"User service returned {response.status_code}: {response.text}"
-                    )
-                    
-            except httpx.TimeoutException:
+        except Exception as e:
+            if "timeout" in str(e).lower():
                 raise UserServiceError("User service timeout")
-            except httpx.RequestError as e:
+            else:
                 logger.error(f"User service request error: {e}")
                 raise UserServiceError(f"Failed to connect to user service: {str(e)}")
     
@@ -137,27 +145,25 @@ class UserServiceClient:
         """
         Get detailed user information by ID
         """
-        async with httpx.AsyncClient(verify=False) as client:
-            try:
-                response = await client.get(
-                    f"{self.base_url}/api/v1/users/{user_id}",
-                    headers={
-                        "Authorization": f"Bearer {auth_token}"
-                    },
-                    timeout=self.timeout
+        try:
+            response = await self._http_client.get(
+                f"/api/v1/users/{user_id}",
+                headers={
+                    "Authorization": f"Bearer {auth_token}"
+                }
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            elif response.status_code == 404:
+                raise UserServiceError(f"User {user_id} not found")
+            else:
+                raise UserServiceError(
+                    f"Failed to get user: {response.status_code}"
                 )
                 
-                if response.status_code == 200:
-                    return response.json()
-                elif response.status_code == 404:
-                    raise UserServiceError(f"User {user_id} not found")
-                else:
-                    raise UserServiceError(
-                        f"Failed to get user: {response.status_code}"
-                    )
-                    
-            except httpx.RequestError as e:
-                raise UserServiceError(f"Failed to get user: {str(e)}")
+        except Exception as e:
+            raise UserServiceError(f"Failed to get user: {str(e)}")
     
     async def get_user_roles(self, user_id: str, auth_token: str) -> List[str]:
         """

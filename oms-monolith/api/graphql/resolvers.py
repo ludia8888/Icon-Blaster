@@ -9,6 +9,7 @@ import httpx
 import strawberry
 
 from core.auth import UserContext as User
+from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client, HTTPClientConfig
 
 from .schema import (
     ActionCategoryEnum,
@@ -56,6 +57,7 @@ class ServiceClient:
         self.schema_service_url = os.getenv("SCHEMA_SERVICE_URL", "http://schema-service:8000")
         self.branch_service_url = os.getenv("BRANCH_SERVICE_URL", "http://branch-service:8000")
         self.validation_service_url = os.getenv("VALIDATION_SERVICE_URL", "http://validation-service:8000")
+        self._http_client = create_basic_client(timeout=30.0)
 
     async def get_auth_headers(self, user: Optional[User]) -> dict:
         """인증 헤더 생성"""
@@ -71,10 +73,10 @@ class ServiceClient:
         headers = await self.get_auth_headers(user)
         headers["Content-Type"] = "application/json"
 
-        async with httpx.AsyncClient() as client:
-            response = await client.request(method, url, json=json_data, headers=headers)
-            response.raise_for_status()
-            return response.json()
+        response = await self._http_client.request(method, url, json=json_data, headers=headers)
+        if response.status_code >= 400:
+            raise Exception(f"Service call failed: {response.status_code}")
+        return response.json()
 
 
 service_client = ServiceClient()
