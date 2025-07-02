@@ -5,9 +5,9 @@ Validates and enforces issue linking requirements for all changes
 import asyncio
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timezone, timedelta
-import httpx
 from abc import ABC, abstractmethod
 
+from database.clients import create_basic_client
 from models.issue_tracking import (
     IssueProvider, IssueReference, IssueValidationResult, IssueRequirement,
     IssueTrackingConfig, ChangeIssueLink, IssueStatus, IssueType,
@@ -45,16 +45,20 @@ class JiraClient(IssueProviderClient):
         self.base_url = base_url.rstrip('/')
         self.api_token = api_token
         self.email = email
-        self.client = httpx.AsyncClient(
-            auth=(email, api_token),
-            headers={"Accept": "application/json"},
+        self.client = create_basic_client(
+            base_url=self.base_url,
             timeout=10.0
         )
+        # Set auth headers for all requests
+        self._auth_headers = {
+            "Accept": "application/json",
+            "Authorization": f"Basic {self._encode_credentials()}"
+        }
     
     async def validate_issue(self, issue_id: str) -> IssueValidationResult:
         """Validate JIRA issue"""
         try:
-            response = await self.client.get(f"{self.base_url}/rest/api/3/issue/{issue_id}")
+            response = await self.client.get(f"/rest/api/3/issue/{issue_id}", headers=self._auth_headers)
             
             if response.status_code == 404:
                 return IssueValidationResult(
@@ -118,7 +122,7 @@ class JiraClient(IssueProviderClient):
     async def get_issue_metadata(self, issue_id: str) -> Dict[str, Any]:
         """Get JIRA issue metadata"""
         try:
-            response = await self.client.get(f"{self.base_url}/rest/api/3/issue/{issue_id}")
+            response = await self.client.get(f"/rest/api/3/issue/{issue_id}", headers=self._auth_headers)
             if response.status_code == 200:
                 return response.json()
         except Exception as e:
@@ -158,6 +162,12 @@ class JiraClient(IssueProviderClient):
             "Security": IssueType.SECURITY
         }
         return type_map.get(jira_type, IssueType.TASK)
+    
+    def _encode_credentials(self) -> str:
+        """Encode email and API token for Basic auth"""
+        import base64
+        credentials = f"{self.email}:{self.api_token}"
+        return base64.b64encode(credentials.encode()).decode()
 
 
 class GitHubClient(IssueProviderClient):
@@ -167,13 +177,14 @@ class GitHubClient(IssueProviderClient):
         self.token = token
         self.owner = owner
         self.repo = repo
-        self.client = httpx.AsyncClient(
-            headers={
-                "Authorization": f"token {token}",
-                "Accept": "application/vnd.github.v3+json"
-            },
+        self.client = create_basic_client(
+            base_url="https://api.github.com",
             timeout=10.0
         )
+        self._auth_headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
     
     async def validate_issue(self, issue_id: str) -> IssueValidationResult:
         """Validate GitHub issue"""

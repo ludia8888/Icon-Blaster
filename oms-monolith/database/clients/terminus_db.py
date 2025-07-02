@@ -14,19 +14,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 from opentelemetry import trace
 
-from shared.database.connection_pool import (
-    ConnectionConfig,
-    get_db_connection,
-    pool_manager,
-)
-from shared.observability import add_span_attributes, inject_trace_context, trace_method
-from shared.security.mtls_config import get_mtls_config
-from shared.utils import (
-    DB_CRITICAL_CONFIG,
-    DB_READ_CONFIG,
-    DB_WRITE_CONFIG,
-    with_retry,
-)
+from database.clients.unified_http_client import create_secure_client, HTTPClientConfig, ClientMode
 
 logger = logging.getLogger(__name__)
 
