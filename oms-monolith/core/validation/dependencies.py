@@ -8,7 +8,7 @@ import os
 
 from core.validation.ports import CachePort, TerminusPort, EventPort
 from core.validation.container import ValidationContainer, get_container
-from core.validation.service_refactored import ValidationServiceRefactored
+from core.validation.service import ValidationService
 from core.validation.adapters import (
     MockCacheAdapter, 
     MockTerminusAdapter, 
@@ -52,7 +52,7 @@ async def get_validation_service(
     cache: Annotated[CachePort, Depends(get_cache_port)],
     tdb: Annotated[TerminusPort, Depends(get_terminus_port)],
     events: Annotated[EventPort, Depends(get_event_port)]
-) -> ValidationServiceRefactored:
+) -> ValidationService:
     """
     ValidationService 의존성 주입
     
@@ -61,7 +61,7 @@ async def get_validation_service(
     @router.post("/validate")
     async def validate(
         request: ValidationRequest,
-        service: ValidationServiceRefactored = Depends(get_validation_service)
+        service: ValidationService = Depends(get_validation_service)
     ):
         return await service.validate_breaking_changes(request)
     """
@@ -71,7 +71,7 @@ async def get_validation_service(
     rule_registry = RuleRegistry(cache=cache, tdb=tdb, event=events)
     
     # 서비스 생성 및 반환
-    return ValidationServiceRefactored(
+    return ValidationService(
         cache=cache,
         tdb=tdb,
         events=events,
@@ -95,7 +95,7 @@ async def get_validation_container(
 
 async def get_validation_service_from_container(
     container: ValidationContainer = Depends(get_validation_container)
-) -> ValidationServiceRefactored:
+) -> ValidationService:
     """컨테이너 기반 ValidationService 의존성"""
     return container.get_validation_service()
 
@@ -104,4 +104,4 @@ async def get_validation_service_from_container(
 CachePortDep = Annotated[CachePort, Depends(get_cache_port)]
 TerminusPortDep = Annotated[TerminusPort, Depends(get_terminus_port)]
 EventPortDep = Annotated[EventPort, Depends(get_event_port)]
-ValidationServiceDep = Annotated[ValidationServiceRefactored, Depends(get_validation_service)]
+ValidationServiceDep = Annotated[ValidationService, Depends(get_validation_service)]

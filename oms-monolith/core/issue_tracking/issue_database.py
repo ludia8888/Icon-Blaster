@@ -2,17 +2,16 @@
 Issue Tracking Database Service
 Manages persistence of change-issue links
 """
-import sqlite3
 import json
 import os
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime, timezone, timedelta
 from contextlib import asynccontextmanager
-import aiosqlite
 
 from models.issue_tracking import (
     ChangeIssueLink, IssueReference, IssueProvider
 )
+from shared.database.sqlite_connector import SQLiteConnector, get_sqlite_connector
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

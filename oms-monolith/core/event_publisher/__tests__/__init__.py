@@ -1,1 +1,0 @@
-# Test package for event_publisher module

@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from models.audit_events import AuditEventV1, AuditEventFilter, AuditAction, ResourceType
 from core.audit.audit_database import get_audit_database, AuditDatabase
-from core.audit.audit_publisher import get_audit_publisher
+from core.events.unified_publisher import UnifiedEventPublisher, PublisherBackend, PublisherConfig
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -61,8 +61,14 @@ class AuditService:
             # Initialize database
             self.database = await get_audit_database()
             
-            # Initialize publisher
-            self.publisher = get_audit_publisher()
+            # Initialize publisher with audit backend
+            config = PublisherConfig(
+                backend=PublisherBackend.AUDIT,
+                enable_dual_write=True,
+                audit_db_client=self.database,
+                enable_metrics=True
+            )
+            self.publisher = UnifiedEventPublisher(config)
             
             # Start background batch processor
             self._background_task = asyncio.create_task(self._batch_processor())

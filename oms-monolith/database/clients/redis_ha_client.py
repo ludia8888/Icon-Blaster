@@ -1,6 +1,28 @@
 """
 Redis High Availability Client
 Integrates with Redis Sentinel for automatic failover
+
+DESIGN INTENT:
+This client is specifically designed for PRODUCTION environments where high availability
+is critical. It provides:
+- Automatic failover via Redis Sentinel
+- Master/replica awareness for read/write splitting
+- Connection health monitoring
+- Graceful degradation during network partitions
+
+USE CASES:
+- Production deployments with Redis Sentinel
+- Mission-critical caching and session storage
+- Distributed locking in HA environments
+
+NOT FOR:
+- Development environments (use middleware/common/redis_utils.RedisClient)
+- Simple caching needs without HA requirements
+- Unit tests (use in-memory alternatives)
+
+Related modules:
+- middleware/common/redis_utils.py: Simple Redis client for dev/test
+- Direct redis.asyncio usage: Being phased out, migrate to this or RedisClient
 """
 
 import asyncio
@@ -19,6 +41,9 @@ class RedisHAClient:
     """
     High Availability Redis client with Sentinel integration
     Provides automatic failover and connection management
+    
+    This is the production-grade Redis client. For development or simpler use cases,
+    see middleware/common/redis_utils.RedisClient.
     """
 
     def __init__(self,

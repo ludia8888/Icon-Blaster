@@ -5,7 +5,7 @@ Dependency Injection Container for Validation Service
 from typing import Optional
 import logging
 
-from core.validation.service_refactored import ValidationServiceRefactored
+from core.validation.service import ValidationService
 from core.validation.adapters import (
     create_cache_adapter,
     create_terminus_adapter,
@@ -70,10 +70,10 @@ class ValidationContainer:
             )
         return self._rule_registry
     
-    def get_validation_service(self) -> ValidationServiceRefactored:
+    def get_validation_service(self) -> ValidationService:
         """검증 서비스 가져오기 (모든 의존성 주입)"""
         if self._validation_service is None:
-            self._validation_service = ValidationServiceRefactored(
+            self._validation_service = ValidationService(
                 cache=self.get_cache_adapter(),
                 tdb=self.get_terminus_adapter(),
                 events=self.get_event_adapter(),
@@ -109,7 +109,7 @@ def get_container(test_mode: bool = False) -> ValidationContainer:
     return _default_container
 
 
-def get_validation_service(test_mode: bool = False) -> ValidationServiceRefactored:
+def get_validation_service(test_mode: bool = False) -> ValidationService:
     """검증 서비스 가져오기 (간편 함수)"""
     container = get_container(test_mode=test_mode)
     return container.get_validation_service()
@@ -145,7 +145,7 @@ def create_validation_service_with_legacy_interface(
     tdb_client=None,
     cache=None,
     event_publisher=None
-) -> ValidationServiceRefactored:
+) -> ValidationService:
     """
     기존 인터페이스로 ValidationService 생성
     레거시 코드 지원을 위한 래퍼 함수
@@ -162,7 +162,7 @@ def create_validation_service_with_legacy_interface(
     event_adapter = EventPublisherAdapter(event_publisher) if event_publisher else create_event_adapter()
     
     # 서비스 생성
-    return ValidationServiceRefactored(
+    return ValidationService(
         cache=cache_adapter,
         tdb=tdb_adapter,
         events=event_adapter

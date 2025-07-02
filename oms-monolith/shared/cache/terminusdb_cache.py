@@ -1,6 +1,58 @@
 """
 TerminusDB-Integrated Cache Manager
 Real caching implementation utilizing TerminusDB's internal LRU cache
+
+DESIGN INTENT - DATABASE LEVEL CACHING:
+This cache operates at the database query level, caching raw data and query results
+from TerminusDB before any application-level processing.
+
+PURPOSE:
+1. Reduce database query latency for repeated queries
+2. Leverage TerminusDB's internal LRU cache capabilities
+3. Cache complex WOQL query results
+4. Store frequently accessed documents and schemas
+
+WHY SEPARATE FROM GRAPHQL CACHE:
+- Database cache is format-agnostic (raw data)
+- Same cached data can serve multiple GraphQL queries
+- Database-level optimizations (query planning, indexes)
+- No business logic or permissions applied yet
+
+ARCHITECTURE LAYERS:
+1. GraphQL Resolver → TerminusDB Cache (THIS MODULE) → Hit? Return raw data
+2. Cache Miss → TerminusDB Query → Store in cache → Return data
+3. Raw data → Resolver processing → GraphQL Cache → Client
+
+CACHE HIERARCHY:
+1. In-memory LRU cache (fastest, limited size)
+2. TerminusDB's internal cache (fast, larger capacity)
+3. Actual database queries (slowest, always fresh)
+
+USE CASES:
+- Frequently accessed documents (user profiles, configs)
+- Complex WOQL query results
+- Schema definitions and metadata
+- Reference data that rarely changes
+
+NOT FOR:
+- Formatted/transformed data (use GraphQL cache)
+- User-specific filtered results
+- Data with complex access control applied
+
+CACHE KEY STRATEGY:
+- Query hash + parameters for WOQL queries
+- Document ID for direct document access
+- Schema version + type for schema queries
+
+INVALIDATION:
+- TTL-based expiration
+- Manual invalidation on mutations
+- Automatic invalidation on schema changes
+- LRU eviction when cache is full
+
+Related modules:
+- api/graphql/cache.py: Application-level GraphQL response caching
+- database/clients/terminus_db.py: Direct database access
 """
 
 import logging

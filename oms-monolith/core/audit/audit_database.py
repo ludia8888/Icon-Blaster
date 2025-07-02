@@ -8,12 +8,10 @@ import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
-import sqlite3
-import aiosqlite
-from contextlib import asynccontextmanager
 
 from models.audit_events import AuditEventV1, AuditEventFilter, AuditAction, ResourceType
-from shared.config import get_config
+from bootstrap.config import get_config
+from shared.database.sqlite_connector import SQLiteConnector, get_sqlite_connector
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -81,17 +79,16 @@ class AuditDatabase:
     
     def __init__(self, db_path: Optional[str] = None):
         self.config = get_config()
-        self.db_path = db_path or "/tmp/audit_logs.db"
+        self.db_name = "audit_logs.db"
+        self.db_dir = db_path or "/tmp"
         self.retention_policy = AuditRetentionPolicy()
+        self._connector: Optional[SQLiteConnector] = None
         self._initialized = False
         self._lock = asyncio.Lock()
         
         # Performance settings
         self.batch_size = 100
         self.connection_timeout = 30.0
-        
-        # Ensure directory exists
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
     
     async def initialize(self):
         """Initialize database schema and indexes"""
@@ -102,12 +99,16 @@ class AuditDatabase:
             if self._initialized:
                 return
             
-            async with aiosqlite.connect(self.db_path) as db:
-                # Enable WAL mode for better concurrency
-                await db.execute("PRAGMA journal_mode=WAL")
-                await db.execute("PRAGMA synchronous=NORMAL")
-                await db.execute("PRAGMA cache_size=10000")
-                await db.execute("PRAGMA temp_store=MEMORY")
+            # Get or create connector
+            self._connector = await get_sqlite_connector(
+                self.db_name,
+                db_dir=self.db_dir,
+                enable_wal=True,
+                busy_timeout=30000
+            )
+            
+            # Define migrations
+            migrations = ["""
                 
                 # Create audit_events table
                 await db.execute("""

@@ -1,6 +1,62 @@
 """
 RBAC (Role-Based Access Control) Middleware
 Enhanced implementation with actual permission checking
+
+DESIGN INTENT - AUTHORIZATION LAYER:
+This middleware handles ONLY authorization (what you can do), NOT authentication (who you are).
+It operates as the second security layer, after authentication.
+
+SEPARATION OF CONCERNS:
+1. AuthMiddleware: Establishes identity (WHO)
+2. RBACMiddleware (THIS): Enforces permissions (WHAT)
+3. AuditMiddleware: Records actions (WHEN/HOW)
+
+WHY SEPARATE RBAC FROM AUTH:
+- Clean Architecture: Authorization rules change more frequently than auth methods
+- Performance: Can cache auth tokens separately from permission checks
+- Flexibility: Support multiple permission models (RBAC, ABAC, ACL) without touching auth
+- Scalability: Permission checks can be offloaded to separate service
+- Testability: Mock different roles without dealing with authentication
+
+PERMISSION MODEL:
+- Role-Based: Users have roles, roles have permissions
+- Resource-Based: Permissions are tied to resource types and actions
+- Hierarchical: Admin > Developer > Viewer with permission inheritance
+- Dynamic: Permissions can be updated without code changes
+
+MIDDLEWARE DEPENDENCIES:
+- REQUIRES: AuthMiddleware to run first and set request.state.user
+- PROVIDES: Permission validation for the request
+- ENABLES: AuditMiddleware to log authorized actions
+
+CACHING STRATEGY:
+- User roles are cached per session
+- Permission mappings are cached at startup
+- Resource-specific permissions checked in real-time
+
+USE THIS FOR:
+- Role-based permission checks
+- Resource-level access control
+- Action-based authorization
+- Dynamic permission rules
+
+NOT FOR:
+- Token validation (use AuthMiddleware)
+- User identification (use AuthMiddleware)
+- Audit logging (use AuditMiddleware)
+- Row-level security (implement in service layer)
+
+EXTENSIBILITY:
+- Easy to add new resource types
+- Simple to define new actions
+- Can be extended to support ABAC (Attribute-Based Access Control)
+- Supports custom permission resolvers
+
+Related modules:
+- middleware/auth_middleware.py: Authentication layer
+- middleware/audit_middleware.py: Audit logging layer
+- core/auth/resource_permission_checker.py: Permission logic
+- models/permissions.py: Permission model definitions
 """
 from typing import Callable, Optional, Dict, List, Tuple
 from fastapi import Request, HTTPException, status

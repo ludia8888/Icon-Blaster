@@ -1,6 +1,39 @@
 """
 GraphQL Authentication Module
 Provides authentication for GraphQL endpoints and WebSocket connections
+
+DESIGN INTENT:
+This module provides specialized authentication for GraphQL's unique requirements:
+1. Optional authentication for public queries
+2. WebSocket session management for subscriptions
+3. Connection-level authentication state
+
+WHY SEPARATE FROM MAIN AUTH:
+GraphQL has specific needs that differ from REST APIs:
+- Queries can be partially public (some fields require auth, others don't)
+- WebSocket connections need persistent session management
+- Subscriptions require connection-level auth state tracking
+- Different error handling patterns (return null vs HTTP 401)
+
+ARCHITECTURE:
+- Delegates actual token validation to unified_auth module
+- Adds GraphQL-specific session management layer
+- Provides WebSocket authentication lifecycle
+
+USE THIS FOR:
+- All GraphQL query/mutation authentication
+- WebSocket connection authentication
+- GraphQL subscription authorization
+
+NOT FOR:
+- REST API authentication (use middleware/auth_middleware.py)
+- Background job authentication
+- Service-to-service auth
+
+Related modules:
+- core/auth/unified_auth.py: Core authentication logic
+- middleware/auth_middleware.py: REST API authentication
+- api/gateway/auth.py: DEPRECATED gateway auth
 """
 import os
 from typing import Optional, Dict, Any
@@ -28,21 +61,9 @@ async def get_current_user_optional(
     Get current user for GraphQL queries (optional authentication)
     Returns None if no valid token is provided
     """
-    if not credentials:
-        return None
-    
-    try:
-        # Try to get user from request state (set by middleware)
-        if hasattr(request.state, "user"):
-            return request.state.user
-        
-        # Fallback to direct validation
-        token = credentials.credentials
-        user = await validate_jwt_token(token)
-        return user
-    except Exception as e:
-        logger.debug(f"Optional auth failed: {e}")
-        return None
+    # Use unified auth module
+    from core.auth.unified_auth import get_current_user_optional as unified_optional
+    return await unified_optional(request, credentials)
 
 
 class AuthenticationManager:

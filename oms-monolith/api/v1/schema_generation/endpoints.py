@@ -1,21 +1,21 @@
 """
-API Endpoints for Schema Generation
+API Endpoints for Schema Generation - Refactored with DI
 
 Implements Phase 5 requirements: GraphQL and OpenAPI schema generation
 with automatic link field generation.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from pydantic import BaseModel, Field
 
+from bootstrap.dependencies import get_schema_service
+from core.interfaces import SchemaServiceProtocol
 from core.api.schema_generator import (
     graphql_generator, 
     openapi_generator
 )
 from core.schema.registry import schema_registry
-# Use real auth from middleware in production
-# For testing, this can be overridden with dependency injection
 from middleware.auth_middleware import get_current_user
 from utils.logger import get_logger
 
@@ -72,6 +72,7 @@ class SchemaGenerationResponse(BaseModel):
 @router.post("/graphql", response_model=SchemaGenerationResponse)
 async def generate_graphql_schema(
     request: GraphQLGenerateRequest,
+    schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
     current_user: str = Depends(get_current_user)
 ) -> SchemaGenerationResponse:
     """
@@ -148,6 +149,7 @@ async def generate_graphql_schema(
 @router.post("/openapi", response_model=SchemaGenerationResponse)
 async def generate_openapi_schema(
     request: OpenAPIGenerateRequest,
+    schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
     current_user: str = Depends(get_current_user)
 ) -> SchemaGenerationResponse:
     """
@@ -225,6 +227,7 @@ async def generate_openapi_schema(
 @router.get("/link-metadata/{object_type_id}")
 async def get_link_metadata(
     object_type_id: str,
+    schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
     current_user: str = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
@@ -270,6 +273,7 @@ async def get_link_metadata(
 async def export_schema(
     format: str = Path(..., regex="^(graphql|openapi)$"),
     filename: Optional[str] = Query(None, description="Custom filename for export"),
+    schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
     current_user: str = Depends(get_current_user)
 ) -> Dict[str, str]:
     """

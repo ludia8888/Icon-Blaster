@@ -1,6 +1,46 @@
 """
 Enterprise GraphQL Caching Strategy
 Multi-layer caching with intelligent invalidation
+
+DESIGN INTENT - QUERY LEVEL CACHING:
+This cache operates at the GraphQL query level, NOT the database level.
+It caches the final, formatted GraphQL responses to avoid:
+1. Query parsing and validation overhead
+2. Resolver execution chains
+3. Data transformation and formatting
+4. Permission checks and filtering
+
+WHY SEPARATE FROM DATABASE CACHE:
+- GraphQL queries often combine data from multiple sources
+- Same database data can be formatted differently for different queries
+- Query-level caching includes computed fields and aggregations
+- Permissions may filter data differently per user/role
+
+ARCHITECTURE LAYERS:
+1. Client Request → GraphQL Cache (THIS MODULE) → Hit? Return cached response
+2. Cache Miss → Resolvers → TerminusDB Cache → Database
+3. Response → Cache in GraphQL layer → Return to client
+
+USE CASES:
+- Expensive aggregation queries (dashboards, reports)
+- Frequently accessed static data (schemas, enums)
+- Complex nested queries with multiple joins
+- Public API responses that don't change per user
+
+NOT FOR:
+- User-specific data that changes frequently
+- Real-time subscriptions
+- Mutations (though we invalidate related caches)
+
+CACHE INVALIDATION STRATEGY:
+- Time-based (TTL) for predictable data
+- Event-based for data that changes on specific actions
+- Tag-based invalidation for related data groups
+- User/role-based partitioning for personalized data
+
+Related modules:
+- shared/cache/terminusdb_cache.py: Database-level caching
+- api/graphql/dataloaders.py: Request-scoped batching
 """
 import hashlib
 import json

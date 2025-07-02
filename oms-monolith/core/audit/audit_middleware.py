@@ -1,6 +1,79 @@
 """
 Audit Middleware
 Automatically captures and publishes audit events for all write operations
+
+DESIGN INTENT - AUDIT LAYER:
+This middleware handles ONLY audit logging, operating as the third security layer
+after authentication and authorization have succeeded.
+
+SEPARATION OF CONCERNS:
+1. AuthMiddleware: Validates identity (WHO)
+2. RBACMiddleware: Validates permissions (WHAT)
+3. AuditMiddleware (THIS): Records actions (WHEN/WHERE/HOW)
+
+WHY SEPARATE AUDIT FROM AUTH/RBAC:
+- Compliance: Audit requirements often change independently of auth/permissions
+- Performance: Audit logging can be async/batched without blocking the request
+- Flexibility: Can audit both successful and failed attempts differently
+- Storage: Audit logs often go to different storage than application data
+- Retention: Audit logs have different retention policies than auth tokens
+
+AUDIT STRATEGY:
+- Automatic: Captures all write operations without manual instrumentation
+- Comprehensive: Records WHO did WHAT to WHICH resource WHEN
+- Tamper-proof: Includes request/response hashes for integrity
+- Async: Non-blocking to minimize performance impact
+
+WHAT IS AUDITED:
+- All mutations (POST, PUT, PATCH, DELETE)
+- Failed authorization attempts
+- Schema changes and system configuration updates
+- Login/logout events (via auth integration)
+- Sensitive data access (configurable)
+
+WHAT IS NOT AUDITED:
+- Read operations (unless configured)
+- Public endpoints
+- Health checks and metrics
+- Static file serving
+
+MIDDLEWARE EXECUTION:
+- Runs AFTER Auth and RBAC (only audit authorized actions)
+- Captures request body before processing
+- Captures response after processing
+- Records timing and performance metrics
+
+COMPLIANCE FEATURES:
+- Immutable audit trail
+- Structured for SIEM integration
+- Supports regulatory requirements (SOX, HIPAA, GDPR)
+- Configurable retention policies
+- Dual-write for reliability
+
+USE THIS FOR:
+- Compliance audit trails
+- Security monitoring
+- Change tracking
+- Forensic analysis
+- Performance monitoring
+
+NOT FOR:
+- Application logging (use logger)
+- Error tracking (use error handler)
+- Metrics collection (use metrics middleware)
+- User activity analytics (use analytics service)
+
+EXTENSIBILITY:
+- Pluggable audit event enrichers
+- Custom audit actions
+- Configurable sensitive data masking
+- Integration with external SIEM systems
+
+Related modules:
+- middleware/auth_middleware.py: Provides user context
+- middleware/rbac_middleware.py: Provides permission context
+- core/audit/audit_service.py: Audit storage and retrieval
+- models/audit_events.py: Audit event models
 """
 import time
 from typing import Callable, Optional
@@ -10,7 +83,7 @@ from starlette.responses import StreamingResponse
 import json
 
 from core.auth import UserContext
-from core.audit.audit_publisher import get_audit_publisher
+from core.events.unified_publisher import UnifiedEventPublisher, PublisherBackend, PublisherConfig
 from models.audit_events import AuditAction, TargetInfo, ResourceType, ChangeDetails
 from utils.logger import get_logger
 
@@ -25,7 +98,13 @@ class AuditMiddleware(BaseHTTPMiddleware):
     
     def __init__(self, app, audit_config: Optional[dict] = None):
         super().__init__(app)
-        self.audit_publisher = get_audit_publisher()
+        # Initialize audit publisher with unified publisher
+        config = PublisherConfig(
+            backend=PublisherBackend.AUDIT,
+            enable_dual_write=True,
+            enable_metrics=True
+        )
+        self.audit_publisher = UnifiedEventPublisher(config)
         self.config = audit_config or {}
         
         # Paths to exclude from auditing

@@ -1,6 +1,49 @@
 """
 Enhanced Authentication Middleware
 User Service와 연동하여 JWT 토큰 검증 및 사용자 컨텍스트 주입
+
+DESIGN INTENT - AUTHENTICATION LAYER:
+This middleware handles ONLY authentication (who you are), NOT authorization (what you can do).
+It operates as the first security layer in the middleware stack.
+
+SEPARATION OF CONCERNS:
+1. AuthMiddleware (THIS): Validates identity, creates user context
+2. RBACMiddleware: Checks role-based permissions
+3. AuditMiddleware: Logs security-relevant actions
+
+WHY SEPARATE AUTH FROM RBAC:
+- Single Responsibility: Auth = Identity, RBAC = Permissions
+- Flexibility: Can swap auth methods (JWT, OAuth, SAML) without touching permissions
+- Performance: Skip RBAC checks for public endpoints after auth
+- Testing: Test authentication and authorization independently
+- Compliance: Different audit requirements for auth vs access
+
+MIDDLEWARE EXECUTION ORDER:
+1. AuthMiddleware → Validates token, sets request.state.user
+2. RBACMiddleware → Reads request.state.user, checks permissions
+3. AuditMiddleware → Logs the authenticated action
+
+ARCHITECTURE BENEFITS:
+- Clean separation allows different caching strategies per layer
+- Auth tokens can be cached longer than permission checks
+- Failed auth stops the request early (fail-fast)
+- Each middleware can be toggled on/off independently
+
+USE THIS FOR:
+- JWT token validation
+- Session management
+- User context injection
+- Public path handling
+
+NOT FOR:
+- Permission checks (use RBACMiddleware)
+- Access control lists (use RBACMiddleware)
+- Audit logging (use AuditMiddleware)
+
+Related modules:
+- middleware/rbac_middleware.py: Role-based access control
+- middleware/audit_middleware.py: Security audit logging
+- core/auth/unified_auth.py: Core authentication logic
 """
 import os
 from typing import Optional, Callable
@@ -155,12 +198,9 @@ def get_current_user(request: Request) -> UserContext:
     현재 요청의 사용자 정보 반환
     FastAPI 의존성으로 사용
     """
-    if not hasattr(request.state, "user"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
-        )
-    return request.state.user
+    # Use unified auth module
+    from core.auth.unified_auth import get_current_user_standard
+    return get_current_user_standard(request)
 
 
 async def require_permission(
