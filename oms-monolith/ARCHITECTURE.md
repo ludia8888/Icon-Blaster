@@ -39,8 +39,9 @@ C4Container
     Container(graphql_ws, "GraphQL WebSocket", "Strawberry", "실시간 구독")
     
     ContainerDb(terminusdb, "TerminusDB", "그래프 데이터베이스", "온톨로지 데이터 저장")
+    ContainerDb(postgres, "PostgreSQL", "관계형 데이터베이스", "감사 로그 및 사용자 관리")
     ContainerDb(redis, "Redis", "인메모리 캐시", "세션 및 캐시")
-    ContainerDb(sqlite, "SQLite", "관계형 DB", "메타데이터")
+    ContainerDb(sqlite, "SQLite", "로컬 저장소", "임시 메타데이터")
     
     Container(nats, "NATS", "메시지 브로커", "이벤트 스트리밍")
     Container(prometheus, "Prometheus", "메트릭 DB", "모니터링 데이터")
@@ -52,11 +53,13 @@ C4Container
     Rel(api_gateway, graphql_ws, "WebSocket")
     
     Rel(main_api, terminusdb, "TCP")
+    Rel(main_api, postgres, "TCP")
     Rel(main_api, redis, "TCP")
     Rel(main_api, sqlite, "File")
     Rel(main_api, nats, "TCP")
     
     Rel(graphql_http, terminusdb, "TCP")
+    Rel(graphql_http, postgres, "TCP")
     Rel(graphql_ws, terminusdb, "TCP")
     Rel(graphql_ws, nats, "TCP")
     
@@ -154,6 +157,7 @@ graph TB
 
     subgraph "데이터 서비스들"
         TerminusDB[(TerminusDB<br/>포트: 6363<br/>그래프 데이터베이스)]
+        PostgreSQL[(PostgreSQL<br/>포트: 5432<br/>관계형 데이터베이스)]
         Redis[(Redis<br/>포트: 6379<br/>캐시/세션)]
         SQLite[(SQLite<br/>로컬 메타데이터)]
     end
@@ -189,7 +193,9 @@ graph TB
     SchemaService --> TerminusDB
     VersionService --> TerminusDB
     ValidationService --> TerminusDB
+    AuditService --> PostgreSQL
     AuditService --> SQLite
+    IAMService --> PostgreSQL
     IAMService --> Redis
 
     SchemaService --> EventBus
@@ -271,6 +277,51 @@ graph TB
     RBAC --> Encryption
     Resource --> Backup
     Compliance --> Privacy
+```
+
+## 🗄️ 하이브리드 데이터베이스 전략
+
+### 데이터베이스 역할 분담
+
+| 데이터베이스 | 주요 역할 | 데이터 유형 | 포트 |
+|-------------|-----------|-------------|------|
+| **TerminusDB** | 비즈니스 로직 | 온톨로지, 스키마, 관계 | 6363 |
+| **PostgreSQL** | 운영 메타데이터 | 감사, 사용자, 정책 | 5432 |
+| **Redis** | 고성능 캐시 | 세션, 캐시, 분산락 | 6379 |
+| **SQLite** | 로컬 저장소 | 임시 데이터, 개발용 | - |
+
+### 데이터 배치 전략
+
+```mermaid
+graph TB
+    subgraph "TerminusDB - 비즈니스 데이터"
+        A[ObjectType 스키마]
+        B[Property 정의]
+        C[LinkType 관계]
+        D[Interface 명세]
+        E[브랜치 및 버전]
+    end
+    
+    subgraph "PostgreSQL - 운영 데이터"
+        F[감사 이벤트]
+        G[사용자 계정]
+        H[권한 정책]
+        I[아웃박스 이벤트]
+        J[분산 잠금 상태]
+    end
+    
+    subgraph "Redis - 캐시 데이터"
+        K[GraphQL 쿼리 캐시]
+        L[JWT 토큰 캐시]
+        M[세션 상태]
+        N[실시간 연결 정보]
+    end
+    
+    subgraph "SQLite - 로컬 데이터"
+        O[개발환경 데이터]
+        P[임시 작업 공간]
+        Q[오프라인 캐시]
+    end
 ```
 
 ## 📊 데이터 모델 아키텍처
@@ -439,6 +490,10 @@ graph TB
         TDB_Replica1[(TerminusDB Replica 1)]
         TDB_Replica2[(TerminusDB Replica 2)]
         
+        PG_Primary[(PostgreSQL Primary)]
+        PG_Replica1[(PostgreSQL Replica 1)]
+        PG_Replica2[(PostgreSQL Replica 2)]
+        
         Redis_Primary[(Redis Primary)]
         Redis_Replica[(Redis Replica)]
     end
@@ -466,6 +521,10 @@ graph TB
     API2 --> TDB_Primary
     API3 --> TDB_Primary
     
+    API1 --> PG_Primary
+    API2 --> PG_Primary
+    API3 --> PG_Primary
+    
     GQL1 --> TDB_Replica1
     GQL2 --> TDB_Replica2
 
@@ -475,6 +534,8 @@ graph TB
 
     TDB_Primary --> TDB_Replica1
     TDB_Primary --> TDB_Replica2
+    PG_Primary --> PG_Replica1
+    PG_Primary --> PG_Replica2
     Redis_Primary --> Redis_Replica
 
     API1 --> NATS1

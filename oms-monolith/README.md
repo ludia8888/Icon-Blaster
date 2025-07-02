@@ -76,8 +76,9 @@ graph TB
 
     subgraph "데이터 저장소"
         TerminusDB[(TerminusDB<br/>그래프 DB<br/>포트: 6363)]
+        PostgreSQL[(PostgreSQL<br/>관계형 DB<br/>포트: 5432)]
         Redis[(Redis<br/>캐시/세션<br/>포트: 6379)]
-        SQLite[(SQLite<br/>메타데이터)]
+        SQLite[(SQLite<br/>로컬 메타데이터)]
     end
 
     subgraph "이벤트 스트리밍"
@@ -119,7 +120,9 @@ graph TB
     SchemaService --> TerminusDB
     ValidationService --> TerminusDB
     VersionService --> TerminusDB
+    AuditService --> PostgreSQL
     AuditService --> SQLite
+    IAMService --> PostgreSQL
     IAMService --> Redis
 
     CacheMiddleware --> Redis
@@ -143,7 +146,7 @@ graph TB
     classDef middlewareLayer fill:#fff3e0
 
     class MainAPI,GraphQLHTTP,GraphQLWS apiLayer
-    class TerminusDB,Redis,SQLite dataLayer
+    class TerminusDB,PostgreSQL,Redis,SQLite dataLayer
     class Prometheus,Grafana,Jaeger monitoringLayer
     class AuthMiddleware,RBACMiddleware,AuditMiddleware,CacheMiddleware middlewareLayer
 ```
@@ -181,7 +184,11 @@ docker-compose ps
 |--------|-----|------|
 | 메인 API | http://localhost:8000 | REST API 엔드포인트 |
 | API 문서 | http://localhost:8000/docs | Swagger UI 문서 |
-| GraphQL | http://localhost:8004/graphql | GraphQL Playground |
+| GraphQL HTTP | http://localhost:8006/graphql | GraphQL HTTP API |
+| GraphQL WebSocket | http://localhost:8004/graphql | GraphQL 실시간 구독 |
+| PostgreSQL | localhost:5432 | 관계형 데이터베이스 |
+| TerminusDB | http://localhost:6363 | 그래프 데이터베이스 |
+| Redis | localhost:6379 | 캐시 및 세션 스토어 |
 | Grafana | http://localhost:3000 | 모니터링 대시보드 |
 | Jaeger | http://localhost:16686 | 분산 트레이싱 |
 
@@ -323,13 +330,53 @@ mypy .
 flake8 .
 ```
 
+## 🏗️ 하이브리드 데이터베이스 아키텍처
+
+### 데이터베이스 역할 분담
+
+#### TerminusDB (그래프 데이터베이스)
+- **주요 비즈니스 데이터**: 온톨로지, 스키마, 객체 타입
+- **복잡한 관계 모델링**: 링크 타입, 인터페이스, 상속 관계
+- **버전 관리**: Git 스타일 브랜치 및 머지 지원
+- **GraphQL 네이티브**: 실시간 쿼리 및 구독 지원
+
+#### PostgreSQL (관계형 데이터베이스)
+- **감사 로그**: 모든 변경사항 추적 (SOX, GDPR 규정 준수)
+- **사용자 관리**: 인증, 인가, 세션 관리
+- **분산 잠금**: Advisory Lock을 통한 동시성 제어
+- **아웃박스 패턴**: 이벤트 기반 아키텍처의 트랜잭션 보장
+- **운영 메타데이터**: 시스템 설정, 정책, 보고서
+
+#### Redis (인메모리 캐시)
+- **세션 스토어**: JWT 토큰 캐싱 및 관리
+- **쿼리 캐싱**: GraphQL 결과 캐싱
+- **분산 락**: 고성능 락 메커니즘
+- **실시간 데이터**: WebSocket 연결 상태 관리
+
+#### SQLite (로컬 저장소)
+- **로컬 캐싱**: 오프라인 작업 지원
+- **임시 데이터**: 세션별 작업 데이터
+- **개발 환경**: 로컬 개발용 경량 저장소
+
+### 데이터 플로우 패턴
+```mermaid
+graph LR
+    A[비즈니스 로직] --> B[TerminusDB]
+    A --> C[PostgreSQL 감사]
+    A --> D[Redis 캐시]
+    
+    B --> E[GraphQL 응답]
+    C --> F[감사 보고서]
+    D --> G[빠른 응답]
+```
+
 ## 📊 성능 및 확장성
 
 ### 성능 최적화
-- **연결 풀링**: PostgreSQL, Redis 연결 최적화
+- **연결 풀링**: PostgreSQL, TerminusDB, Redis 연결 최적화
 - **쿼리 최적화**: N+1 문제 해결을 위한 DataLoader 패턴
 - **캐싱 전략**: Redis 기반 다층 캐싱
-- **인덱싱**: 그래프 DB 쿼리 최적화
+- **인덱싱**: 그래프 DB 및 PostgreSQL 쿼리 최적화
 
 ### 확장성 고려사항
 - **수평 확장**: 마이크로서비스 아키텍처 지원
