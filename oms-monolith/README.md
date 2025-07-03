@@ -35,8 +35,17 @@ OMS는 복잡한 데이터 모델과 온톨로지를 체계적으로 관리하�
 ### 📊 모니터링 및 관찰성
 - **Prometheus** 메트릭 수집
 - **Grafana** 대시보드
-- **Jaeger** 분산 트레이싱
+- **Jaeger** 분산 트레이싱 (OpenTelemetry 통합)
 - **실시간 헬스 체크**
+
+### 🚀 고급 기능 (TerminusDB 확장)
+- **Vector Embeddings** - 7개 프로바이더 지원 (OpenAI, Cohere, HuggingFace, Azure, Google Vertex, Anthropic, Local)
+- **GraphQL Deep Linking** - Repository/Service/Resolver 아키텍처
+- **Redis SmartCache** - 3-tier 캐싱 (Local → Redis → TerminusDB)
+- **Time Travel Queries** - AS OF, BETWEEN, ALL_VERSIONS 연산자
+- **Delta Encoding** - 압축 전략을 통한 스토리지 효율성
+- **@unfoldable Documents** - 선택적 콘텐츠 로딩
+- **@metadata Frames** - Markdown 문서 메타데이터
 
 ## 🏛️ 시스템 아키텍처
 
@@ -72,13 +81,16 @@ graph TB
         VersionService[버전 서비스<br/>브랜치 관리]
         AuditService[감사 서비스<br/>변경 추적]
         IAMService[IAM 서비스<br/>인증/인가]
+        EmbeddingService[임베딩 서비스<br/>벡터 검색]
+        TimeTravelService[시간 여행 서비스<br/>시점 쿼리]
+        GraphAnalysisService[그래프 분석<br/>Deep Linking]
     end
 
     subgraph "데이터 저장소"
         TerminusDB[(TerminusDB<br/>그래프 DB<br/>포트: 6363)]
         PostgreSQL[(PostgreSQL<br/>관계형 DB<br/>포트: 5432)]
-        Redis[(Redis<br/>캐시/세션<br/>포트: 6379)]
-        SQLite[(SQLite<br/>로컬 메타데이터)]
+        Redis[(Redis<br/>SmartCache/세션<br/>포트: 6379)]
+        SQLite[(SQLite<br/>감사 로그)]
     end
 
     subgraph "이벤트 스트리밍"
@@ -116,6 +128,9 @@ graph TB
     CacheMiddleware --> VersionService
     CacheMiddleware --> AuditService
     CacheMiddleware --> IAMService
+    CacheMiddleware --> EmbeddingService
+    CacheMiddleware --> TimeTravelService
+    CacheMiddleware --> GraphAnalysisService
 
     SchemaService --> TerminusDB
     ValidationService --> TerminusDB
@@ -129,6 +144,8 @@ graph TB
     
     SchemaService --> EventPublisher
     VersionService --> EventPublisher
+    TimeTravelService --> EventPublisher
+    GraphAnalysisService --> EventPublisher
     EventPublisher --> NATS
     NATS --> EventConsumer
 
@@ -139,6 +156,9 @@ graph TB
 
     SchemaService --> Jaeger
     ValidationService --> Jaeger
+    EmbeddingService --> Jaeger
+    TimeTravelService --> Jaeger
+    GraphAnalysisService --> Jaeger
 
     classDef apiLayer fill:#e1f5fe
     classDef dataLayer fill:#f3e5f5
@@ -341,19 +361,23 @@ flake8 .
 - **GraphQL 네이티브**: 실시간 쿼리 및 구독 지원
 
 #### PostgreSQL (관계형 데이터베이스)
-- **감사 로그**: 모든 변경사항 추적 (SOX, GDPR 규정 준수)
+- **감사 로그**: 모든 변경사항 추적 (SQLite/PostgreSQL 선택 가능)
 - **사용자 관리**: 인증, 인가, 세션 관리
 - **분산 잠금**: Advisory Lock을 통한 동시성 제어
 - **아웃박스 패턴**: 이벤트 기반 아키텍처의 트랜잭션 보장
 - **운영 메타데이터**: 시스템 설정, 정책, 보고서
+- **감사 Side-Car**: TerminusDB와 교차 검증
 
 #### Redis (인메모리 캐시)
+- **SmartCache**: 3-tier 캐싱 (Local → Redis → TerminusDB)
 - **세션 스토어**: JWT 토큰 캐싱 및 관리
 - **쿼리 캐싱**: GraphQL 결과 캐싱
 - **분산 락**: 고성능 락 메커니즘
 - **실시간 데이터**: WebSocket 연결 상태 관리
+- **Vector 캐싱**: 임베딩 벡터 결과 캐싱
 
 #### SQLite (로컬 저장소)
+- **감사 로그 기본값**: 로컬 감사 이벤트 저장 (7년 보존)
 - **로컬 캐싱**: 오프라인 작업 지원
 - **임시 데이터**: 세션별 작업 데이터
 - **개발 환경**: 로컬 개발용 경량 저장소
@@ -413,11 +437,16 @@ roles = {
 - **애플리케이션 메트릭**: 요청 수, 응답 시간, 에러율
 - **비즈니스 메트릭**: 스키마 생성 수, 사용자 활동
 - **인프라 메트릭**: CPU, 메모리, 디스크 사용률
+- **TerminusDB 메트릭**: 쿼리 성능, 캐시 히트율
+- **임베딩 메트릭**: 프로바이더별 성능, 토큰 사용량
+- **시간 여행 메트릭**: 시점 쿼리 성능, 버전 스캔 효율
 
 ### 로그 관리
 - **구조화된 로깅**: JSON 형태의 로그
 - **로그 레벨**: DEBUG, INFO, WARNING, ERROR, CRITICAL
-- **분산 트레이싱**: OpenTelemetry 표준 준수
+- **분산 트레이싱**: OpenTelemetry + Jaeger 통합
+- **감사 로그**: 불변 이벤트 저장, 해시 기반 무결성
+- **Side-Car 검증**: TerminusDB 교차 검증 리포트
 
 ## 🔄 배포 및 운영
 
@@ -468,15 +497,34 @@ curl http://localhost:8000/health?detailed=true
 - **이슈 리포트**: [GitHub Issues](https://github.com/your-username/oms-monolith/issues)
 - **토론**: [GitHub Discussions](https://github.com/your-username/oms-monolith/discussions)
 
+## 📚 추가 문서
+
+- **[확장 아키텍처 문서](../ARCHITECTURE_EXTENDED.md)**: 시스템 아키텍처 상세 설명
+- **[기능 가이드](../FEATURES.md)**: 9가지 TerminusDB 확장 기능 사용법
+- **[통합 테스트 가이드](../INTEGRATION_TEST_README.md)**: 테스트 실행 방법
+- **[API 문서](docs/api/)**: REST/GraphQL API 레퍼런스
+
 ## 🏆 주요 구현자
 
 - **아키텍처 설계**: Claude AI Assistant
 - **시스템 통합**: 이시현 (isihyeon)
 - **보안 구현**: Claude & 이시현
 - **모니터링 시스템**: Claude AI Assistant
+- **TerminusDB 확장**: Claude & 이시현
 
 ---
 
 **OMS - 차세대 온톨로지 관리 플랫폼** 🚀
 
 > "*복잡한 데이터 모델을 간단하게, 확장 가능한 아키텍처로*"
+
+## 🎯 최근 업데이트 (2024.12)
+
+- ✅ Vector Embeddings 7개 프로바이더 통합
+- ✅ GraphQL Deep Linking 최적화
+- ✅ 3-tier SmartCache 구현
+- ✅ OpenTelemetry + Jaeger 통합
+- ✅ Time Travel Queries 지원
+- ✅ Delta Encoding 압축 전략
+- ✅ @unfoldable/@metadata 문서 기능
+- ✅ 감사 서비스 PostgreSQL 지원
