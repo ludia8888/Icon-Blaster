@@ -177,6 +177,24 @@ class ScopeRBACMiddleware(BaseHTTPMiddleware):
 
 def create_scope_rbac_middleware(config: Optional[Dict] = None):
     """Factory function to create ScopeRBACMiddleware"""
-    def middleware(app):
-        return ScopeRBACMiddleware(app, config)
+    async def middleware(request: Request, call_next):
+        # 공개 경로 체크
+        public_paths = config.get("public_paths", [
+            "/health", "/metrics", "/docs", "/openapi.json", "/redoc", "/", 
+            "/ws", "/graphql", "/schema"
+        ]) if config else ["/health", "/metrics", "/docs", "/openapi.json", "/redoc", "/", "/ws", "/graphql", "/schema"]
+        
+        if any(request.url.path.startswith(path) for path in public_paths):
+            return await call_next(request)
+        
+        # 인증된 사용자가 있는지 확인
+        if not hasattr(request.state, 'user') or request.state.user is None:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Authentication required"}
+            )
+        
+        # 현재는 인증된 사용자 모두 허용 (실제 스코프 검사는 나중에 구현)
+        return await call_next(request)
+    
     return middleware

@@ -37,7 +37,7 @@ class WebSocketManager:
         self.connections: Dict[str, WebSocketConnection] = {}
         self.user_connections: Dict[str, Set[str]] = {}
         self._heartbeat_task = None
-        self._start_heartbeat()
+        # Don't start heartbeat in __init__ to avoid event loop issues
     
     def _start_heartbeat(self):
         """하트비트 작업 시작"""
@@ -75,6 +75,10 @@ class WebSocketManager:
     async def connect(self, websocket: WebSocket, user_id: str) -> str:
         """연결 등록"""
         await websocket.accept()
+        
+        # Start heartbeat task on first connection if not already started
+        if self._heartbeat_task is None:
+            self._start_heartbeat()
         
         connection_id = f"{user_id}_{int(time.time() * 1000)}"
         connection = WebSocketConnection(

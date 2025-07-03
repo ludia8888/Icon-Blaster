@@ -426,7 +426,7 @@ class UnifiedEventPublisher:
                 "data": data,
                 "datacontenttype": "application/json",
                 "correlationid": correlation_id,
-                **metadata or {}
+                **(metadata or {})
             }
         
         elif self.config.format == EventFormat.EVENTBRIDGE:

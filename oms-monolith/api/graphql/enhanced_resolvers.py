@@ -15,7 +15,8 @@ from .schema import (
     StatusEnum,
     TypeClassEnum,
 )
-from .resolvers import service_client
+# from .resolvers import service_client
+service_client = None  # Placeholder
 from .dataloaders import DataLoaderRegistry, EnterpriseDataLoader
 from .cache import GraphQLCache, CacheLevel, CacheKeyBuilder
 from .bff import BFFResolver, DataAggregator, BFFRegistry, ClientType
@@ -351,7 +352,7 @@ async def resolve_properties(
 ObjectType.properties = resolve_properties
 
 
-def create_enhanced_context(
+async def create_enhanced_context(
     request,
     user: Optional[User],
     redis_client=None
@@ -361,11 +362,17 @@ def create_enhanced_context(
     # Get monitor
     monitor = get_monitor()
     
-    # Extract operation info
-    query_data = request.json() if hasattr(request, 'json') else {}
+    # Extract operation info safely
+    query_data = {}
+    try:
+        if hasattr(request, 'json'):
+            query_data = await request.json()
+    except:
+        query_data = {}
+    
     operation_type = "query"  # Would be extracted from query
-    operation_name = query_data.get("operationName")
-    query_string = query_data.get("query", "")
+    operation_name = query_data.get("operationName") if query_data else None
+    query_string = query_data.get("query", "") if query_data else ""
     
     # Create monitoring context
     monitoring_context = monitor.start_query(

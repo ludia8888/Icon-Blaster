@@ -4,7 +4,7 @@ SimpleTerminusDBClient 사용으로 DB 연결 문제 해결
 """
 import logging
 from typing import Any, Dict, List, Optional
-from database.simple_terminus_client import SimpleTerminusDBClient
+from database.unified_terminus_client import SimpleTerminusDBClient
 from models.domain import ObjectType, ObjectTypeCreate
 
 logger = logging.getLogger(__name__)

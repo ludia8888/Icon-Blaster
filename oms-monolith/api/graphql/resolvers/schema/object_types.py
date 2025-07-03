@@ -15,7 +15,7 @@ class ObjectTypeResolver(BaseResolver):
     
     async def get_object_types(
         self,
-        info: strawberry.Info,
+        info,
         branch: str = "main",
         status: Optional[StatusEnum] = None,
         type_class: Optional[TypeClassEnum] = None,
@@ -58,7 +58,7 @@ class ObjectTypeResolver(BaseResolver):
     
     async def get_object_type(
         self,
-        info: strawberry.Info,
+        info,
         name: str,
         branch: str = "main",
         include_properties: bool = True,
@@ -88,7 +88,7 @@ class ObjectTypeResolver(BaseResolver):
     
     async def create_object_type(
         self,
-        info: strawberry.Info,
+        info,
         input: ObjectTypeInput,
         branch: str = "main"
     ) -> ObjectType:
@@ -113,7 +113,7 @@ class ObjectTypeResolver(BaseResolver):
     
     async def update_object_type(
         self,
-        info: strawberry.Info,
+        info,
         name: str,
         input: ObjectTypeUpdateInput,
         branch: str = "main"
@@ -139,7 +139,7 @@ class ObjectTypeResolver(BaseResolver):
     
     async def delete_object_type(
         self,
-        info: strawberry.Info,
+        info,
         name: str,
         branch: str = "main"
     ) -> bool:

@@ -2,7 +2,8 @@
 
 import os
 from typing import Any, Dict
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field
 from functools import lru_cache
 
 class DatabaseConfig(BaseSettings):
@@ -36,13 +37,15 @@ class ServiceConfig(BaseSettings):
 
 class AppConfig(BaseSettings):
     """Application configuration"""
-    database: DatabaseConfig = DatabaseConfig()
-    event: EventConfig = EventConfig()
-    service: ServiceConfig = ServiceConfig()
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    event: EventConfig = Field(default_factory=EventConfig)
+    service: ServiceConfig = Field(default_factory=ServiceConfig)
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore"
+    }
 
 @lru_cache()
 def get_config() -> AppConfig:

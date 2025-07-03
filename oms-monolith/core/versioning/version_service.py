@@ -15,6 +15,7 @@ from models.etag import (
 from core.auth import UserContext
 from shared.database.sqlite_connector import SQLiteConnector, get_sqlite_connector
 from utils.logger import get_logger
+from .delta_compression import EnhancedDeltaEncoder, DeltaType, DeltaStorageOptimizer
 
 logger = get_logger(__name__)
 
@@ -32,6 +33,8 @@ class VersionTrackingService:
         )
         self._connector: Optional[SQLiteConnector] = None
         self._initialized = False
+        self._delta_encoder = EnhancedDeltaEncoder()
+        self._storage_optimizer = DeltaStorageOptimizer(self._delta_encoder)
     
     async def initialize(self):
         """Initialize version tracking database"""
@@ -155,28 +158,28 @@ class VersionTrackingService:
             prev_commit = None
             new_version = 1
             
-            # Generate commit hash
-            timestamp = datetime.now(timezone.utc)
-            commit_hash = generate_commit_hash(
-                prev_commit, content_hash, user.username, timestamp
-            )
-            
-            # Generate ETag
-            etag = f'W/"{commit_hash[:12]}-{new_version}"'
-            
-            # Create version info
-            version_info = VersionInfo(
-                version=new_version,
-                commit_hash=commit_hash,
-                etag=etag,
-                last_modified=timestamp,
-                modified_by=user.username,
-                parent_version=prev_version if row else None,
-                parent_commit=prev_commit,
-                change_type=change_type,
-                change_summary=change_summary,
-                fields_changed=fields_changed or []
-            )
+        # Generate commit hash
+        timestamp = datetime.now(timezone.utc)
+        commit_hash = generate_commit_hash(
+            prev_commit, content_hash, user.username, timestamp
+        )
+        
+        # Generate ETag
+        etag = f'W/"{commit_hash[:12]}-{new_version}"'
+        
+        # Create version info
+        version_info = VersionInfo(
+            version=new_version,
+            commit_hash=commit_hash,
+            etag=etag,
+            last_modified=timestamp,
+            modified_by=user.username,
+            parent_version=prev_version if row else None,
+            parent_commit=prev_commit,
+            change_type=change_type,
+            change_summary=change_summary,
+            fields_changed=fields_changed or []
+        )
             
         # Store version
         await self._connector.execute(
@@ -282,30 +285,30 @@ class VersionTrackingService:
                 """,
                 {"resource_type": resource_type, "resource_id": resource_id, "branch": branch, "version": version}
             )
-            if not row:
-                return None
-            
-            version_info = VersionInfo(
-                version=row['version'],
-                commit_hash=row['commit_hash'],
-                etag=row['etag'],
-                last_modified=datetime.fromisoformat(row['modified_at']),
-                modified_by=row['modified_by'],
-                parent_version=row['version'] - 1 if row['version'] > 1 else None,
-                parent_commit=row['parent_commit'],
-                change_type=row['change_type'],
-                change_summary=row['change_summary'],
-                fields_changed=json.loads(row['fields_changed'])
-            )
-            
-            return ResourceVersion(
-                resource_type=resource_type,
-                resource_id=resource_id,
-                branch=branch,
-                current_version=version_info,
-                content_hash=row['content_hash'],
-                content_size=row['content_size']
-            )
+        if not row:
+            return None
+        
+        version_info = VersionInfo(
+            version=row['version'],
+            commit_hash=row['commit_hash'],
+            etag=row['etag'],
+            last_modified=datetime.fromisoformat(row['modified_at']),
+            modified_by=row['modified_by'],
+            parent_version=row['version'] - 1 if row['version'] > 1 else None,
+            parent_commit=row['parent_commit'],
+            change_type=row['change_type'],
+            change_summary=row['change_summary'],
+            fields_changed=json.loads(row['fields_changed'])
+        )
+        
+        return ResourceVersion(
+            resource_type=resource_type,
+            resource_id=resource_id,
+            branch=branch,
+            current_version=version_info,
+            content_hash=row['content_hash'],
+            content_size=row['content_size']
+        )
     
     async def validate_etag(
         self,
@@ -335,33 +338,33 @@ class VersionTrackingService:
         """Get delta changes for a resource"""
         await self._ensure_initialized()
             
-            # Get current version
-            current = await self.get_resource_version(resource_type, resource_id, branch)
-            if not current:
-                return DeltaResponse(
-                    to_version=VersionInfo(
-                        version=0,
-                        commit_hash="",
-                        etag="",
-                        last_modified=datetime.now(timezone.utc),
-                        modified_by="system",
-                        change_type="not_found"
-                    ),
-                    response_type="no_change",
-                    total_changes=0,
-                    delta_size=0,
-                    etag=""
-                )
-            
-            # Check if client is up to date
-            if delta_request.client_etag == current.current_version.etag:
-                return DeltaResponse(
-                    to_version=current.current_version,
-                    response_type="no_change",
-                    total_changes=0,
-                    delta_size=0,
-                    etag=current.current_version.etag
-                )
+        # Get current version
+        current = await self.get_resource_version(resource_type, resource_id, branch)
+        if not current:
+            return DeltaResponse(
+                to_version=VersionInfo(
+                    version=0,
+                    commit_hash="",
+                    etag="",
+                    last_modified=datetime.now(timezone.utc),
+                    modified_by="system",
+                    change_type="not_found"
+                ),
+                response_type="no_change",
+                total_changes=0,
+                delta_size=0,
+                etag=""
+            )
+        
+        # Check if client is up to date
+        if delta_request.client_etag == current.current_version.etag:
+            return DeltaResponse(
+                to_version=current.current_version,
+                response_type="no_change",
+                total_changes=0,
+                delta_size=0,
+                etag=current.current_version.etag
+            )
             
         # Get client version info
         client_version = None
@@ -415,9 +418,9 @@ class VersionTrackingService:
                     to_version=current.current_version.version,
                     delta_type=delta_row['delta_type'],
                     patches=json.loads(delta_row['delta_content'])
-                        if delta_row['delta_type'] == 'patch' else None,
-                    full_content=json.loads(delta_row['delta_content'])
-                        if delta_row['delta_type'] == 'full' else None
+                    if delta_row['delta_type'] == 'patch' else None,
+                full_content=json.loads(delta_row['delta_content'])
+                    if delta_row['delta_type'] == 'full' else None
                 )
                 
                 return DeltaResponse(
@@ -468,11 +471,11 @@ class VersionTrackingService:
         
         return DeltaResponse(
             to_version=current.current_version,
-                response_type="no_change",
-                total_changes=0,
-                delta_size=0,
-                etag=current.current_version.etag
-            )
+            response_type="no_change",
+            total_changes=0,
+            delta_size=0,
+            etag=current.current_version.etag
+        )
     
     async def validate_cache(
         self,
@@ -540,21 +543,17 @@ class VersionTrackingService:
         
         old_content = json.loads(row['content'])
         
-        # Generate patch
-        patches = create_json_patch(old_content, new_content)
+        # Use enhanced delta encoder
+        delta_type_enum, encoded_delta, delta_size = self._delta_encoder.encode_delta(
+            old_content, new_content
+        )
         
-        # Decide whether to store patch or full content
-        patch_size = len(json.dumps(patches))
-        full_size = len(json.dumps(new_content))
+        # Convert enum to string for storage
+        delta_type = delta_type_enum.value
         
-        if patch_size < full_size * 0.7:  # Use patch if it's < 70% of full size
-            delta_type = "patch"
-            delta_content = patches
-            delta_size = patch_size
-        else:
-            delta_type = "full"
-            delta_content = new_content
-            delta_size = full_size
+        # Store encoded delta as base64 for JSON compatibility
+        import base64
+        delta_content = base64.b64encode(encoded_delta).decode('ascii')
         
         # Store delta
         await self._connector.execute(

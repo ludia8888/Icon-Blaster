@@ -1,7 +1,7 @@
 """Schema service provider"""
 
 from core.schema.service_adapter import SchemaServiceAdapter
-from database.simple_terminus_client import SimpleTerminusDBClient
+from database.unified_terminus_client import SimpleTerminusDBClient
 from core.event_publisher.enhanced_event_service import EnhancedEventService
 from .base import Provider
 from .database import DatabaseProvider

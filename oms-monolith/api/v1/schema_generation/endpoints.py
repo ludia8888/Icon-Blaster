@@ -271,10 +271,10 @@ async def get_link_metadata(
 
 @router.post("/export/{format}")
 async def export_schema(
-    format: str = Path(..., regex="^(graphql|openapi)$"),
-    filename: Optional[str] = Query(None, description="Custom filename for export"),
+    format: str,
     schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
+    filename: Optional[str] = Query(None, description="Custom filename for export")
 ) -> Dict[str, str]:
     """
     Export generated schema to a file.

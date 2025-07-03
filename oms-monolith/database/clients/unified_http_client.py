@@ -623,16 +623,18 @@ def create_iam_client(
     **kwargs
 ) -> UnifiedHTTPClient:
     """Create a client optimized for IAM service communication"""
-    return UnifiedHTTPClient(
+    # Create config directly to avoid parameter conflicts
+    config = HTTPClientConfig(
         mode=ClientMode.SECURE,
         base_url=base_url,
         verify_ssl=verify_ssl,
         timeout=10.0,
         max_retries=0,  # JWT validation doesn't benefit from retries
         enable_circuit_breaker=not enable_fallback,  # Use external CB if fallback enabled
-        enable_tracing=True,
-        **kwargs
+        enable_tracing=True
     )
+    
+    return UnifiedHTTPClient(config=config)
 
 
 # Backward compatibility aliases

@@ -1,6 +1,6 @@
 """Event publisher protocol"""
 
-from typing import Protocol, Dict, Any
+from typing import Protocol, Dict, Any, List
 from datetime import datetime
 
 class EventPublisherProtocol(Protocol):

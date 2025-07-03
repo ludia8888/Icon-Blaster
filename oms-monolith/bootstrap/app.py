@@ -40,7 +40,6 @@ def create_app() -> FastAPI:
     # Include API v1 routers
     from api.v1.schema_generation import endpoints as schema_gen_routes
     from api.v1 import (
-        rbac_test_routes,
         branch_lock_routes,
         audit_routes,
         issue_tracking_routes,
@@ -50,7 +49,6 @@ def create_app() -> FastAPI:
     )
     
     app.include_router(schema_gen_routes.router, prefix="/api/v1")
-    app.include_router(rbac_test_routes.router, prefix="/api/v1")
     app.include_router(branch_lock_routes.router, prefix="/api/v1")
     app.include_router(audit_routes.router, prefix="/api/v1")
     app.include_router(issue_tracking_routes.router, prefix="/api/v1")
@@ -65,9 +63,9 @@ def create_app() -> FastAPI:
     app.mount("/graphql-ws", graphql_app, name="graphql_ws")
     
     # Register test routes in non-production environments
-    if config.service.environment != "production":
-        from tests.fixtures.test_routes import register_test_routes
-        register_test_routes(app)
+    # if config.service.environment != "production":
+    #     from tests.fixtures.test_routes import register_test_routes
+    #     register_test_routes(app)
     
     # Add middleware
     if config.service.environment == "production":

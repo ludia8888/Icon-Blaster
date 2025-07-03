@@ -42,8 +42,7 @@ class IAMIntegration:
         self._http_client = create_iam_client(
             base_url=self.iam_base_url,
             verify_ssl=verify_ssl,
-            enable_fallback=True,
-            timeout=10.0
+            enable_fallback=True
         )
         
         # Initialize JWKS client for key rotation support

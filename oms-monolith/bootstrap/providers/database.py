@@ -1,7 +1,7 @@
 """Database provider for TerminusDB connections"""
 
 import os
-from database.simple_terminus_client import SimpleTerminusDBClient
+from database.unified_terminus_client import SimpleTerminusDBClient
 from .base import SingletonProvider
 
 class DatabaseProvider(SingletonProvider[SimpleTerminusDBClient]):

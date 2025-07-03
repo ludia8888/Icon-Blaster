@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/v1/schemas", tags=["Schema Management"])
 
 @router.get("/{branch}/object-types")
 async def list_object_types(
-    branch: str = Path(..., description="Branch name"),
+    branch: str,
     schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
     current_user: Annotated[str, Depends(get_current_user)]
 ) -> List[Dict[str, Any]]:
@@ -25,8 +25,8 @@ async def list_object_types(
 
 @router.post("/{branch}/object-types")
 async def create_object_type(
-    branch: str = Path(..., description="Branch name"),
-    object_type: Dict[str, Any] = Body(...),
+    branch: str,
+    object_type: Dict[str, Any],
     schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
     current_user: Annotated[str, Depends(get_current_user)]
 ) -> Dict[str, Any]:

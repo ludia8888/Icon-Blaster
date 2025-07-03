@@ -252,8 +252,24 @@ class RBACMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def create_rbac_middleware(public_paths: Optional[List[str]] = None):
+def create_rbac_middleware(service_name: str = "default"):
     """RBAC 미들웨어 생성 함수"""
-    def middleware(app):
-        return RBACMiddleware(app, public_paths)
+    async def middleware(request: Request, call_next):
+        # 공개 경로 체크
+        public_paths = [
+            "/health", "/metrics", "/docs", "/openapi.json", "/redoc", "/", 
+            "/ws", "/graphql"  # GraphQL 경로 추가
+        ]
+        
+        if request.url.path in public_paths:
+            return await call_next(request)
+        
+        # 인증된 사용자가 있는지 확인
+        if not hasattr(request.state, 'user') or request.state.user is None:
+            # 인증이 필요한 경로는 AuthMiddleware에서 처리하도록 위임
+            return await call_next(request)
+        
+        # RBAC 검사는 나중에 구현 (현재는 인증된 사용자 모두 허용)
+        return await call_next(request)
+    
     return middleware

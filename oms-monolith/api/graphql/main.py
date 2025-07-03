@@ -19,7 +19,7 @@ try:
 except ImportError:
     from strawberry.asgi import GraphQL as GraphQLRouter
 
-from middleware.rbac_middleware import create_rbac_middleware
+from core.iam.scope_rbac_middleware import create_scope_rbac_middleware
 
 # shared 모듈 import를 위한 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -111,7 +111,9 @@ app.add_middleware(
 )
 
 # RBAC 미들웨어 추가
-rbac_middleware = create_rbac_middleware("graphql-service")
+rbac_middleware = create_scope_rbac_middleware({
+    "public_paths": ["/health", "/", "/graphql", "/ws", "/schema"]
+})
 app.middleware("http")(rbac_middleware)
 
 

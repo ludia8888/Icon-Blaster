@@ -151,22 +151,22 @@ class IssueTrackingDatabase:
             """,
             {"link_id": row['id']}
         )
-            
-            # Reconstruct link
-            primary_issue = IssueReference(
-                provider=IssueProvider(row['primary_issue_provider']),
-                issue_id=row['primary_issue_id']
+        
+        # Reconstruct link
+        primary_issue = IssueReference(
+            provider=IssueProvider(row['primary_issue_provider']),
+            issue_id=row['primary_issue_id']
+        )
+        
+        related_issues = [
+            IssueReference(
+                provider=IssueProvider(rel['issue_provider']),
+                issue_id=rel['issue_id']
             )
-            
-            related_issues = [
-                IssueReference(
-                    provider=IssueProvider(rel['issue_provider']),
-                    issue_id=rel['issue_id']
-                )
-                for rel in related_rows
-            ]
-            
-            return ChangeIssueLink(
+            for rel in related_rows
+        ]
+        
+        return ChangeIssueLink(
                 change_id=row['change_id'],
                 change_type=row['change_type'],
                 branch_name=row['branch_name'],
@@ -208,15 +208,15 @@ class IssueTrackingDatabase:
             """,
             {"provider": issue_provider.value, "issue_id": issue_id}
         )
-            
-            # Combine and deduplicate
-            all_changes = []
-            seen_ids = set()
-            
-            for row in primary_changes + related_changes:
-                if row['change_id'] not in seen_ids:
-                    seen_ids.add(row['change_id'])
-                    all_changes.append({
+        
+        # Combine and deduplicate
+        all_changes = []
+        seen_ids = set()
+        
+        for row in primary_changes + related_changes:
+            if row['change_id'] not in seen_ids:
+                seen_ids.add(row['change_id'])
+                all_changes.append({
                         'change_id': row['change_id'],
                         'change_type': row['change_type'],
                         'branch_name': row['branch_name'],
@@ -268,8 +268,8 @@ class IssueTrackingDatabase:
             params["change_type"] = change_type
         
         row = await self._connector.fetch_one(query, params)
-            
-            return {
+        
+        return {
                 'total_changes': row['total_changes'],
                 'unique_issues': row['unique_issues'],
                 'emergency_overrides': row['emergency_overrides'],

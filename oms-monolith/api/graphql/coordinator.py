@@ -9,6 +9,7 @@ from .resolvers import (
     DataTypeResolver, BranchResolver, HistoryResolver,
     ValidationResolver, SearchResolver
 )
+from .temporal_resolver import TemporalResolver
 from .schema import (
     ObjectType, ObjectTypeConnection, ObjectTypeInput, ObjectTypeUpdateInput,
     Property, SharedProperty, LinkType, Interface, Branch,
@@ -19,6 +20,12 @@ from .schema import (
     StatusEnum, TypeClassEnum, FunctionCategoryEnum, 
     DataTypeCategoryEnum, BranchStatusEnum
 )
+from .temporal_schema import (
+    TemporalResourceQueryInput, TemporalComparisonInput,
+    TemporalQueryResult, TemporalComparisonResult,
+    ResourceTimeline, TemporalSnapshot
+)
+from datetime import datetime
 
 
 @strawberry.type
@@ -37,6 +44,7 @@ class Query:
         self._history_resolver = HistoryResolver()
         self._validation_resolver = ValidationResolver()
         self._search_resolver = SearchResolver()
+        self._temporal_resolver = TemporalResolver()
     
     # Object Type Queries
     @strawberry.field
@@ -100,6 +108,51 @@ class Query:
         )
     
     # Additional queries would follow the same pattern...
+    
+    # Temporal Queries (Time Travel)
+    @strawberry.field
+    async def temporal_query(
+        self,
+        info: strawberry.Info,
+        query: TemporalResourceQueryInput
+    ) -> TemporalQueryResult:
+        """Execute temporal query for point-in-time data access"""
+        return await self._temporal_resolver.query_temporal(info, query)
+    
+    @strawberry.field
+    async def temporal_comparison(
+        self,
+        info: strawberry.Info,
+        comparison: TemporalComparisonInput
+    ) -> TemporalComparisonResult:
+        """Compare resource states at different points in time"""
+        return await self._temporal_resolver.compare_temporal_states(info, comparison)
+    
+    @strawberry.field
+    async def resource_timeline(
+        self,
+        info: strawberry.Info,
+        resource_type: str,
+        resource_id: str,
+        branch: str = "main"
+    ) -> ResourceTimeline:
+        """Get complete timeline of changes for a resource"""
+        return await self._temporal_resolver.get_resource_timeline(
+            info, resource_type, resource_id, branch
+        )
+    
+    @strawberry.field
+    async def temporal_snapshot(
+        self,
+        info: strawberry.Info,
+        branch: str,
+        timestamp: datetime,
+        include_data: bool = False
+    ) -> TemporalSnapshot:
+        """Get a snapshot of the entire system at a specific point in time"""
+        return await self._temporal_resolver.create_temporal_snapshot(
+            info, branch, timestamp, include_data
+        )
 
 
 @strawberry.type
@@ -172,7 +225,8 @@ class GraphQLCoordinator:
             'branch': BranchResolver(),
             'history': HistoryResolver(),
             'validation': ValidationResolver(),
-            'search': SearchResolver()
+            'search': SearchResolver(),
+            'temporal': TemporalResolver()
         }
     
     async def create_object_with_properties(

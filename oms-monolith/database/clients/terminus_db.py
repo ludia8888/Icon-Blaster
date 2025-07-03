@@ -17,8 +17,15 @@ from opentelemetry import trace
 from database.clients.unified_http_client import (
     create_terminus_client, create_secure_client, HTTPClientConfig, ClientMode, UnifiedHTTPClient
 )
+from utils.retry_strategy import with_retry, DB_WRITE_CONFIG, DB_READ_CONFIG, DB_CRITICAL_CONFIG
 
 logger = logging.getLogger(__name__)
+
+# Simple trace_method decorator placeholder
+def trace_method(name):
+    def decorator(func):
+        return func
+    return decorator
 
 
 class TerminusDBClient:

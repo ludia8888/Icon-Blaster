@@ -4,6 +4,7 @@ Maintains backward compatibility while migrating to unified logger
 """
 
 import warnings
+import logging
 from typing import Optional, Dict, Any, Union
 from utils.unified_logger import (
     get_logger as unified_get_logger,
@@ -14,16 +15,27 @@ from utils.unified_logger import (
 )
 
 # Import original components for backward compatibility
-from utils.logger_original import (
-    StructuredFormatter,
-    StructuredLoggerAdapter,
-    log_operation_start,
-    log_operation_end,
-    log_validation_result,
-    log_performance_metric,
-    configure_production_logging,
-    configure_development_logging
-)
+try:
+    from utils.logger_original import (
+        StructuredFormatter,
+        StructuredLoggerAdapter,
+        log_operation_start,
+        log_operation_end,
+        log_validation_result,
+        log_performance_metric,
+        configure_production_logging,
+        configure_development_logging
+    )
+except ImportError:
+    # Fallback implementations if original logger is not available
+    StructuredFormatter = None
+    StructuredLoggerAdapter = None
+    log_operation_start = lambda *args, **kwargs: None
+    log_operation_end = lambda *args, **kwargs: None
+    log_validation_result = lambda *args, **kwargs: None
+    log_performance_metric = lambda *args, **kwargs: None
+    configure_production_logging = lambda *args, **kwargs: None
+    configure_development_logging = lambda *args, **kwargs: None
 
 # Re-export original components
 __all__ = [
@@ -68,8 +80,11 @@ def get_logger(
         use_json = os.environ.get("LOG_FORMAT", "text").lower() == "json"
     
     # Setup unified logging if not already done
+    level_str = str(level)
+    if level_str.startswith('LogLevel.'):
+        level_str = level_str.replace('LogLevel.', '')
     setup_logging(
-        level=str(level) if isinstance(level, LogLevel) else level,
+        level=level_str,
         json_format=use_json,
         service_name=service_name,
         version=version

@@ -12,6 +12,8 @@ from pathlib import Path
 from models.audit_events import AuditEventV1, AuditEventFilter, AuditAction, ResourceType
 from bootstrap.config import get_config
 from shared.database.sqlite_connector import SQLiteConnector, get_sqlite_connector
+from shared.database.postgres_connector import PostgresConnector, get_postgres_connector
+from .database_interface import AuditDatabaseInterface, DatabaseConnectorAdapter
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -64,7 +66,7 @@ class AuditRetentionPolicy:
         return created_at + timedelta(days=retention_days)
 
 
-class AuditDatabase:
+class AuditDatabase(AuditDatabaseInterface):
     """
     Enterprise audit database with compliance features
     
@@ -75,14 +77,39 @@ class AuditDatabase:
     - Data integrity verification
     - Archive and purge capabilities
     - GDPR compliance support
+    - Support for multiple database backends (SQLite, PostgreSQL)
     """
     
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        use_postgres: bool = False,
+        postgres_config: Optional[Dict[str, Any]] = None
+    ):
+        """
+        Initialize audit database
+        
+        Args:
+            db_path: Path for SQLite database (if not using PostgreSQL)
+            use_postgres: Use PostgreSQL instead of SQLite
+            postgres_config: PostgreSQL connection config
+                - host: PostgreSQL host
+                - port: PostgreSQL port
+                - database: Database name
+                - user: Database user
+                - password: Database password
+        """
         self.config = get_config()
+        self.use_postgres = use_postgres
+        self.postgres_config = postgres_config or {}
+        
+        # SQLite settings
         self.db_name = "audit_logs.db"
         self.db_dir = db_path or "/tmp"
+        
+        # Common settings
         self.retention_policy = AuditRetentionPolicy()
-        self._connector: Optional[SQLiteConnector] = None
+        self._connector: Optional[DatabaseConnectorAdapter] = None
         self._initialized = False
         self._lock = asyncio.Lock()
         
@@ -90,7 +117,7 @@ class AuditDatabase:
         self.batch_size = 100
         self.connection_timeout = 30.0
     
-    async def initialize(self):
+    async def initialize(self, migrations: Optional[List[str]] = None):
         """Initialize database schema and indexes"""
         if self._initialized:
             return
@@ -99,16 +126,112 @@ class AuditDatabase:
             if self._initialized:
                 return
             
-            # Get or create connector
-            self._connector = await get_sqlite_connector(
-                self.db_name,
-                db_dir=self.db_dir,
-                enable_wal=True,
-                busy_timeout=30000
-            )
+            # Get or create connector based on configuration
+            if self.use_postgres:
+                # Use PostgreSQL connector
+                pg_config = self.postgres_config.copy()
+                database = pg_config.pop('database', 'audit_db')
+                
+                connector = await get_postgres_connector(
+                    database=database,
+                    **pg_config
+                )
+                self._connector = DatabaseConnectorAdapter(connector)
+            else:
+                # Use SQLite connector (default)
+                connector = await get_sqlite_connector(
+                    self.db_name,
+                    db_dir=self.db_dir,
+                    enable_wal=True,
+                    busy_timeout=30000
+                )
+                self._connector = DatabaseConnectorAdapter(connector)
             
-            # Define migrations
-            migrations = [
+            # Get migrations based on database type
+            if not migrations:
+                migrations = self._get_migrations()
+            
+            # Initialize with migrations
+            await self._connector.initialize(migrations=migrations)
+            self._initialized = True
+            
+            db_type = "PostgreSQL" if self.use_postgres else "SQLite"
+            logger.info(f"Audit database initialized with {db_type} connector")
+    
+    def _get_migrations(self) -> List[str]:
+        """Get database migrations based on backend type"""
+        if self.use_postgres:
+            # PostgreSQL migrations
+            return [
+                # Create audit_events table
+                """
+                CREATE TABLE IF NOT EXISTS audit_events (
+                    id TEXT PRIMARY KEY,
+                    created_at TIMESTAMP NOT NULL,
+                    action TEXT NOT NULL,
+                    actor_id TEXT NOT NULL,
+                    actor_username TEXT NOT NULL,
+                    actor_is_service BOOLEAN NOT NULL DEFAULT FALSE,
+                    target_resource_type TEXT NOT NULL,
+                    target_resource_id TEXT NOT NULL,
+                    target_resource_name TEXT,
+                    target_branch TEXT,
+                    success BOOLEAN NOT NULL DEFAULT TRUE,
+                    error_code TEXT,
+                    error_message TEXT,
+                    duration_ms INTEGER,
+                    request_id TEXT,
+                    correlation_id TEXT,
+                    causation_id TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    changes_json TEXT,
+                    metadata_json TEXT,
+                    tags_json TEXT,
+                    compliance_json TEXT,
+                    event_hash TEXT NOT NULL,
+                    retention_until TIMESTAMP NOT NULL,
+                    archived BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_year INTEGER GENERATED ALWAYS AS (EXTRACT(YEAR FROM created_at)::INTEGER) STORED,
+                    created_month INTEGER GENERATED ALWAYS AS (EXTRACT(MONTH FROM created_at)::INTEGER) STORED
+                );
+                """,
+                # Create performance indexes
+                "CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_events(created_at);",
+                "CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_events(action);",
+                "CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_events(actor_id, created_at);",
+                "CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_events(target_resource_type, target_resource_id);",
+                "CREATE INDEX IF NOT EXISTS idx_audit_branch ON audit_events(target_branch, created_at) WHERE target_branch IS NOT NULL;",
+                "CREATE INDEX IF NOT EXISTS idx_audit_request ON audit_events(request_id) WHERE request_id IS NOT NULL;",
+                "CREATE INDEX IF NOT EXISTS idx_audit_correlation ON audit_events(correlation_id) WHERE correlation_id IS NOT NULL;",
+                "CREATE INDEX IF NOT EXISTS idx_audit_retention ON audit_events(retention_until, archived);",
+                "CREATE INDEX IF NOT EXISTS idx_audit_partition ON audit_events(created_year, created_month, created_at);",
+                # Create audit_integrity table for tamper detection
+                """
+                CREATE TABLE IF NOT EXISTS audit_integrity (
+                    id SERIAL PRIMARY KEY,
+                    batch_start_time TIMESTAMP NOT NULL,
+                    batch_end_time TIMESTAMP NOT NULL,
+                    event_count INTEGER NOT NULL,
+                    batch_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                """,
+                # Create audit_retention_log table
+                """
+                CREATE TABLE IF NOT EXISTS audit_retention_log (
+                    id SERIAL PRIMARY KEY,
+                    action TEXT NOT NULL,
+                    event_count INTEGER NOT NULL,
+                    cutoff_date TIMESTAMP NOT NULL,
+                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    metadata_json TEXT
+                );
+                """
+            ]
+        else:
+            # SQLite migrations
+            return [
                 # Create audit_events table
                 """
                 CREATE TABLE IF NOT EXISTS audit_events (
@@ -175,11 +298,6 @@ class AuditDatabase:
                 )
                 """
             ]
-            
-            # Initialize with migrations
-            await self._connector.initialize(migrations=migrations)
-            self._initialized = True
-            logger.info(f"Audit database initialized with SQLiteConnector")
     
     async def store_audit_event(self, event: AuditEventV1) -> bool:
         """Store a single audit event with integrity verification"""
@@ -547,30 +665,30 @@ class AuditDatabase:
             )
             stats['events_by_action'] = {row['action']: row['count'] for row in action_rows}
                 
-                # Events by actor
-                async with db.execute(f"""
+            # Events by actor
+            async with db.execute(f"""
                     SELECT actor_username, COUNT(*) as count 
                     FROM audit_events {where_clause}
                     GROUP BY actor_username 
                     ORDER BY count DESC 
                     LIMIT 10
                 """, params) as cursor:
-                    stats['top_actors'] = {row[0]: row[1] async for row in cursor}
-                
-                # Success/failure rate
-                async with db.execute(f"""
+                stats['top_actors'] = {row[0]: row[1] async for row in cursor}
+            
+            # Success/failure rate
+            async with db.execute(f"""
                     SELECT success, COUNT(*) as count 
                     FROM audit_events {where_clause}
                     GROUP BY success
                 """, params) as cursor:
-                    success_stats = {bool(row[0]): row[1] async for row in cursor}
-                    total = sum(success_stats.values())
-                    if total > 0:
-                        stats['success_rate'] = success_stats.get(True, 0) / total
-                        stats['failure_rate'] = success_stats.get(False, 0) / total
-                    else:
-                        stats['success_rate'] = 0.0
-                        stats['failure_rate'] = 0.0
+                success_stats = {bool(row[0]): row[1] async for row in cursor}
+                total = sum(success_stats.values())
+                if total > 0:
+                    stats['success_rate'] = success_stats.get(True, 0) / total
+                    stats['failure_rate'] = success_stats.get(False, 0) / total
+                else:
+                    stats['success_rate'] = 0.0
+                    stats['failure_rate'] = 0.0
                 
                 # Events by resource type
                 async with db.execute(f"""
@@ -594,9 +712,15 @@ class AuditDatabase:
         try:
             current_time = datetime.now(timezone.utc)
             
+            # Use appropriate query syntax based on backend
+            if self._connector.is_postgres:
+                count_query = "SELECT COUNT(*) as count FROM audit_events WHERE retention_until <= :current_time AND archived = FALSE"
+            else:
+                count_query = "SELECT COUNT(*) as count FROM audit_events WHERE retention_until <= :current_time AND archived = FALSE"
+            
             # First, get count of events to be deleted
             count_result = await self._connector.fetch_one(
-                "SELECT COUNT(*) as count FROM audit_events WHERE retention_until <= :current_time AND archived = FALSE",
+                count_query,
                 {"current_time": current_time.isoformat()}
             )
             delete_count = count_result['count'] if count_result else 0
@@ -629,6 +753,12 @@ class AuditDatabase:
             logger.error(f"Failed to cleanup expired audit events: {e}")
             return 0
     
+    async def close(self):
+        """Close database connections"""
+        if self._connector:
+            await self._connector.close()
+            self._initialized = False
+    
     async def verify_integrity(self) -> Dict[str, Any]:
         """Verify audit log integrity"""
         await self.initialize()
@@ -646,21 +776,21 @@ class AuditDatabase:
                 event_id = row['id']
                 stored_hash = row['event_hash']
                         
-                        # Get full event and recalculate hash
-                        event_data = await self.get_audit_event_by_id(event_id)
-                        if event_data:
-                            # Recreate event object for hash calculation
-                            # This is a simplified check - in production would be more thorough
-                            calculated_hash = hashlib.sha256(str(event_data).encode()).hexdigest()
-                            
-                            if stored_hash != calculated_hash:
-                                corrupted_events.append(event_id)
+                # Get full event and recalculate hash
+                event_data = await self.get_audit_event_by_id(event_id)
+                if event_data:
+                    # Recreate event object for hash calculation
+                    # This is a simplified check - in production would be more thorough
+                    calculated_hash = hashlib.sha256(str(event_data).encode()).hexdigest()
+                    
+                    if stored_hash != calculated_hash:
+                        corrupted_events.append(event_id)
                 
-                return {
-                    "integrity_verified": len(corrupted_events) == 0,
-                    "corrupted_events": corrupted_events,
-                    "total_events_checked": len(corrupted_events) if corrupted_events else 0
-                }
+            return {
+                "integrity_verified": len(corrupted_events) == 0,
+                "corrupted_events": corrupted_events,
+                "total_events_checked": len(corrupted_events) if corrupted_events else 0
+            }
                 
         except Exception as e:
             logger.error(f"Failed to verify audit integrity: {e}")
@@ -701,9 +831,38 @@ async def get_audit_database() -> AuditDatabase:
     return _audit_database
 
 
-async def initialize_audit_database(db_path: Optional[str] = None) -> AuditDatabase:
-    """Initialize audit database with custom path"""
+async def get_postgres_audit_database(
+    postgres_config: Dict[str, Any]
+) -> AuditDatabase:
+    """Get PostgreSQL audit database instance"""
     global _audit_database
-    _audit_database = AuditDatabase(db_path)
+    if _audit_database is None or not _audit_database.use_postgres:
+        _audit_database = AuditDatabase(
+            use_postgres=True,
+            postgres_config=postgres_config
+        )
+        await _audit_database.initialize()
+    return _audit_database
+
+
+async def initialize_audit_database(
+    db_path: Optional[str] = None,
+    use_postgres: bool = False,
+    postgres_config: Optional[Dict[str, Any]] = None
+) -> AuditDatabase:
+    """
+    Initialize audit database with custom configuration
+    
+    Args:
+        db_path: Path for SQLite database
+        use_postgres: Use PostgreSQL instead of SQLite
+        postgres_config: PostgreSQL connection configuration
+    """
+    global _audit_database
+    _audit_database = AuditDatabase(
+        db_path=db_path,
+        use_postgres=use_postgres,
+        postgres_config=postgres_config
+    )
     await _audit_database.initialize()
     return _audit_database

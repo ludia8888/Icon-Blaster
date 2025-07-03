@@ -3,7 +3,7 @@ Permission Matrix and Role Definitions for OMS
 Implements fine-grained RBAC for all resources
 """
 from enum import Enum
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Set, Optional, Any
 from pydantic import BaseModel
 
 
@@ -47,7 +47,7 @@ class Permission(BaseModel):
     resource_type: ResourceType
     actions: List[Action]
     resource_ids: Optional[List[str]] = None  # None means all resources
-    conditions: Optional[Dict[str, any]] = None  # Additional conditions
+    conditions: Optional[Dict[str, Any]] = None  # Additional conditions
 
 
 # Role-Based Permission Matrix
@@ -143,7 +143,7 @@ class PermissionChecker:
         resource_type: str,
         action: str,
         resource_id: Optional[str] = None,
-        context: Optional[Dict[str, any]] = None
+        context: Optional[Dict[str, Any]] = None
     ) -> bool:
         """
         Check if user has permission to perform action on resource
@@ -198,7 +198,7 @@ class PermissionChecker:
         
         return False
     
-    def _check_conditions(self, conditions: Dict[str, any], context: Dict[str, any]) -> bool:
+    def _check_conditions(self, conditions: Dict[str, Any], context: Dict[str, Any]) -> bool:
         """Check if conditions are met"""
         for key, expected_value in conditions.items():
             if key not in context:

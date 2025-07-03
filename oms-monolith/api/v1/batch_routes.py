@@ -10,9 +10,9 @@ from datetime import datetime
 
 from core.auth import UserContext
 from middleware.auth_middleware import get_current_user
-from core.schema.service_fixed import SchemaService
+from core.schema.service import SchemaService
 from core.branch import BranchService
-from database.simple_terminus_client import SimpleTerminusDBClient
+from database.unified_terminus_client import SimpleTerminusDBClient
 from utils.logger import get_logger
 from shared.cache.smart_cache import SmartCacheManager
 

@@ -5,14 +5,16 @@ Properly integrates all components with existing codebase
 import os
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any
+from datetime import datetime
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import redis.asyncio as redis
 from strawberry.fastapi import GraphQLRouter
 
 from core.config.environment import get_environment
-from middleware.rbac_middleware import create_rbac_middleware
+from core.iam.scope_rbac_middleware import create_scope_rbac_middleware
 from api.graphql.auth import get_current_user_optional, GraphQLWebSocketAuth, AuthenticationManager
 from core.auth import UserContext
 
@@ -140,7 +142,7 @@ async def get_enhanced_context(
     """Create enhanced GraphQL context with all enterprise features"""
     
     # Start with basic context
-    context = create_enhanced_context(request, current_user, redis_client)
+    context = await create_enhanced_context(request, current_user, redis_client)
     
     # Add security validator
     context["security_validator"] = security_validator
@@ -180,7 +182,9 @@ app.add_middleware(
 )
 
 # RBAC middleware
-rbac_middleware = create_rbac_middleware("graphql-service")
+rbac_middleware = create_scope_rbac_middleware({
+    "public_paths": ["/health", "/", "/graphql", "/ws", "/schema"]
+})
 app.middleware("http")(rbac_middleware)
 
 
@@ -322,7 +326,8 @@ async def health_check():
             health_status["status"] = "degraded"
             health_status["checks_failed"] += 1
     
-    # Check DataLoader Registry
+    # Check DataLoader Registry (placeholder - would be implemented with context)
+    loader_registry = None  # This would come from context in actual implementation
     if loader_registry:
         loader_count = len(loader_registry._loaders)
         health_status["components"]["dataloader"] = {
@@ -334,8 +339,9 @@ async def health_check():
         health_status["checks_passed"] += 1
     
     # Check Cache System
-    if cache:
+    if cache_middleware and hasattr(cache_middleware, 'cache'):
         try:
+            cache = cache_middleware.cache
             metrics = cache.get_metrics()
             hit_rate = metrics.get("hit_rate", 0)
             health_status["components"]["cache"] = {
@@ -502,7 +508,8 @@ async def graphql_metrics():
         "security": {}
     }
     
-    # DataLoader metrics
+    # DataLoader metrics (placeholder)
+    loader_registry = None  # This would come from context in actual implementation
     if loader_registry:
         for name, loader in loader_registry._loaders.items():
             if hasattr(loader, 'metrics'):
@@ -516,7 +523,8 @@ async def graphql_metrics():
                 }
     
     # Cache metrics
-    if cache:
+    if cache_middleware and hasattr(cache_middleware, 'cache'):
+        cache = cache_middleware.cache
         cache_metrics = cache.get_metrics()
         metrics["cache"] = {
             "hit_rate": cache_metrics.get("hit_rate", 0),

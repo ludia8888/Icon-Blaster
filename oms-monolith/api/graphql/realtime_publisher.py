@@ -71,7 +71,7 @@ class RealtimePublisher:
         self.subscriptions: Dict[str, RealtimeSubscription] = {}
         self.user_subscriptions: Dict[str, Set[str]] = {}
         self._cleanup_task = None
-        self._start_cleanup_task()
+        # Don't start cleanup task in __init__ to avoid event loop issues
     
     def _start_cleanup_task(self):
         """정리 작업 시작"""
@@ -97,6 +97,10 @@ class RealtimePublisher:
     
     async def subscribe(self, user_id: str, event_types: Set[EventType]) -> str:
         """구독 등록"""
+        # Start cleanup task on first subscription if not already started
+        if self._cleanup_task is None:
+            self._start_cleanup_task()
+            
         subscription_id = f"{user_id}_{int(time.time() * 1000)}"
         subscription = RealtimeSubscription(subscription_id, user_id, event_types)
         

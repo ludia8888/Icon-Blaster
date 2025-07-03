@@ -134,7 +134,7 @@ class IAMHealthResponse(BaseModel):
     status: str = Field(..., description="Health status: healthy, degraded, unhealthy")
     version: str = Field(..., description="IAM service version")
     timestamp: str = Field(..., description="Check timestamp")
-    components: Dict[str, Dict[str, any]] = Field(default_factory=dict)
+    components: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     
     
 # Scope hierarchy for reference (no imports needed)

@@ -379,54 +379,53 @@ class IdempotentConsumer(Generic[T]):
             {"consumer_id": self.consumer_id}
         )
             
-            if row:
-                # Load existing state
-                self._consumer_state = ConsumerState(
-                    consumer_id=row['consumer_id'],
-                    consumer_version=row['consumer_version'],
-                    last_processed_event_id=row['last_processed_event_id'],
-                    last_processed_timestamp=datetime.fromisoformat(row['last_processed_timestamp'])
-                        if row['last_processed_timestamp'] else None,
-                    last_sequence_number=row['last_sequence_number'],
-                    state_commit_hash=row['state_commit_hash'],
-                    state_version=row['state_version'],
-                    events_processed=row['events_processed'],
-                    events_skipped=row['events_skipped'],
-                    events_failed=row['events_failed'],
-                    is_healthy=bool(row['is_healthy']),
-                    error_count=row['error_count']
-                )
-                
-                # Deserialize state
-                if row['current_state']:
-                    state_data = json.loads(row['current_state'])
-                    self._current_state = self._deserialize_state(state_data)
-                else:
-                    if self.state_class == dict:
-                        self._current_state = {}
-                    else:
-                        self._current_state = self.state_class()
-                    
+        if row:
+            # Load existing state
+            self._consumer_state = ConsumerState(
+                consumer_id=row['consumer_id'],
+                consumer_version=row['consumer_version'],
+                last_processed_event_id=row['last_processed_event_id'],
+                last_processed_timestamp=datetime.fromisoformat(row['last_processed_timestamp'])
+                    if row['last_processed_timestamp'] else None,
+                last_sequence_number=row['last_sequence_number'],
+                state_commit_hash=row['state_commit_hash'],
+                state_version=row['state_version'],
+                events_processed=row['events_processed'],
+                events_skipped=row['events_skipped'],
+                events_failed=row['events_failed'],
+                is_healthy=bool(row['is_healthy']),
+                error_count=row['error_count']
+            )
+            
+            # Deserialize state
+            if row['current_state']:
+                state_data = json.loads(row['current_state'])
+                self._current_state = self._deserialize_state(state_data)
             else:
-                # Create new state
                 if self.state_class == dict:
-                    initial_state = {}
+                    self._current_state = {}
                 else:
-                    initial_state = self.state_class()
-                state_hash = calculate_state_hash(
-                    self._serialize_state(initial_state)
-                )
-                
-                self._consumer_state = ConsumerState(
-                    consumer_id=self.consumer_id,
-                    consumer_version=self.consumer_version,
-                    state_commit_hash=state_hash
-                )
-                
-                self._current_state = initial_state
-                
-                # Save initial state
-                await self._save_consumer_state()
+                    self._current_state = self.state_class()
+        else:
+            # Create new state
+            if self.state_class == dict:
+                initial_state = {}
+            else:
+                initial_state = self.state_class()
+            state_hash = calculate_state_hash(
+                self._serialize_state(initial_state)
+            )
+            
+            self._consumer_state = ConsumerState(
+                consumer_id=self.consumer_id,
+                consumer_version=self.consumer_version,
+                state_commit_hash=state_hash
+            )
+            
+            self._current_state = initial_state
+            
+            # Save initial state
+            await self._save_consumer_state()
     
     async def _save_consumer_state(self):
         """Save consumer state to database"""
@@ -474,28 +473,28 @@ class IdempotentConsumer(Generic[T]):
             {"event_id": event_id}
         )
             
-            if row:
-                return EventProcessingRecord(
-                    event_id=row['event_id'],
-                    event_type=row['event_type'],
-                    event_version=row['event_version'],
-                    consumer_id=row['consumer_id'],
-                    consumer_version=row['consumer_version'],
-                    input_commit_hash=row['input_commit_hash'],
-                    output_commit_hash=row['output_commit_hash'],
-                    processed_at=datetime.fromisoformat(row['processed_at']),
-                    processing_duration_ms=row['processing_duration_ms'],
-                    status=row['status'],
-                    error_message=row['error_message'],
-                    retry_count=row['retry_count'],
-                    side_effects=json.loads(row['side_effects']) if row['side_effects'] else [],
-                    created_resources=json.loads(row['created_resources']) if row['created_resources'] else [],
-                    updated_resources=json.loads(row['updated_resources']) if row['updated_resources'] else [],
-                    idempotency_key=row['idempotency_key'],
-                    is_duplicate=bool(row['is_duplicate'])
-                )
+        if row:
+            return EventProcessingRecord(
+                event_id=row['event_id'],
+                event_type=row['event_type'],
+                event_version=row['event_version'],
+                consumer_id=row['consumer_id'],
+                consumer_version=row['consumer_version'],
+                input_commit_hash=row['input_commit_hash'],
+                output_commit_hash=row['output_commit_hash'],
+                processed_at=datetime.fromisoformat(row['processed_at']),
+                processing_duration_ms=row['processing_duration_ms'],
+                status=row['status'],
+                error_message=row['error_message'],
+                retry_count=row['retry_count'],
+                side_effects=json.loads(row['side_effects']) if row['side_effects'] else [],
+                created_resources=json.loads(row['created_resources']) if row['created_resources'] else [],
+                updated_resources=json.loads(row['updated_resources']) if row['updated_resources'] else [],
+                idempotency_key=row['idempotency_key'],
+                is_duplicate=bool(row['is_duplicate'])
+            )
             
-            return None
+        return None
     
     async def _save_processing_record(self, record: EventProcessingRecord):
         """Save processing record"""
