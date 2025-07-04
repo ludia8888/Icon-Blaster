@@ -12,7 +12,8 @@ from core.auth import UserContext
 from middleware.auth_middleware import get_current_user
 from core.schema.service import SchemaService
 from core.branch import BranchService
-from database.unified_terminus_client import SimpleTerminusDBClient
+from database.dependencies import get_secure_database
+from database.clients.secure_database_adapter import SecureDatabaseAdapter
 from utils.logger import get_logger
 from shared.cache.smart_cache import SmartCacheManager
 
@@ -53,20 +54,9 @@ class BatchBranchesRequest(BatchRequest):
 async def get_schema_service() -> SchemaService:
     """Get schema service instance"""
     # In production, this would come from the service container
-    # For now, we'll create a new instance
-    db_client = SimpleTerminusDBClient(
-        endpoint="http://localhost:6363",
-        username="admin", 
-        password="root",
-        database="oms"
-    )
-    
-    service = SchemaService(
-        tdb_endpoint="http://localhost:6363",
-        event_publisher=None  # We don't need events for batch reads
-    )
-    await service.initialize()
-    return service
+    # Using bootstrap dependencies to get the properly configured service
+    from bootstrap.dependencies import get_schema_service as bootstrap_get_schema_service
+    return await bootstrap_get_schema_service()
 
 
 async def get_branch_service() -> BranchService:

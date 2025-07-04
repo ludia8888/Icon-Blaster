@@ -2,7 +2,7 @@
 Unfoldable Documents Support
 Implements @unfoldable annotation for selective loading of nested content
 """
-from typing import Dict, Any, List, Optional, Set, Union
+from typing import Dict, Any, List, Optional, Set, Union, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 import json

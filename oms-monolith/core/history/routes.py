@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 
-from core.auth.unified_auth import get_current_user as get_user_context
+from middleware.auth_middleware import get_current_user as get_user_context
 from utils.logger import get_logger
 from .models import (
     RevertRequest, RevertResult, ChangeOperation, ResourceType

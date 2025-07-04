@@ -61,9 +61,32 @@ async def get_current_user_optional(
     Get current user for GraphQL queries (optional authentication)
     Returns None if no valid token is provided
     """
-    # Use unified auth module
-    from core.auth.unified_auth import get_current_user_optional as unified_optional
-    return await unified_optional(request, credentials)
+    # Check if user is already authenticated by middleware
+    if hasattr(request.state, "user") and request.state.user:
+        return request.state.user
+    
+    # If no credentials provided, return None (optional auth)
+    if not credentials:
+        return None
+    
+    # Validate token using the existing validate_jwt_token function
+    try:
+        user_data = await validate_jwt_token(credentials.credentials)
+        
+        if user_data:
+            return UserContext(
+                user_id=user_data.get("user_id", user_data.get("sub")),
+                username=user_data.get("username", user_data.get("name", "unknown")),
+                email=user_data.get("email"),
+                roles=user_data.get("roles", []),
+                permissions=user_data.get("permissions", []),
+                is_authenticated=True,
+                metadata=user_data
+            )
+    except Exception as e:
+        logger.debug(f"Optional auth failed: {e}")
+    
+    return None
 
 
 class AuthenticationManager:

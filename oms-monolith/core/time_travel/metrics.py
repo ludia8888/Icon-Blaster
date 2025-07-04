@@ -7,8 +7,8 @@ from functools import wraps
 import time
 import asyncio
 
-from core.middleware.common.metrics import Counter, Histogram, Gauge
-from core.resilience.unified_circuit_breaker import unified_circuit_breaker
+from prometheus_client import Counter, Histogram, Gauge
+from core.resilience.unified_circuit_breaker import circuit_breaker
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 from utils.logger import get_logger

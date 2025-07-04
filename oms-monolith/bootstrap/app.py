@@ -63,16 +63,28 @@ def create_app() -> FastAPI:
     app.mount("/graphql-ws", graphql_app, name="graphql_ws")
     
     # Register test routes in non-production environments
-    # if config.service.environment != "production":
-    #     from tests.fixtures.test_routes import register_test_routes
-    #     register_test_routes(app)
+    if config.service.environment != "production":
+        from api.test_endpoints import router as test_router
+        app.include_router(test_router)
     
-    # Add middleware
-    if config.service.environment == "production":
-        # Production auth middleware if needed
-        pass
-    else:
-        from middleware.auth_middleware import AuthMiddleware
-        app.add_middleware(AuthMiddleware)
+    # Add middleware chain (order is important!)
+    # Note: Middleware is added in reverse order (last added is executed first)
+    # So we add them in reverse to get the desired execution order
+    
+    # 4. Audit Middleware - Records all write operations (executes last)
+    from core.audit.audit_middleware import AuditMiddleware
+    app.add_middleware(AuditMiddleware)
+    
+    # 3. Database Context Middleware - Propagates UserContext to database operations
+    from core.auth.database_context import DatabaseContextMiddleware
+    app.add_middleware(DatabaseContextMiddleware)
+    
+    # 2. RBAC Middleware - Checks permissions (if needed for specific endpoints)
+    # from middleware.rbac_middleware import RBACMiddleware
+    # app.add_middleware(RBACMiddleware)
+    
+    # 1. Auth Middleware - Validates identity (executes first)
+    from middleware.auth_middleware import AuthMiddleware
+    app.add_middleware(AuthMiddleware)
     
     return app

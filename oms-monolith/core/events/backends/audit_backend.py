@@ -98,6 +98,8 @@ class AuditEventBackend(EventPublisherBackend):
                 
         except Exception as e:
             logger.error(f"Audit publish error: {e}")
+            # Send to DLQ for retry
+            await self._send_to_dlq(audit_event, str(e))
             return False
     
     async def publish_batch(self, events: List[Dict[str, Any]]) -> bool:
@@ -136,6 +138,9 @@ class AuditEventBackend(EventPublisherBackend):
                 
         except Exception as e:
             logger.error(f"Audit batch publish error: {e}")
+            # Send entire batch to DLQ
+            for event in audit_events:
+                await self._send_to_dlq(event, str(e))
             return False
     
     async def health_check(self) -> bool:
@@ -275,6 +280,62 @@ class AuditEventBackend(EventPublisherBackend):
         except Exception as e:
             logger.error(f"Database batch write error: {e}")
             return False
+    
+    async def _send_to_dlq(self, event: Dict[str, Any], error_reason: str):
+        """
+        Send failed audit event to Dead Letter Queue
+        
+        Args:
+            event: Failed audit event
+            error_reason: Reason for failure
+        """
+        try:
+            dlq_event = {
+                "original_event": event,
+                "error_reason": error_reason,
+                "failed_at": datetime.utcnow().isoformat(),
+                "retry_count": event.get("audit_metadata", {}).get("retry_count", 0) + 1,
+                "backend": "audit"
+            }
+            
+            # Try to send to DLQ using HTTP backend with different config
+            dlq_config = self.config.copy()
+            dlq_config.endpoint = self.config.endpoint or "http://localhost:8080/dlq"
+            dlq_config.enable_retry = False  # Don't retry DLQ sends
+            
+            dlq_backend = HTTPEventBackend(dlq_config)
+            await dlq_backend.connect()
+            
+            success = await dlq_backend.publish({
+                "type": "audit.dlq",
+                "data": dlq_event,
+                "subject": "audit.failed",
+                "source": "/oms/audit/dlq"
+            })
+            
+            if success:
+                logger.warning(f"Sent audit event to DLQ: {event.get('audit_metadata', {}).get('event_id')}")
+            else:
+                # If DLQ also fails, log to file as last resort
+                import json
+                with open("/tmp/audit_dlq_fallback.jsonl", "a") as f:
+                    f.write(json.dumps(dlq_event) + "\n")
+                logger.error(f"Failed to send to DLQ, wrote to fallback file")
+                
+        except Exception as e:
+            logger.error(f"DLQ send failed: {e}")
+            # Last resort - ensure we don't lose the audit event
+            import json
+            try:
+                with open("/tmp/audit_dlq_emergency.jsonl", "a") as f:
+                    f.write(json.dumps({
+                        "event": event,
+                        "error": str(error_reason),
+                        "dlq_error": str(e),
+                        "timestamp": datetime.utcnow().isoformat()
+                    }) + "\n")
+            except:
+                pass
     
     # Additional method for compatibility with audit_service.py
     async def publish_audit_event_direct(self, event: Dict[str, Any]) -> bool:

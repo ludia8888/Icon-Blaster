@@ -52,35 +52,118 @@ C4Container
     Rel(api_gateway, graphql_http, "HTTP")
     Rel(api_gateway, graphql_ws, "WebSocket")
     
-    Rel(main_api, terminusdb, "TCP")
-    Rel(main_api, postgres, "TCP")
+    Rel(main_api, terminusdb, "TCP + SecureAdapter")
+    Rel(main_api, postgres, "TCP + SecureAdapter")
     Rel(main_api, redis, "TCP")
     Rel(main_api, sqlite, "File")
     Rel(main_api, nats, "TCP")
     
-    Rel(graphql_http, terminusdb, "TCP")
-    Rel(graphql_http, postgres, "TCP")
-    Rel(graphql_ws, terminusdb, "TCP")
+    Rel(graphql_http, terminusdb, "TCP + SecureAdapter")
+    Rel(graphql_http, postgres, "TCP + SecureAdapter")
+    Rel(graphql_ws, terminusdb, "TCP + SecureAdapter")
     Rel(graphql_ws, nats, "TCP")
     
     Rel(main_api, prometheus, "HTTP")
     Rel(prometheus, grafana, "HTTP")
 ```
 
-## 🔄 데이터 플로우
+## 🔐 인증 및 보안 아키텍처 (업데이트됨)
+
+### 통합 인증 미들웨어 체인
 
 ```mermaid
 flowchart TD
     subgraph "클라이언트 요청"
-        A[사용자 요청]
-        B[API 클라이언트]
-        C[GraphQL 클라이언트]
+        A[HTTP Request + JWT Token]
+    end
+
+    subgraph "미들웨어 체인"
+        B[AuthMiddleware<br/>middleware/auth_middleware.py]
+        C[DatabaseContextMiddleware<br/>자동 사용자 컨텍스트 전파]
+        D[RBACMiddleware<br/>역할 기반 권한 검증]
+        E[AuditMiddleware<br/>보안 감사 로깅]
+    end
+
+    subgraph "라우트 핸들러"
+        F[Route Handler<br/>UserContext + SecureDatabaseAdapter]
+    end
+
+    subgraph "데이터 접근 계층"
+        G[SecureDatabaseAdapter<br/>보안 작성자 추적 강제]
+        H[UnifiedDatabaseClient<br/>기본 데이터베이스 작업]
+        I[TerminusDB/PostgreSQL<br/>실제 데이터 저장]
+    end
+
+    A --> B
+    B -->|JWT 검증 & UserContext 생성| C
+    C -->|ContextVar에 사용자 저장| D
+    D -->|권한 검증| E
+    E -->|감사 로그| F
+    F -->|Depends(get_current_user)| G
+    F -->|Depends(get_secure_database)| G
+    G -->|자동 작성자 추적| H
+    H -->|보안 커밋| I
+```
+
+### 보안 데이터베이스 작업 패턴
+
+```python
+# ✅ 올바른 패턴 - 자동 작성자 추적
+from middleware.auth_middleware import get_current_user
+from database.dependencies import get_secure_database
+
+@router.post("/items")
+async def create_item(
+    item: ItemCreate,
+    user: UserContext = Depends(get_current_user),
+    db: SecureDatabaseAdapter = Depends(get_secure_database)
+):
+    # 작성자 정보가 자동으로 추가됨
+    result = await db.create(
+        user_context=user,
+        collection="items",
+        document=item.dict(),
+        message="Creating new item"
+    )
+    # 결과에는 _created_by, _created_at 등이 포함됨
+    return result
+
+# ❌ 잘못된 패턴 - 사용 금지
+from database.clients.unified_database_client import get_unified_database_client
+
+async def bad_pattern():
+    db = await get_unified_database_client()
+    # 작성자 추적 없음!
+    await db.create(...)
+```
+
+### 보안 작성자 문자열 형식
+
+```
+# 일반 사용자
+alice.smith (alice123)|verified|ts:2025-01-04T10:00:00Z|sig:abc123...
+
+# 서비스 계정
+deployment-service (svc_deploy) [service]|verified|ts:2025-01-04T10:00:00Z|sig:def456...
+
+# 위임된 작업
+etl-service (svc_etl) [service] [delegated|on_behalf_of:john.doe|reason:scheduled import]|ts:2025-01-04T10:00:00Z
+```
+
+## 🔄 데이터 플로우 (보안 강화)
+
+```mermaid
+flowchart TD
+    subgraph "클라이언트 요청"
+        A[사용자 요청 + JWT]
+        B[API 클라이언트 + API Key]
+        C[GraphQL 클라이언트 + Token]
     end
 
     subgraph "인증/인가 레이어"
-        D[JWT 토큰 검증]
-        E[RBAC 권한 확인]
-        F[스코프 검증]
+        D[AuthMiddleware<br/>JWT 토큰 검증]
+        E[UserContext 생성<br/>사용자 정보 + 권한]
+        F[DatabaseContext 설정<br/>비동기 컨텍스트 전파]
     end
 
     subgraph "비즈니스 로직"
@@ -90,16 +173,16 @@ flowchart TD
         J[감사 서비스]
     end
 
-    subgraph "데이터 접근"
-        K[TerminusDB 쿼리]
-        L[Redis 캐시]
-        M[SQLite 메타데이터]
+    subgraph "보안 데이터 접근"
+        K[SecureDatabaseAdapter<br/>작성자 추적 강제]
+        L[감사 필드 자동 추가<br/>_created_by, _updated_by]
+        M[암호화 서명<br/>변조 방지]
     end
 
-    subgraph "이벤트 처리"
-        N[이벤트 발행]
-        O[NATS 메시지]
-        P[이벤트 소비]
+    subgraph "데이터 저장"
+        N[TerminusDB<br/>비즈니스 데이터]
+        O[PostgreSQL<br/>감사 로그]
+        P[DLQ<br/>실패한 감사 이벤트]
     end
 
     A --> D
@@ -115,15 +198,16 @@ flowchart TD
     F --> J
     
     G --> K
-    G --> L
     H --> K
     I --> K
-    J --> M
+    J --> K
     
-    G --> N
-    I --> N
-    N --> O
-    O --> P
+    K --> L
+    L --> M
+    
+    M --> N
+    M --> O
+    M -.->|실패 시| P
 ```
 
 ## 🏗️ 마이크로서비스 분해도
@@ -136,483 +220,175 @@ graph TB
     end
 
     subgraph "API 서비스들"
-        MainAPI[메인 API 서비스<br/>포트: 8000<br/>- REST API<br/>- 헬스체크<br/>- 메트릭]
+        MainAPI[메인 API 서비스<br/>포트: 8000<br/>- REST API<br/>- 통합 인증<br/>- 보안 DB 접근]
         
-        GraphQLHTTP[GraphQL HTTP 서비스<br/>포트: 8006<br/>- 스키마 쿼리<br/>- 뮤테이션<br/>- 데이터로더]
+        GraphQLHTTP[GraphQL HTTP 서비스<br/>포트: 8006<br/>- 스키마 쿼리<br/>- 뮤테이션<br/>- 선택적 인증]
         
-        GraphQLWS[GraphQL WebSocket 서비스<br/>포트: 8004<br/>- 실시간 구독<br/>- 이벤트 스트리밍<br/>- 웹소켓 관리]
+        GraphQLWS[GraphQL WebSocket 서비스<br/>포트: 8004<br/>- 실시간 구독<br/>- 세션 관리<br/>- 연결 수준 인증]
     end
 
     subgraph "핵심 비즈니스 서비스들"
-        SchemaService[스키마 관리 서비스<br/>- ObjectType 관리<br/>- Property 관리<br/>- LinkType 관리<br/>- 인터페이스 관리]
+        SchemaService[스키마 관리 서비스<br/>- ObjectType 관리<br/>- 보안 작성자 추적<br/>- 감사 필드 자동화]
         
-        VersionService[버전 관리 서비스<br/>- 브랜치 관리<br/>- 머지 처리<br/>- 충돌 해결<br/>- 변경 제안]
+        VersionService[버전 관리 서비스<br/>- 브랜치 관리<br/>- 보안 커밋<br/>- 작성자 검증]
         
-        ValidationService[검증 서비스<br/>- 스키마 검증<br/>- 데이터 유효성<br/>- 비즈니스 규칙<br/>- 제약 조건]
+        ValidationService[검증 서비스<br/>- 스키마 검증<br/>- 권한 검증<br/>- 작성자 권한 확인]
         
-        AuditService[감사 서비스<br/>- 변경 추적<br/>- 이벤트 로깅<br/>- 규정 준수<br/>- 보고서 생성]
-        
-        IAMService[IAM 서비스<br/>- 사용자 인증<br/>- 권한 관리<br/>- 토큰 발급<br/>- 세션 관리]
+        AuditService[감사 서비스<br/>- 변경 추적<br/>- DLQ 관리<br/>- 암호화 서명]
     end
 
-    subgraph "데이터 서비스들"
-        TerminusDB[(TerminusDB<br/>포트: 6363<br/>그래프 데이터베이스)]
-        PostgreSQL[(PostgreSQL<br/>포트: 5432<br/>관계형 데이터베이스)]
-        Redis[(Redis<br/>포트: 6379<br/>캐시/세션)]
-        SQLite[(SQLite<br/>로컬 메타데이터)]
-    end
-
-    subgraph "이벤트/메시징"
-        NATS[NATS 서버<br/>포트: 4222<br/>이벤트 스트리밍]
-        EventBus[이벤트 버스<br/>발행/구독 패턴]
+    subgraph "보안 데이터 계층"
+        SecureDB[SecureDatabaseAdapter<br/>- 자동 작성자 추적<br/>- 감사 필드 관리<br/>- 서비스 계정 지원]
+        
+        TerminusDB[(TerminusDB<br/>포트: 6363<br/>+ 감사 필드)]
+        PostgreSQL[(PostgreSQL<br/>포트: 5432<br/>+ 감사 로그)]
+        DLQ[(Dead Letter Queue<br/>/tmp/audit_dlq_*.jsonl)]
     end
 
     subgraph "모니터링 스택"
-        Prometheus[Prometheus<br/>포트: 9091<br/>메트릭 수집]
-        Grafana[Grafana<br/>포트: 3000<br/>대시보드]
-        Jaeger[Jaeger<br/>포트: 16686<br/>분산 트레이싱]
-        AlertManager[Alert Manager<br/>알림 관리]
+        Prometheus[Prometheus<br/>포트: 9091<br/>- 감사 메트릭<br/>- DLQ 모니터링]
+        AlertManager[Alert Manager<br/>- DLQ 임계값 알림<br/>- 인증 실패 알림]
     end
 
-    Gateway --> LB
-    LB --> MainAPI
-    LB --> GraphQLHTTP
-    LB --> GraphQLWS
+    Gateway --> MainAPI
+    Gateway --> GraphQLHTTP
+    Gateway --> GraphQLWS
 
-    MainAPI --> SchemaService
-    MainAPI --> VersionService
-    MainAPI --> ValidationService
-    MainAPI --> AuditService
-    MainAPI --> IAMService
+    MainAPI --> SecureDB
+    GraphQLHTTP --> SecureDB
+    GraphQLWS --> SecureDB
 
-    GraphQLHTTP --> SchemaService
-    GraphQLHTTP --> VersionService
-    GraphQLWS --> SchemaService
-    GraphQLWS --> EventBus
+    SecureDB --> SchemaService
+    SecureDB --> VersionService
+    SecureDB --> ValidationService
+    SecureDB --> AuditService
 
     SchemaService --> TerminusDB
     VersionService --> TerminusDB
-    ValidationService --> TerminusDB
     AuditService --> PostgreSQL
-    AuditService --> SQLite
-    IAMService --> PostgreSQL
-    IAMService --> Redis
+    AuditService -.->|실패| DLQ
 
-    SchemaService --> EventBus
-    VersionService --> EventBus
-    EventBus --> NATS
-
-    MainAPI --> Prometheus
-    GraphQLHTTP --> Prometheus
-    GraphQLWS --> Prometheus
-    Prometheus --> Grafana
+    AuditService --> Prometheus
+    DLQ --> Prometheus
     Prometheus --> AlertManager
-
-    SchemaService --> Jaeger
-    VersionService --> Jaeger
 ```
 
-## 🔒 보안 아키텍처
+## 🔒 보안 아키텍처 개선사항
 
-```mermaid
-graph TB
-    subgraph "외부 요청"
-        Client[클라이언트]
-        Browser[브라우저]
-        API_Client[API 클라이언트]
-    end
+### 1. 통합 인증 소스
+- **단일 진입점**: `middleware.auth_middleware.get_current_user`
+- **일관된 UserContext**: 모든 엔드포인트에서 동일한 사용자 정보
+- **자동 전파**: DatabaseContextMiddleware를 통한 비동기 컨텍스트 전파
 
-    subgraph "보안 레이어"
-        WAF[Web Application Firewall]
-        RateLimit[요청 제한]
-        CORS[CORS 정책]
-    end
+### 2. 강제 작성자 추적
+- **SecureDatabaseAdapter**: 모든 쓰기 작업에 작성자 정보 필수
+- **감사 필드**: _created_by, _updated_by, _deleted_by 자동 추가
+- **암호화 서명**: 작성자 정보 변조 방지
 
-    subgraph "인증 레이어"
-        JWT[JWT 토큰 검증]
-        OAuth[OAuth 2.0]
-        APIKey[API 키 인증]
-    end
+### 3. 서비스 계정 관리
+```python
+# 서비스 계정 식별
+if user_context.user_id.startswith("svc_"):
+    # 서비스 계정 특별 처리
+    author_string = f"{username} ({user_id}) [service]"
+```
 
-    subgraph "인가 레이어"
-        RBAC[역할 기반 접근 제어]
-        Scope[스코프 권한 검사]
-        Resource[리소스 권한 검사]
-    end
-
-    subgraph "감사 레이어"
-        AccessLog[접근 로그]
-        AuditTrail[감사 추적]
-        Compliance[규정 준수]
-    end
-
-    subgraph "데이터 보안"
-        Encryption[데이터 암호화]
-        Backup[보안 백업]
-        Privacy[개인정보 보호]
-    end
-
-    Client --> WAF
-    Browser --> WAF
-    API_Client --> WAF
-
-    WAF --> RateLimit
-    RateLimit --> CORS
-
-    CORS --> JWT
-    CORS --> OAuth
-    CORS --> APIKey
-
-    JWT --> RBAC
-    OAuth --> RBAC
-    APIKey --> Scope
-
-    RBAC --> Resource
-    Scope --> Resource
-
-    Resource --> AccessLog
-    AccessLog --> AuditTrail
-    AuditTrail --> Compliance
-
-    RBAC --> Encryption
-    Resource --> Backup
-    Compliance --> Privacy
+### 4. DLQ (Dead Letter Queue) 모니터링
+```yaml
+# Prometheus 메트릭
+oms_audit_dlq_size{dlq_type="fallback"}: 현재 DLQ 크기
+oms_audit_dlq_oldest_event_age_seconds: 가장 오래된 이벤트 나이
+oms_secure_author_verifications_total: 작성자 검증 횟수
 ```
 
 ## 🗄️ 하이브리드 데이터베이스 전략
 
 ### 데이터베이스 역할 분담
 
-| 데이터베이스 | 주요 역할 | 데이터 유형 | 포트 |
-|-------------|-----------|-------------|------|
-| **TerminusDB** | 비즈니스 로직 | 온톨로지, 스키마, 관계 | 6363 |
-| **PostgreSQL** | 운영 메타데이터 | 감사, 사용자, 정책 | 5432 |
-| **Redis** | 고성능 캐시 | 세션, 캐시, 분산락 | 6379 |
-| **SQLite** | 로컬 저장소 | 임시 데이터, 개발용 | - |
+| 데이터베이스 | 주요 역할 | 데이터 유형 | 보안 기능 |
+|-------------|-----------|-------------|-----------|
+| **TerminusDB** | 비즈니스 로직 | 온톨로지, 스키마, 관계 | 감사 필드, 커밋 작성자 |
+| **PostgreSQL** | 운영 메타데이터 | 감사 로그, 사용자, 정책 | 불변 감사 추적 |
+| **Redis** | 고성능 캐시 | 세션, 캐시, 분산락 | 토큰 캐싱 |
+| **SQLite** | 로컬 저장소 | 버전 추적, 메타데이터 | 로컬 감사 |
 
-### 데이터 배치 전략
+### 감사 필드 스키마
 
-```mermaid
-graph TB
-    subgraph "TerminusDB - 비즈니스 데이터"
-        A[ObjectType 스키마]
-        B[Property 정의]
-        C[LinkType 관계]
-        D[Interface 명세]
-        E[브랜치 및 버전]
-    end
-    
-    subgraph "PostgreSQL - 운영 데이터"
-        F[감사 이벤트]
-        G[사용자 계정]
-        H[권한 정책]
-        I[아웃박스 이벤트]
-        J[분산 잠금 상태]
-    end
-    
-    subgraph "Redis - 캐시 데이터"
-        K[GraphQL 쿼리 캐시]
-        L[JWT 토큰 캐시]
-        M[세션 상태]
-        N[실시간 연결 정보]
-    end
-    
-    subgraph "SQLite - 로컬 데이터"
-        O[개발환경 데이터]
-        P[임시 작업 공간]
-        Q[오프라인 캐시]
-    end
+```json
+{
+  "_created_by": "사용자 ID",
+  "_created_by_username": "사용자명",
+  "_created_at": "ISO 타임스탬프",
+  "_updated_by": "마지막 수정자 ID",
+  "_updated_by_username": "마지막 수정자명",
+  "_updated_at": "마지막 수정 시간",
+  "_deleted": false,
+  "_deleted_by": "삭제자 ID (소프트 삭제 시)",
+  "_deleted_by_username": "삭제자명",
+  "_deleted_at": "삭제 시간"
+}
 ```
 
-## 📊 데이터 모델 아키텍처
+## 📈 성능 최적화
 
-```mermaid
-erDiagram
-    ObjectType {
-        string id PK
-        string name UK
-        string display_name
-        string description
-        enum status
-        enum type_class
-        string version_hash
-        datetime created_at
-        datetime modified_at
-        string created_by
-        string modified_by
-    }
+### 1. 인증 캐싱
+- JWT 토큰 검증 결과 5분 캐싱
+- Redis 기반 분산 캐시
+- 토큰 무효화 시 즉시 캐시 삭제
 
-    Property {
-        string id PK
-        string object_type_id FK
-        string name
-        string display_name
-        string data_type_id FK
-        boolean is_required
-        boolean is_unique
-        boolean is_indexed
-        json validation_rules
-        string version_hash
-    }
+### 2. 데이터베이스 연결 풀링
+- TerminusDB: 최대 20 연결
+- PostgreSQL: 최대 50 연결
+- 연결 재사용으로 오버헤드 감소
 
-    LinkType {
-        string id PK
-        string name UK
-        string display_name
-        string from_type_id FK
-        string to_type_id FK
-        enum cardinality
-        enum directionality
-        boolean cascade_delete
-        string version_hash
-    }
+### 3. 비동기 감사 로깅
+- 백그라운드 태스크로 감사 로그 처리
+- DLQ로 실패 처리
+- 메인 요청 흐름에 영향 없음
 
-    Interface {
-        string id PK
-        string name UK
-        string display_name
-        string description
-        string version_hash
-    }
+## 🚀 배포 아키텍처
 
-    SharedProperty {
-        string id PK
-        string name UK
-        string display_name
-        string data_type_id FK
-        string semantic_type_id FK
-        json validation_rules
-        string version_hash
-    }
+### 프로덕션 환경 구성
 
-    Branch {
-        string id PK
-        string name UK
-        string display_name
-        string parent_branch FK
-        boolean is_protected
-        boolean is_active
-        string head_commit
-        datetime created_at
-    }
-
-    ChangeProposal {
-        string id PK
-        string title
-        string source_branch FK
-        string target_branch FK
-        enum status
-        string created_by
-        datetime created_at
-        json conflicts
-        json validation_result
-    }
-
-    AuditEvent {
-        string id PK
-        string event_type
-        string entity_type
-        string entity_id
-        string branch_id FK
-        string user_id
-        datetime timestamp
-        json changes
-        string version_before
-        string version_after
-    }
-
-    ObjectType ||--o{ Property : "has"
-    ObjectType ||--o{ LinkType : "from_type"
-    ObjectType ||--o{ LinkType : "to_type"
-    ObjectType }o--o{ Interface : "implements"
-    Interface ||--o{ Property : "defines"
-    Property }o--|| SharedProperty : "based_on"
-    Branch ||--o{ ObjectType : "contains"
-    Branch ||--o{ ChangeProposal : "source"
-    Branch ||--o{ ChangeProposal : "target"
-    AuditEvent }o--|| Branch : "tracked_in"
+```yaml
+# docker-compose.production.yml
+services:
+  oms-api:
+    environment:
+      - AUTH_MODE=iam_service
+      - TERMINUS_DB_URL=https://terminus-prod.company.com
+      - IAM_SERVICE_URL=https://iam.company.com
+      - ENABLE_AUDIT_DLQ=true
+      - DLQ_ALERT_THRESHOLD=100
+    deploy:
+      replicas: 3
+      
+  prometheus:
+    configs:
+      - source: audit_alerts
+        target: /etc/prometheus/alerts/audit.yml
 ```
 
-## 🔄 이벤트 아키텍처
+### 모니터링 대시보드
 
-```mermaid
-sequenceDiagram
-    participant Client as 클라이언트
-    participant API as API 서버
-    participant Schema as 스키마 서비스
-    participant Event as 이벤트 발행자
-    participant NATS as NATS 브로커
-    participant Sub1 as 구독자 1 (GraphQL)
-    participant Sub2 as 구독자 2 (감사)
-    participant Sub3 as 구독자 3 (캐시)
+1. **인증 메트릭**
+   - 인증 성공/실패율
+   - 토큰 캐시 히트율
+   - 서비스 계정 사용 현황
 
-    Client->>+API: POST /object-types
-    API->>+Schema: 객체 타입 생성
-    Schema->>Schema: 유효성 검증
-    Schema->>Schema: TerminusDB 저장
-    Schema->>+Event: 이벤트 발행
-    Event->>+NATS: ObjectTypeCreated 이벤트
-    
-    NATS-->>Sub1: 실시간 알림
-    NATS-->>Sub2: 감사 로그 기록
-    NATS-->>Sub3: 캐시 무효화
-    
-    Sub1->>Sub1: WebSocket 클라이언트에 전송
-    Sub2->>Sub2: 감사 DB에 저장
-    Sub3->>Sub3: Redis 캐시 갱신
-    
-    Schema-->>-API: 생성 완료
-    API-->>-Client: 201 Created
-    
-    Note over Client, Sub3: 이벤트 기반 아키텍처로<br/>느슨한 결합 달성
-```
+2. **감사 메트릭**
+   - 작성자 검증 성공률
+   - DLQ 크기 및 나이
+   - 감사 이벤트 처리 시간
 
-## 🏗️ 배포 아키텍처
+3. **보안 알림**
+   - DLQ 임계값 초과
+   - 비정상적인 서비스 계정 활동
+   - 반복된 인증 실패
 
-```mermaid
-graph TB
-    subgraph "로드밸런서"
-        LB[NGINX Load Balancer]
-        SSL[SSL Termination]
-    end
+## 📚 참고 문서
 
-    subgraph "애플리케이션 클러스터"
-        API1[API 서버 1]
-        API2[API 서버 2]
-        API3[API 서버 3]
-        
-        GQL1[GraphQL 서버 1]
-        GQL2[GraphQL 서버 2]
-    end
-
-    subgraph "데이터베이스 클러스터"
-        TDB_Primary[(TerminusDB Primary)]
-        TDB_Replica1[(TerminusDB Replica 1)]
-        TDB_Replica2[(TerminusDB Replica 2)]
-        
-        PG_Primary[(PostgreSQL Primary)]
-        PG_Replica1[(PostgreSQL Replica 1)]
-        PG_Replica2[(PostgreSQL Replica 2)]
-        
-        Redis_Primary[(Redis Primary)]
-        Redis_Replica[(Redis Replica)]
-    end
-
-    subgraph "모니터링 클러스터"
-        Prom1[Prometheus 1]
-        Prom2[Prometheus 2]
-        Grafana_Cluster[Grafana Cluster]
-    end
-
-    subgraph "메시지 클러스터"
-        NATS1[NATS Node 1]
-        NATS2[NATS Node 2]
-        NATS3[NATS Node 3]
-    end
-
-    SSL --> LB
-    LB --> API1
-    LB --> API2
-    LB --> API3
-    LB --> GQL1
-    LB --> GQL2
-
-    API1 --> TDB_Primary
-    API2 --> TDB_Primary
-    API3 --> TDB_Primary
-    
-    API1 --> PG_Primary
-    API2 --> PG_Primary
-    API3 --> PG_Primary
-    
-    GQL1 --> TDB_Replica1
-    GQL2 --> TDB_Replica2
-
-    API1 --> Redis_Primary
-    API2 --> Redis_Primary
-    API3 --> Redis_Primary
-
-    TDB_Primary --> TDB_Replica1
-    TDB_Primary --> TDB_Replica2
-    PG_Primary --> PG_Replica1
-    PG_Primary --> PG_Replica2
-    Redis_Primary --> Redis_Replica
-
-    API1 --> NATS1
-    API2 --> NATS2
-    API3 --> NATS3
-
-    API1 --> Prom1
-    API2 --> Prom1
-    GQL1 --> Prom2
-    GQL2 --> Prom2
-
-    Prom1 --> Grafana_Cluster
-    Prom2 --> Grafana_Cluster
-```
-
-## 📈 성능 최적화 전략
-
-### 1. 캐싱 전략
-```mermaid
-graph LR
-    subgraph "캐시 계층"
-        Browser[브라우저 캐시<br/>60분]
-        CDN[CDN 캐시<br/>24시간]
-        Redis[Redis 캐시<br/>1시간]
-        AppCache[애플리케이션 캐시<br/>15분]
-    end
-
-    subgraph "데이터 소스"
-        TerminusDB[(TerminusDB)]
-        SQLite[(SQLite)]
-    end
-
-    Request[요청] --> Browser
-    Browser --> CDN
-    CDN --> Redis
-    Redis --> AppCache
-    AppCache --> TerminusDB
-    AppCache --> SQLite
-```
-
-### 2. 쿼리 최적화
-```mermaid
-graph TD
-    Query[GraphQL 쿼리]
-    
-    subgraph "쿼리 분석"
-        Parse[쿼리 파싱]
-        Validate[유효성 검증]
-        Optimize[쿼리 최적화]
-    end
-
-    subgraph "실행 계획"
-        DataLoader[DataLoader 배치]
-        Cache[캐시 조회]
-        DB[DB 쿼리]
-    end
-
-    subgraph "결과 처리"
-        Transform[데이터 변환]
-        Serialize[직렬화]
-        Compress[압축]
-    end
-
-    Query --> Parse
-    Parse --> Validate
-    Validate --> Optimize
-    
-    Optimize --> DataLoader
-    Optimize --> Cache
-    Optimize --> DB
-    
-    DataLoader --> Transform
-    Cache --> Transform
-    DB --> Transform
-    
-    Transform --> Serialize
-    Serialize --> Compress
-```
-
-이 아키텍처 문서는 OMS 시스템의 전체적인 구조와 각 컴포넌트 간의 관계를 상세히 설명합니다. 각 다이어그램은 시스템의 다른 측면을 보여주며, 개발자와 운영자가 시스템을 이해하고 확장하는 데 도움이 됩니다.
+- [인증 마이그레이션 가이드](/docs/AUTHENTICATION_MIGRATION.md)
+- [서비스 계정 정책](/docs/SERVICE_ACCOUNT_POLICY.md)
+- [프로덕션 배포 가이드](/migrations/PRODUCTION_DEPLOYMENT_README.md)
+- [보안 모범 사례](/docs/SECURITY_BEST_PRACTICES.md)

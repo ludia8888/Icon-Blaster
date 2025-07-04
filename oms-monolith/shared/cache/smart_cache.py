@@ -12,18 +12,28 @@ import pickle
 from cachetools import TTLCache
 
 import redis.asyncio as redis
-from ..database.clients.terminus_db import TerminusDBClient
-from ...config.redis_config import get_redis_client
-from ...middleware.common.metrics import Counter, Histogram, Gauge
-from utils.logger import get_logger
+from database.clients.terminus_db import TerminusDBClient
+from config.redis_config import get_redis_client
+from middleware.common.metrics import get_metrics_collector
+from utils.unified_logger import get_logger
 
 logger = get_logger(__name__)
 
 # Metrics
-cache_operations = Counter("smart_cache_operations_total", "Total cache operations", ["operation", "tier"])
-cache_latency = Histogram("smart_cache_operation_duration_seconds", "Cache operation latency", ["operation", "tier"])
-cache_memory_usage = Gauge("smart_cache_memory_bytes", "Cache memory usage", ["tier"])
-cache_hit_ratio = Gauge("smart_cache_hit_ratio", "Cache hit ratio", ["tier"])
+metrics_collector = get_metrics_collector("smart_cache")
+
+# Helper functions for metrics
+def increment_cache_operations(operation: str, tier: str):
+    metrics_collector.increment_counter("cache_operations_total", 1, {"operation": operation, "tier": tier})
+
+def observe_cache_latency(operation: str, tier: str, duration: float):
+    metrics_collector.observe_histogram("cache_operation_duration_seconds", duration, {"operation": operation, "tier": tier})
+
+def set_cache_memory_usage(tier: str, bytes_used: float):
+    metrics_collector.set_gauge("cache_memory_bytes", bytes_used, {"tier": tier})
+
+def set_cache_hit_ratio(tier: str, ratio: float):
+    metrics_collector.set_gauge("cache_hit_ratio", ratio, {"tier": tier})
 
 
 class CacheMetrics:
@@ -45,7 +55,7 @@ class CacheMetrics:
     
     def record_hit(self, tier: str):
         """Record cache hit."""
-        cache_operations.labels(operation="hit", tier=tier).inc()
+        increment_cache_operations("hit", tier)
         if tier == "local":
             self.local_hits += 1
         elif tier == "redis":
@@ -55,7 +65,7 @@ class CacheMetrics:
     
     def record_miss(self, tier: str):
         """Record cache miss."""
-        cache_operations.labels(operation="miss", tier=tier).inc()
+        increment_cache_operations("miss", tier)
         if tier == "local":
             self.local_misses += 1
         elif tier == "redis":
@@ -65,16 +75,16 @@ class CacheMetrics:
     
     def record_set(self, tier: str):
         """Record cache set operation."""
-        cache_operations.labels(operation="set", tier=tier).inc()
+        increment_cache_operations("set", tier)
     
     def record_eviction(self):
         """Record cache eviction."""
-        cache_operations.labels(operation="eviction", tier="local").inc()
+        increment_cache_operations("eviction", "local")
         self.evictions += 1
     
     def record_error(self):
         """Record cache error."""
-        cache_operations.labels(operation="error", tier="unknown").inc()
+        increment_cache_operations("error", "unknown")
         self.errors += 1
     
     def get_stats(self) -> Dict[str, Any]:
@@ -88,9 +98,9 @@ class CacheMetrics:
         terminus_hit_ratio = self.terminus_hits / total_terminus if total_terminus > 0 else 0
         
         # Update Prometheus metrics
-        cache_hit_ratio.labels(tier="local").set(local_hit_ratio)
-        cache_hit_ratio.labels(tier="redis").set(redis_hit_ratio)
-        cache_hit_ratio.labels(tier="terminus").set(terminus_hit_ratio)
+        set_cache_hit_ratio("local", local_hit_ratio)
+        set_cache_hit_ratio("redis", redis_hit_ratio)
+        set_cache_hit_ratio("terminus", terminus_hit_ratio)
         
         return {
             "local": {
@@ -396,10 +406,13 @@ class SmartCache:
             return False
         
         try:
-            with cache_latency.labels(operation="set", tier="redis").time():
+            timer_id = metrics_collector.start_timer("cache_operation_duration_seconds")
+            try:
                 serialized = self._serialize(value)
                 await self.redis_client.setex(key, ttl, serialized)
                 return True
+            finally:
+                metrics_collector.stop_timer(timer_id, {"operation": "set", "tier": "redis"})
         except Exception as e:
             logger.warning(f"Redis set error for {key}: {e}")
             self.metrics.record_error()
@@ -412,9 +425,12 @@ class SmartCache:
             return False
         
         try:
-            with cache_latency.labels(operation="delete", tier="redis").time():
+            timer_id = metrics_collector.start_timer("cache_operation_duration_seconds")
+            try:
                 result = await self.redis_client.delete(key)
                 return result > 0
+            finally:
+                metrics_collector.stop_timer(timer_id, {"operation": "delete", "tier": "redis"})
         except Exception as e:
             logger.warning(f"Redis delete error for {key}: {e}")
             self.metrics.record_error()
@@ -460,7 +476,8 @@ class SmartCache:
             return None
         
         try:
-            with cache_latency.labels(operation="get", tier="terminus").time():
+            timer_id = metrics_collector.start_timer("cache_operation_duration_seconds")
+            try:
                 # Query TerminusDB for cached value
                 query = {
                     "@type": "Triple",
@@ -487,6 +504,8 @@ class SmartCache:
                         return self._deserialize(value_data.encode())
                 
                 return None
+            finally:
+                metrics_collector.stop_timer(timer_id, {"operation": "get", "tier": "terminus"})
         except Exception as e:
             logger.warning(f"TerminusDB get error for {key}: {e}")
             self.metrics.record_error()
@@ -498,7 +517,8 @@ class SmartCache:
             return False
         
         try:
-            with cache_latency.labels(operation="set", tier="terminus").time():
+            timer_id = metrics_collector.start_timer("cache_operation_duration_seconds")
+            try:
                 serialized = self._serialize(value)
                 expires_at = datetime.utcnow() + timedelta(seconds=ttl)
                 
@@ -514,6 +534,8 @@ class SmartCache:
                 
                 await self.terminus_client.replace_document(cache_doc)
                 return True
+            finally:
+                metrics_collector.stop_timer(timer_id, {"operation": "set", "tier": "terminus"})
         except Exception as e:
             logger.warning(f"TerminusDB set error for {key}: {e}")
             self.metrics.record_error()
@@ -525,9 +547,12 @@ class SmartCache:
             return False
         
         try:
-            with cache_latency.labels(operation="delete", tier="terminus").time():
+            timer_id = metrics_collector.start_timer("cache_operation_duration_seconds")
+            try:
                 await self.terminus_client.delete_document(f"cache:{key}")
                 return True
+            finally:
+                metrics_collector.stop_timer(timer_id, {"operation": "delete", "tier": "terminus"})
         except Exception as e:
             logger.warning(f"TerminusDB delete error for {key}: {e}")
             self.metrics.record_error()

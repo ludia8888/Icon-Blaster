@@ -324,8 +324,8 @@ class IssueTrackingDatabase:
             row['change_type']: row['count']
             for row in type_rows
         }
-            
-            return {
+        
+        return {
                 'user': user,
                 'total_changes': row['total_changes'],
                 'unique_issues': row['unique_issues'],

@@ -106,6 +106,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         )
         self.audit_publisher = UnifiedEventPublisher(config)
         self.config = audit_config or {}
+        self._initialized = False
         
         # Paths to exclude from auditing
         self.exclude_paths = self.config.get("exclude_paths", [
@@ -183,6 +184,11 @@ class AuditMiddleware(BaseHTTPMiddleware):
         return None
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Initialize publisher on first request
+        if not self._initialized:
+            await self.audit_publisher.connect()
+            self._initialized = True
+        
         # Skip if path is excluded or method is not auditable
         if any(request.url.path.startswith(path) for path in self.exclude_paths):
             return await call_next(request)

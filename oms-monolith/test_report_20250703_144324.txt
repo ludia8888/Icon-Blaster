@@ -1,0 +1,101 @@
+DETAILED TEST REPORT
+============================================================
+Generated: 2025-07-03 14:43:24.829316
+Total Time: 0.16 seconds
+
+{
+  "environment": {
+    "Python Version": true,
+    "Redis": false,
+    "Environment Variables": true
+  },
+  "features": [
+    {
+      "name": "Vector Embeddings",
+      "status": "skipped",
+      "reason": "Missing: ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY']"
+    },
+    {
+      "name": "GraphQL Deep Linking",
+      "status": "failed",
+      "tests": [
+        {
+          "test": "tests/integration/test_graph_analysis_tracing_cache.py::TestGraphAnalysisService",
+          "passed": false,
+          "output": "/opt/homebrew/opt/python@3.12/bin/python3.12: No module named pytest\n"
+        }
+      ]
+    },
+    {
+      "name": "Redis SmartCache",
+      "status": "failed",
+      "tests": [
+        {
+          "test": "tests/integration/test_graph_analysis_tracing_cache.py::TestSmartCacheIntegration",
+          "passed": false,
+          "output": "/opt/homebrew/opt/python@3.12/bin/python3.12: No module named pytest\n"
+        }
+      ]
+    },
+    {
+      "name": "Jaeger Tracing",
+      "status": "failed",
+      "tests": [
+        {
+          "test": "tests/integration/test_graph_analysis_tracing_cache.py::TestJaegerIntegration",
+          "passed": false,
+          "output": "/opt/homebrew/opt/python@3.12/bin/python3.12: No module named pytest\n"
+        }
+      ]
+    },
+    {
+      "name": "Time Travel Queries",
+      "status": "failed",
+      "tests": [
+        {
+          "test": "tests/integration/test_time_travel_queries.py",
+          "passed": false,
+          "output": "/opt/homebrew/opt/python@3.12/bin/python3.12: No module named pytest\n"
+        }
+      ]
+    },
+    {
+      "name": "Delta Encoding",
+      "status": "failed",
+      "tests": [
+        {
+          "test": "tests/integration/test_delta_encoding.py",
+          "passed": false,
+          "output": "/opt/homebrew/opt/python@3.12/bin/python3.12: No module named pytest\n"
+        }
+      ]
+    },
+    {
+      "name": "@unfoldable Documents",
+      "status": "failed",
+      "tests": [
+        {
+          "test": "tests/integration/test_unfoldable_documents.py",
+          "passed": false,
+          "output": "/opt/homebrew/opt/python@3.12/bin/python3.12: No module named pytest\n"
+        }
+      ]
+    },
+    {
+      "name": "@metadata Frames",
+      "status": "failed",
+      "tests": [
+        {
+          "test": "tests/integration/test_metadata_frames.py",
+          "passed": false,
+          "output": "/opt/homebrew/opt/python@3.12/bin/python3.12: No module named pytest\n"
+        }
+      ]
+    }
+  ],
+  "integration": {
+    "name": "Integration Scenario",
+    "status": "failed",
+    "output": "Traceback (most recent call last):\n  File \"/Users/isihyeon/Desktop/Arrakis-Project/oms-monolith/test_integration_scenario.py\", line 3, in <module>\n    import pytest\nModuleNotFoundError: No module named 'pytest'\n"
+  }
+}

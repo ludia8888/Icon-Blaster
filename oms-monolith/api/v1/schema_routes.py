@@ -7,6 +7,9 @@ from fastapi import APIRouter, HTTPException, Depends, Path, Body
 from bootstrap.dependencies import get_schema_service
 from core.interfaces import SchemaServiceProtocol
 from middleware.auth_middleware import get_current_user
+from database.dependencies import get_secure_database
+from database.clients.secure_database_adapter import SecureDatabaseAdapter
+from core.auth import UserContext
 
 router = APIRouter(prefix="/api/v1/schemas", tags=["Schema Management"])
 
@@ -14,7 +17,7 @@ router = APIRouter(prefix="/api/v1/schemas", tags=["Schema Management"])
 async def list_object_types(
     branch: str,
     schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
-    current_user: Annotated[str, Depends(get_current_user)]
+    current_user: Annotated[UserContext, Depends(get_current_user)]
 ) -> List[Dict[str, Any]]:
     """List all object types in a branch"""
     # For now, using main branch (will implement branch support later)
@@ -28,7 +31,7 @@ async def create_object_type(
     branch: str,
     object_type: Dict[str, Any],
     schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
-    current_user: Annotated[str, Depends(get_current_user)]
+    current_user: Annotated[UserContext, Depends(get_current_user)]
 ) -> Dict[str, Any]:
     """Create a new object type in a branch"""
     try:

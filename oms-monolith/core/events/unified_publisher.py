@@ -492,6 +492,76 @@ class UnifiedEventPublisher:
         if not self._connected:
             return False
         return await self._backend.health_check()
+    
+    async def publish_audit_event(
+        self,
+        action: Any,
+        user: Any,
+        target: Any,
+        changes: Optional[Any] = None,
+        success: bool = True,
+        error_code: Optional[str] = None,
+        request_id: Optional[str] = None,
+        duration_ms: Optional[int] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Publish audit event - convenience method for AuditMiddleware
+        
+        Args:
+            action: Audit action performed
+            user: User context from authentication
+            target: Target resource information
+            changes: Change details if applicable
+            success: Whether action succeeded
+            error_code: Error code if failed
+            request_id: Request correlation ID
+            duration_ms: Request duration
+            metadata: Additional metadata
+            
+        Returns:
+            bool: Success status
+        """
+        from models.audit_events import AuditEventV1, ActorInfo
+        
+        # Create actor from user context
+        actor = ActorInfo(
+            id=user.user_id,
+            username=user.username,
+            email=getattr(user, 'email', None),
+            roles=user.roles,
+            tenant_id=getattr(user, 'tenant_id', None),
+            service_account=user.is_service_account,
+            ip_address=metadata.get('ip_address') if metadata else None,
+            user_agent=metadata.get('user_agent') if metadata else None
+        )
+        
+        # Create audit event
+        audit_event = AuditEventV1(
+            action=action,
+            actor=actor,
+            target=target,
+            changes=changes,
+            success=success,
+            error_code=error_code,
+            request_id=request_id,
+            duration_ms=duration_ms,
+            metadata=metadata or {}
+        )
+        
+        # Publish using standard method
+        return await self.publish(
+            event_type="audit.activity.v1",
+            data=audit_event.model_dump(),
+            subject=f"{target.resource_type.value}/{target.resource_id}",
+            source="/oms/audit",
+            correlation_id=request_id,
+            metadata={
+                "audit": True,
+                "action": action.value,
+                "resource_type": target.resource_type.value
+            }
+        )
 
 
 # Factory function for backward compatibility

@@ -10,14 +10,14 @@ import time
 from datetime import datetime, timedelta
 from dataclasses import asdict
 import redis.asyncio as redis
-from ..database.clients.terminus_db import TerminusDBClient
+from database.clients.terminus_db import TerminusDBClient
 from .providers import (
     EmbeddingProviderFactory, EmbeddingConfig, EmbeddingProvider, BaseEmbeddingProvider,
     EmbeddingProviderError, EmbeddingAPIError, EmbeddingBatchSizeError, EmbeddingTokenLimitError
 )
-from ..validation.adapters import ValidationResult
-from ..resilience.unified_circuit_breaker import unified_circuit_breaker
-from ..middleware.common.metrics import Counter, Histogram, Gauge
+from core.validation.models import ValidationResult
+from resilience.unified_circuit_breaker import circuit_breaker
+from prometheus_client import Counter, Histogram, Gauge
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -89,7 +89,7 @@ class VectorEmbeddingService:
         
         await self.terminus_client.insert_document(config_doc)
 
-    @unified_circuit_breaker("embedding_service")
+    @circuit_breaker("embedding_service")
     async def create_embeddings(self, 
                               texts: List[str],
                               provider_name: Optional[str] = None,

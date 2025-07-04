@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ..database.clients.terminus_db import TerminusDBClient
-from ..resilience.unified_circuit_breaker import unified_circuit_breaker
+from ..resilience.unified_circuit_breaker import circuit_breaker
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -291,7 +291,7 @@ class TerminusGraphRepository(IGraphRepository):
         self.terminus_client = terminus_client
         self.query_builder = GraphQueryBuilder()
     
-    @unified_circuit_breaker("terminus_db")
+    @circuit_breaker("terminus_db")
     async def get_subgraph(self, node_ids: List[str], 
                           node_type_filters: Optional[List[str]] = None,
                           edge_type_filters: Optional[List[str]] = None,
@@ -358,7 +358,7 @@ class TerminusGraphRepository(IGraphRepository):
             logger.error(f"Failed to retrieve subgraph for {len(node_ids)} nodes: {e}")
             raise
     
-    @unified_circuit_breaker("terminus_db")
+    @circuit_breaker("terminus_db")
     async def get_node_neighborhood(self, node_id: str, max_hops: int = 2,
                                   node_type_filters: Optional[List[str]] = None,
                                   edge_type_filters: Optional[List[str]] = None) -> SubgraphData:
@@ -402,7 +402,7 @@ class TerminusGraphRepository(IGraphRepository):
             logger.error(f"Failed to get neighborhood for node {node_id}: {e}")
             raise
     
-    @unified_circuit_breaker("terminus_db")
+    @circuit_breaker("terminus_db")
     async def discover_connections(self, source_nodes: List[str], target_nodes: List[str], 
                                  max_depth: int = 3) -> List[Dict[str, Any]]:
         """Discover connections between two sets of nodes."""

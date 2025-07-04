@@ -15,12 +15,12 @@ from datetime import datetime
 import networkx as nx
 from cachetools import TTLCache
 
-from ..core.graph.repositories import IGraphRepository, SubgraphData, GraphNode, GraphEdge
-from ..shared.cache.smart_cache import SmartCache
-from ..core.resilience.unified_circuit_breaker import unified_circuit_breaker
-from ..core.events.unified_publisher import UnifiedEventPublisher
-from ..middleware.common.metrics import Counter, Histogram, Gauge
-from ..infra.tracing.jaeger_adapter import trace_graph_operation, trace_path_analysis, get_tracing_manager
+from core.graph.repositories import IGraphRepository, SubgraphData, GraphNode, GraphEdge
+from shared.cache.smart_cache import SmartCache
+from core.resilience.unified_circuit_breaker import circuit_breaker
+from core.events.unified_publisher import UnifiedEventPublisher
+from prometheus_client import Counter, Histogram, Gauge
+from infra.tracing.jaeger_adapter import trace_graph_operation, trace_path_analysis, get_tracing_manager
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -295,7 +295,7 @@ class GraphAnalysisService:
         self._graph_cache = TTLCache(maxsize=50, ttl=1800)  # 30 min
         self._path_cache = TTLCache(maxsize=200, ttl=900)   # 15 min
     
-    @unified_circuit_breaker("graph_analysis")
+    @circuit_breaker("graph_analysis")
     @trace_path_analysis("find_paths")
     async def find_paths(self, query: DeepLinkingQuery) -> List[GraphPath]:
         """
