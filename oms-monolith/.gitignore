@@ -186,3 +186,27 @@ backup_*/
 
 # Development reports
 docs/archive/
+
+# Test virtual environments
+test_venv/
+test_venv_fixed/
+
+# Temporary files
+*_temp.txt
+test_report*.txt
+test_report*.md
+*_test_report.md
+system_validation_report.md
+import_fix_summary.md
+
+# DLQ files (should be in temporary directory)
+audit_dlq_*.jsonl
+
+# Temporary test files
+test_*.py
+!tests/**/*.py
+
+# Legacy documentation (archived)
+REFACTORING_*.md
+IMPLEMENTATION_*.md
+CLEANUP_*.md
