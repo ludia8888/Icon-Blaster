@@ -102,9 +102,9 @@ flowchart TD
     end
 
     subgraph "데이터 접근 계층"
-        G[SecureDatabaseAdapter<br/>보안 작성자 추적 강제]
-        H[UnifiedDatabaseClient<br/>기본 데이터베이스 작업]
-        I[TerminusDB/PostgreSQL<br/>실제 데이터 저장]
+        G["SecureDatabaseAdapter<br/>보안 작성자 추적 강제"]
+        H["UnifiedDatabaseClient<br/>기본 데이터베이스 작업"]
+        I["TerminusDB/PostgreSQL<br/>실제 데이터 저장"]
     end
 
     A --> B
@@ -112,8 +112,8 @@ flowchart TD
     C -->|ContextVar에 사용자 저장| D
     D -->|권한 검증| E
     E -->|감사 로그| F
-    F -->|Depends(get_current_user)| G
-    F -->|Depends(get_secure_database)| G
+    F -->|get_current_user| G
+    F -->|get_secure_database| G
     G -->|자동 작성자 추적| H
     H -->|보안 커밋| I
 ```
