@@ -18,7 +18,7 @@ class TestNATSEventFlow:
     """Test NATS event publishing and subscription flow"""
     
     @pytest.fixture
-    async def mock_nats_client(self):
+    def mock_nats_client(self):
         """Create a mock NATS client"""
         client = AsyncMock(spec=RealNATSClient)
         client.connect = AsyncMock()
@@ -40,7 +40,7 @@ class TestNATSEventFlow:
         return client
     
     @pytest.fixture
-    async def captured_events(self):
+    def captured_events(self):
         """List to capture published events"""
         return []
     

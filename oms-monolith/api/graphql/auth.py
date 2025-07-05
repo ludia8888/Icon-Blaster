@@ -43,7 +43,7 @@ import redis.asyncio as redis
 from fastapi import Depends, HTTPException, status, Request, WebSocket
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from middleware.auth_middleware import get_current_user
 from core.integrations.user_service_client import validate_jwt_token
 from utils.logger import get_logger
@@ -247,3 +247,56 @@ class GraphQLWebSocketAuth:
         """Get user for active WebSocket connection"""
         connection_id = str(id(websocket))
         return self._connections.get(connection_id)
+    
+    async def authenticate_graphql_subscription(
+        self, 
+        websocket: WebSocket
+    ) -> Optional[UserContext]:
+        """
+        Authenticate GraphQL subscription WebSocket
+        Alias for authenticate_websocket to match main.py usage
+        """
+        # Accept the WebSocket first
+        await websocket.accept()
+        
+        # Try to get token from headers
+        auth_header = websocket.headers.get("Authorization", "")
+        token = None
+        
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+            
+        # If no token, allow anonymous connection
+        if not token:
+            logger.info("WebSocket connection without token - allowing anonymous")
+            return None
+            
+        # Authenticate with token
+        return await self.authenticate_websocket(websocket, token)
+    
+    async def authorize_subscription(
+        self,
+        user: UserContext,
+        subscription_name: str,
+        variables: Dict[str, Any]
+    ) -> bool:
+        """
+        Authorize a specific subscription for a user
+        
+        Args:
+            user: The authenticated user context
+            subscription_name: Name of the subscription being requested
+            variables: Variables passed to the subscription
+            
+        Returns:
+            True if authorized, False otherwise
+        """
+        # For now, allow all authenticated users to subscribe
+        # In production, implement proper authorization logic
+        if not user or not user.is_authenticated:
+            return False
+            
+        # Add subscription-specific authorization here
+        # Example: Check if user has permission for specific subscriptions
+        
+        return True

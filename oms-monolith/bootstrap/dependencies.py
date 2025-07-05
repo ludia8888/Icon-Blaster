@@ -8,6 +8,7 @@ from bootstrap.config import get_config, AppConfig
 from bootstrap.providers import (
     DatabaseProvider, EventProvider, SchemaProvider, ValidationProvider
 )
+from bootstrap.providers.terminus_gateway import get_terminus_client as get_terminus_gateway_client
 from core.interfaces import (
     SchemaServiceProtocol, ValidationServiceProtocol,
     EventPublisherProtocol, DatabaseClientProtocol
@@ -21,7 +22,6 @@ _providers = {
     "validation": None
 }
 
-@lru_cache()
 def get_database_provider(config: Annotated[AppConfig, Depends(get_config)]) -> DatabaseProvider:
     """Get database provider instance"""
     if _providers["database"] is None:
@@ -34,14 +34,12 @@ def get_database_provider(config: Annotated[AppConfig, Depends(get_config)]) -> 
         )
     return _providers["database"]
 
-@lru_cache()
 def get_event_provider(config: Annotated[AppConfig, Depends(get_config)]) -> EventProvider:
     """Get event provider instance"""
     if _providers["event"] is None:
         _providers["event"] = EventProvider(broker_url=config.event.broker_url)
     return _providers["event"]
 
-@lru_cache()
 def get_schema_provider(
     db_provider: Annotated[DatabaseProvider, Depends(get_database_provider)],
     event_provider: Annotated[EventProvider, Depends(get_event_provider)]
@@ -51,7 +49,6 @@ def get_schema_provider(
         _providers["schema"] = SchemaProvider(db_provider, event_provider)
     return _providers["schema"]
 
-@lru_cache()
 def get_validation_provider(
     db_provider: Annotated[DatabaseProvider, Depends(get_database_provider)]
 ) -> ValidationProvider:
@@ -66,6 +63,11 @@ async def get_db_client(
 ) -> DatabaseClientProtocol:
     """Get database client instance"""
     return await provider.provide()
+
+# TerminusDB specific client (with gateway support)
+async def get_terminus_client():
+    """Get TerminusDB client (direct or gateway based on config)"""
+    return await get_terminus_gateway_client()
 
 async def get_event_publisher(
     provider: Annotated[EventProvider, Depends(get_event_provider)]

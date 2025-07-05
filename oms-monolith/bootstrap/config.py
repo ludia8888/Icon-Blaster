@@ -47,7 +47,6 @@ class AppConfig(BaseSettings):
         "extra": "ignore"
     }
 
-@lru_cache()
 def get_config() -> AppConfig:
     """Get cached configuration instance"""
     return AppConfig()

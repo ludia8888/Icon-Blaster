@@ -5,10 +5,10 @@ Provides singleton vector embedding service with multiple providers and Redis ca
 from typing import Optional, Dict, Any
 import os
 from .base import SingletonProvider
-from ...core.embeddings.service import VectorEmbeddingService
-from ...core.embeddings.providers import EmbeddingProviderFactory, EmbeddingConfig, EmbeddingProvider
-from ...database.clients.terminus_db import TerminusDBClient
-from ...config.redis_config import get_redis_client
+from core.embeddings.service import VectorEmbeddingService
+from core.embeddings.providers import EmbeddingProviderFactory, EmbeddingConfig, EmbeddingProvider
+from database.clients.terminus_db import TerminusDBClient
+from config.redis_config import get_redis_client
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

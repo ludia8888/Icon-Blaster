@@ -7,7 +7,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel, Field
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from middleware.auth_middleware import get_current_user
 from core.shadow_index.manager import get_shadow_manager, ShadowIndexConflictError, SwitchValidationError
 from models.shadow_index import (
@@ -16,7 +16,7 @@ from models.shadow_index import (
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/v1/shadow-index", tags=["Shadow Index Management"])
+router = APIRouter(prefix="/shadow-index", tags=["Shadow Index Management"])
 
 
 # Request/Response Models

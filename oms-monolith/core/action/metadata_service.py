@@ -44,10 +44,13 @@ class ActionMetadataService:
             terminus_endpoint: TerminusDB 엔드포인트 (새로운 직접 연결)
         """
         # 새로운 간단한 TerminusDB 클라이언트 사용 (admin 데이터베이스 사용)
-        self.tdb = SimpleTerminusDBClient(
+        from database.unified_terminus_client import TerminusDBConfig
+        
+        config = TerminusDBConfig(
             endpoint=terminus_endpoint,
-            database="admin"  # 기존 admin 데이터베이스 사용
+            db="admin"  # 기존 admin 데이터베이스 사용
         )
+        self.tdb = SimpleTerminusDBClient(config)
         self.redis = redis_client
         self.action_types = {}  # 메모리 캐시
         self._initialized = False

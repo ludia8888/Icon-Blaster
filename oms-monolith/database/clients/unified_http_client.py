@@ -510,13 +510,20 @@ class UnifiedHTTPClient(AbstractHTTPClient):
     
     def _inject_trace_context(self, headers: Dict[str, str]) -> Dict[str, str]:
         """Inject OpenTelemetry trace context into headers"""
-        # Placeholder for actual OpenTelemetry integration
-        # In real implementation, this would use opentelemetry.trace
-        trace_headers = {}
-        if self.config.enable_tracing:
-            # Example trace context injection
-            trace_headers['X-Trace-ID'] = f"trace-{int(time.time() * 1000)}"
-            trace_headers['X-Span-ID'] = f"span-{int(time.time() * 1000000) % 10000}"
+        if not self.config.enable_tracing:
+            return {}
+            
+        from opentelemetry import trace
+        from opentelemetry.propagate import inject
+        
+        # Create a new headers dict to avoid modifying the original
+        trace_headers = headers.copy()
+        
+        # Inject the current trace context into headers
+        # This will add W3C Trace Context headers (traceparent, tracestate)
+        # and any other configured propagators (e.g., B3)
+        inject(trace_headers)
+        
         return trace_headers
     
     async def get(self, url: str, stream: bool = False, **kwargs) -> Response:
@@ -601,12 +608,15 @@ def create_terminus_client(
     **kwargs
 ) -> UnifiedHTTPClient:
     """Create a client optimized for TerminusDB communication"""
+    # Extract timeout from kwargs if present, otherwise use default
+    timeout = kwargs.pop('timeout', 30.0)
+    
     config_params = {
         'mode': ClientMode.SECURE if enable_mtls else ClientMode.BASIC,
         'base_url': endpoint,
         'auth': (username, password),
         'headers': {'Content-Type': 'application/json'},
-        'timeout': 30.0,
+        'timeout': timeout,
         'enable_mtls': enable_mtls,
         'enable_mtls_fallback': True,
         'enable_tracing': True,

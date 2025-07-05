@@ -9,8 +9,16 @@ from enum import Enum
 import asyncio
 import httpx
 import numpy as np
-from sentence_transformers import SentenceTransformer
-import torch
+
+# Optional ML dependencies
+try:
+    from sentence_transformers import SentenceTransformer
+    import torch
+    HAS_ML_DEPS = True
+except ImportError:
+    HAS_ML_DEPS = False
+    SentenceTransformer = None
+    torch = None
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -380,6 +388,11 @@ class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
 
 class LocalSentenceTransformersProvider(BaseEmbeddingProvider):
     def _initialize_client(self):
+        if not HAS_ML_DEPS:
+            raise ImportError(
+                "ML dependencies not installed. Install with: "
+                "pip install sentence-transformers torch"
+            )
         device = "cuda" if torch.cuda.is_available() else "cpu"
         return SentenceTransformer(self.config.model_name, device=device)
 
@@ -467,9 +480,12 @@ class AnthropicEmbeddingProvider(BaseEmbeddingProvider):
     
     def _init_fallback_provider(self):
         """Initialize a fallback embedding provider."""
-        from sentence_transformers import SentenceTransformer
-        self.fallback_model = SentenceTransformer('all-MiniLM-L6-v2')
-        logger.info("Anthropic provider using local Sentence Transformers for embeddings")
+        if HAS_ML_DEPS:
+            self.fallback_model = SentenceTransformer('all-MiniLM-L6-v2')
+            logger.info("Anthropic provider using local Sentence Transformers for embeddings")
+        else:
+            self.fallback_model = None
+            logger.warning("ML dependencies not available for fallback embeddings")
 
     async def create_embeddings(self, texts: List[str]) -> List[List[float]]:
         """
@@ -501,6 +517,12 @@ class AnthropicEmbeddingProvider(BaseEmbeddingProvider):
                 processed_texts.append(text)
         
         # Generate actual embeddings using fallback model
+        if self.fallback_model is None:
+            raise EmbeddingProviderError(
+                "Fallback model not available. Install ML dependencies: "
+                "pip install sentence-transformers torch"
+            )
+        
         loop = asyncio.get_event_loop()
         embeddings = await loop.run_in_executor(
             None, self.fallback_model.encode, processed_texts

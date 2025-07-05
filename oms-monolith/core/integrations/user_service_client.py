@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import HTTPException, status
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from utils.logger import get_logger
 from database.clients.unified_http_client import UnifiedHTTPClient, create_basic_client, HTTPClientConfig
 
@@ -79,7 +79,8 @@ class UserServiceClient:
             payload = jwt.decode(
                 token,
                 self.jwt_secret,
-                algorithms=[self.jwt_algorithm]
+                algorithms=[self.jwt_algorithm],
+                audience="oms"  # Accept tokens with 'oms' audience
             )
             
             # Check expiration

@@ -8,10 +8,11 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from core.iam.iam_integration import get_iam_integration, IAMScope
 from models.permissions import ResourceType, Action
 from utils.logger import get_logger
+from shared.terminus_context import get_branch, is_readonly_branch
 
 logger = get_logger(__name__)
 
@@ -170,6 +171,23 @@ class ScopeRBACMiddleware(BaseHTTPMiddleware):
                 f"No scope requirement for {request.method} {request.url.path}, "
                 f"deferring to role-based checks"
             )
+        
+        # Check branch-based permissions
+        if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+            current_branch = get_branch()
+            if is_readonly_branch(current_branch):
+                logger.warning(
+                    f"Write operation denied on read-only branch: {current_branch} "
+                    f"by user {user.username}"
+                )
+                return JSONResponse(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    content={
+                        "detail": f"Write operations not allowed on branch: {current_branch}",
+                        "branch": current_branch,
+                        "readonly": True
+                    }
+                )
         
         # Continue to next middleware
         return await call_next(request)

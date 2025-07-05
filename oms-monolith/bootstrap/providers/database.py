@@ -1,10 +1,10 @@
 """Database provider for TerminusDB connections"""
 
 import os
-from database.unified_terminus_client import SimpleTerminusDBClient
+from database.clients.unified_database_client import UnifiedDatabaseClient
 from .base import SingletonProvider
 
-class DatabaseProvider(SingletonProvider[SimpleTerminusDBClient]):
+class DatabaseProvider(SingletonProvider[UnifiedDatabaseClient]):
     """Provider for database client instances"""
     
     def __init__(self, endpoint: str | None = None, team: str | None = None, 
@@ -17,15 +17,18 @@ class DatabaseProvider(SingletonProvider[SimpleTerminusDBClient]):
         self.user = user or os.getenv("TERMINUSDB_USER", "admin")
         self.key = key or os.getenv("TERMINUSDB_KEY", "root")
     
-    async def _create(self) -> SimpleTerminusDBClient:
+    async def _create(self) -> UnifiedDatabaseClient:
         """Create and initialize database client"""
-        client = SimpleTerminusDBClient(
+        from database.clients.unified_database_client import DatabaseConfig
+        
+        config = DatabaseConfig(
             endpoint=self.endpoint,
             team=self.team,
             db=self.db,
             user=self.user,
             key=self.key
         )
+        client = await UnifiedDatabaseClient.create(config)
         await client.connect()
         return client
     

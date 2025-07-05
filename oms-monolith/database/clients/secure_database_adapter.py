@@ -10,8 +10,8 @@ from typing import Dict, Any, List, Optional, Union
 from contextlib import asynccontextmanager
 
 from database.clients.unified_database_client import UnifiedDatabaseClient
-from core.auth import UserContext
-from core.auth.secure_author_provider import get_secure_author_provider
+from core.auth_utils import UserContext
+from core.auth_utils.secure_author_provider import get_secure_author_provider
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

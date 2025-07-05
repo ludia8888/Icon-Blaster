@@ -50,6 +50,13 @@ OMS는 복잡한 데이터 모델과 온톨로지를 체계적으로 관리하�
 
 ## 🏛️ 시스템 아키텍처
 
+### 배포 모드
+
+OMS는 세 가지 배포 모드를 지원합니다:
+
+#### 1. 모놀리스 모드 (기본)
+모든 서비스가 단일 컨테이너에서 실행되는 전통적인 배포 방식입니다.
+
 ```mermaid
 graph TB
     subgraph "클라이언트 레이어"
@@ -58,56 +65,104 @@ graph TB
         ThirdParty[써드파티 앱]
     end
 
-    subgraph "API 게이트웨이"
-        APIGateway[API Gateway<br/>포트: 8090]
-        LoadBalancer[로드 밸런서]
-    end
-
-    subgraph "애플리케이션 레이어"
+    subgraph "모놀리스 컨테이너"
         MainAPI[메인 API 서버<br/>FastAPI<br/>포트: 8000]
         GraphQLHTTP[GraphQL HTTP<br/>포트: 8006]
         GraphQLWS[GraphQL WebSocket<br/>포트: 8004]
-    end
-
-    subgraph "보안 미들웨어 체인"
-        AuthMiddleware[인증 미들웨어<br/>JWT 토큰 검증<br/>UserContext 생성]
-        DatabaseContext[DB 컨텍스트<br/>사용자 전파]
-        RBACMiddleware[RBAC 미들웨어<br/>권한 검증]
-        AuditMiddleware[감사 미들웨어<br/>보안 로깅]
-    end
-
-    subgraph "데이터 접근 계층"
-        SecureDB[SecureDatabaseAdapter<br/>자동 작성자 추적<br/>감사 필드 관리]
-        UnifiedDB[UnifiedDatabaseClient<br/>기본 DB 작업]
-    end
-
-    subgraph "비즈니스 로직 레이어"
-        SchemaService[스키마 서비스<br/>온톨로지 관리]
-        ValidationService[검증 서비스<br/>데이터 유효성]
-        VersionService[버전 서비스<br/>브랜치 관리]
-        AuditService[감사 서비스<br/>변경 추적]
-        IAMService[IAM 서비스<br/>인증/인가]
+        EmbeddingModule[임베딩 모듈<br/>내장]
+        SchedulerModule[스케줄러 모듈<br/>내장]
+        EventModule[이벤트 모듈<br/>내장]
     end
 
     subgraph "데이터 저장소"
-        TerminusDB[(TerminusDB<br/>+ 감사 필드<br/>포트: 6363)]
-        PostgreSQL[(PostgreSQL<br/>+ 감사 로그<br/>포트: 5432)]
-        Redis[(Redis<br/>캐시/세션<br/>포트: 6379)]
-        DLQ[(DLQ<br/>실패 감사)]
+        TerminusDB[(TerminusDB<br/>포트: 6363)]
+        PostgreSQL[(PostgreSQL<br/>포트: 5432)]
+        Redis[(Redis<br/>포트: 6379)]
     end
 
-    WebUI --> APIGateway
-    APIGateway --> MainAPI
-    MainAPI --> AuthMiddleware
-    AuthMiddleware --> DatabaseContext
-    DatabaseContext --> RBACMiddleware
-    RBACMiddleware --> AuditMiddleware
-    AuditMiddleware --> SecureDB
-    SecureDB --> UnifiedDB
-    UnifiedDB --> TerminusDB
-    AuditService --> PostgreSQL
-    AuditService -.->|실패| DLQ
+    WebUI --> MainAPI
+    MainAPI --> TerminusDB
+    MainAPI --> PostgreSQL
+    MainAPI --> Redis
 ```
+
+#### 2. 마이크로서비스 모드
+Palantir Foundry 스타일의 MSA 설계를 따르는 분산 아키텍처입니다.
+
+```mermaid
+graph TB
+    subgraph "클라이언트 애플리케이션"
+        Client[클라이언트]
+    end
+
+    subgraph "OMS API Gateway"
+        Gateway[경량 CRUD/GraphQL<br/>포트: 8000]
+    end
+
+    subgraph "마이크로서비스"
+        Embedding[임베딩 서비스<br/>포트: 8001/50055]
+        Scheduler[스케줄러 서비스<br/>포트: 8002/50056]
+        EventGW[이벤트 게이트웨이<br/>포트: 8003/50057]
+    end
+
+    subgraph "Data-Kernel Gateway"
+        DataKernel[데이터 커널<br/>REST/gRPC<br/>포트: 8080/50051]
+    end
+
+    subgraph "데이터 계층"
+        TerminusDB[(TerminusDB<br/>단일 진실 소스)]
+    end
+
+    Client --> Gateway
+    Gateway --> Embedding
+    Gateway --> Scheduler
+    Gateway --> EventGW
+    Embedding --> DataKernel
+    Scheduler --> DataKernel
+    EventGW --> DataKernel
+    DataKernel --> TerminusDB
+```
+
+#### 3. 하이브리드 모드
+점진적 마이그레이션을 위해 특정 서비스만 분리하여 운영할 수 있습니다.
+
+### 마이크로서비스 상세
+
+#### Data-Kernel Gateway
+- **목적**: 모든 TerminusDB 작업을 위한 중앙 집중식 접근점
+- **기능**:
+  - 연결 풀링 및 최적화
+  - 브랜치/작성자 컨텍스트 관리
+  - 검증 및 이벤트를 위한 커밋 훅
+  - REST 및 gRPC 인터페이스 제공
+- **위치**: `/data_kernel`
+
+#### Vector-Embedding Service
+- **목적**: ML 모델 작업 및 벡터 임베딩 처리
+- **기능**:
+  - 다중 프로바이더 지원 (OpenAI, Hugging Face 등)
+  - 캐싱 및 배치 처리
+  - 모델 버전 관리
+  - 유사도 검색
+- **포트**: 8001 (REST), 50055 (gRPC)
+
+#### Advanced-Scheduler Service
+- **목적**: 백그라운드 작업 및 예약된 작업 처리
+- **기능**:
+  - TerminusDB에 작업 영속성
+  - 워커를 통한 분산 실행
+  - Cron 및 간격 스케줄링
+  - 작업 상태 추적
+- **포트**: 8002 (REST), 50056 (gRPC)
+
+#### Event-Gateway Service
+- **목적**: 중앙 집중식 이벤트 분배
+- **기능**:
+  - NATS 통합
+  - CloudEvents 형식
+  - 웹훅 전달
+  - 이벤트 영속성
+- **포트**: 8003 (REST), 50057 (gRPC)
 
 ## 🚀 빠른 시작
 
@@ -132,6 +187,18 @@ cp .env.example .env
 # .env 파일 편집하여 설정 추가
 
 # Docker 서비스 시작
+
+# 1. 모놀리스 모드 (기본)
+docker-compose up -d
+
+# 2. 마이크로서비스 모드
+docker-compose up -d
+docker-compose -f docker-compose.microservices.yml up -d
+
+# 3. 하이브리드 모드 (특정 서비스만 활성화)
+export USE_EMBEDDING_MS=true
+export USE_SCHEDULER_MS=false
+export USE_EVENT_GATEWAY=false
 docker-compose up -d
 
 # 마이그레이션 실행

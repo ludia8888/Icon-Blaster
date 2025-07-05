@@ -4,9 +4,11 @@ REQ-OMS-F2: 브랜치 관리 핵심 서비스 - TerminusDB 내부 캐싱 활용
 섹션 8.2.2의 BranchService 클래스 구현 - TERMINUSDB_LRU_CACHE_SIZE 최적화
 """
 import logging
+import os
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from shared.terminus_context import get_author, get_branch
 
 from core.branch.conflict_resolver import ConflictResolver
 from core.branch.diff_engine import DiffEngine
@@ -46,7 +48,7 @@ class BranchService:
         self.diff_engine = diff_engine
         self.conflict_resolver = conflict_resolver
         self.event_publisher = event_publisher
-        self.db_name = "oms"
+        self.db_name = os.getenv("TERMINUSDB_DB", "oms")
         self.three_way_merge = None  # Will be initialized in initialize()
         self.merge_strategies = MergeStrategyImplementor(self.tdb)  # 고급 머지 전략
 
@@ -261,9 +263,9 @@ class BranchService:
                     display_name=branch_name.title(),
                     parent_branch=None,
                     is_protected=True,
-                    created_by="system",
+                    created_by=get_author(),
                     created_at=datetime.utcnow(),
-                    modified_by="system",
+                    modified_by=get_author(),
                     modified_at=datetime.utcnow(),
                     version_hash="",
                     is_active=True

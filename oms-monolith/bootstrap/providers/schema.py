@@ -1,8 +1,6 @@
 """Schema service provider"""
 
 from core.schema.service_adapter import SchemaServiceAdapter
-from database.unified_terminus_client import SimpleTerminusDBClient
-from core.event_publisher.enhanced_event_service import EnhancedEventService
 from .base import Provider
 from .database import DatabaseProvider
 from .event import EventProvider
@@ -23,7 +21,7 @@ class SchemaProvider(Provider[SchemaServiceAdapter]):
             
             self._instance = SchemaServiceAdapter(
                 db_client=db_client,
-                event_publisher=event_service
+                event_service=event_service
             )
         return self._instance
     

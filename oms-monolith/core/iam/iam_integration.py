@@ -11,7 +11,7 @@ from functools import lru_cache
 import jwt
 from jwt import PyJWKClient
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from utils.logger import get_logger
 from database.clients.unified_http_client import create_iam_client
 

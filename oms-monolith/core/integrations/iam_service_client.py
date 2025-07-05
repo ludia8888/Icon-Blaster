@@ -25,7 +25,7 @@ from shared.iam_contracts import (
     ScopeCheckResponse,
     IAMHealthResponse
 )
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from utils.logger import get_logger
 from database.clients.unified_http_client import UnifiedHTTPClient, HTTPClientConfig
 import redis.asyncio as redis

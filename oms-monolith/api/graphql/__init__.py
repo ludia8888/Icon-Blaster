@@ -1,18 +1,15 @@
 """
-GraphQL Service for OMS
-Section 10.2 GraphQL API implementation
+GraphQL Service for OMS - Simplified
 """
 
-from .resolvers import Query, Mutation, schema
 from .subscriptions import Subscription
 from .realtime_publisher import RealtimePublisher
 from .websocket_manager import WebSocketManager
+from .working_schema import schema
 
 __all__ = [
-    "Query",
-    "Mutation", 
-    "Subscription",
     "schema",
+    "Subscription", 
     "RealtimePublisher",
     "WebSocketManager"
 ]

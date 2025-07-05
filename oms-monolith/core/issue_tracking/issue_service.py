@@ -13,7 +13,7 @@ from models.issue_tracking import (
     IssueTrackingConfig, ChangeIssueLink, IssueStatus, IssueType,
     parse_issue_reference, extract_issue_references
 )
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

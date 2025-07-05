@@ -1,0 +1,214 @@
+syntax = "proto3";
+
+package data_kernel;
+
+option go_package = "github.com/arrakis/oms/data_kernel/pb";
+option java_package = "com.arrakis.oms.data_kernel";
+
+// Document operations service
+service DocumentService {
+  rpc Get(DocumentId) returns (Document);
+  rpc Put(Document) returns (DocumentId);
+  rpc Patch(Document) returns (DocumentId);
+  rpc Delete(DocumentId) returns (Empty);
+}
+
+// Query operations service
+service QueryService {
+  rpc Execute(WOQL) returns (stream Document);
+}
+
+// Schema operations service  
+service SchemaService {
+  rpc Get(SchemaRequest) returns (Schema);
+  rpc Update(Schema) returns (Empty);
+}
+
+// Main unified service (includes all operations)
+service DataKernelService {
+  // Document operations
+  rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse);
+  rpc CreateDocument(CreateDocumentRequest) returns (CreateDocumentResponse);
+  rpc UpdateDocument(UpdateDocumentRequest) returns (UpdateDocumentResponse);
+  rpc DeleteDocument(DeleteDocumentRequest) returns (DeleteDocumentResponse);
+  
+  // Query operations
+  rpc ExecuteQuery(ExecuteQueryRequest) returns (ExecuteQueryResponse);
+  rpc StreamQuery(StreamQueryRequest) returns (stream StreamQueryResponse);
+  
+  // Schema operations
+  rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse);
+  rpc UpdateSchema(UpdateSchemaRequest) returns (UpdateSchemaResponse);
+  
+  // Branch operations
+  rpc SwitchBranch(SwitchBranchRequest) returns (SwitchBranchResponse);
+  
+  // Health check
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// Common metadata for all requests
+message RequestMeta {
+  string trace_id = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+  map<string, string> headers = 4;
+}
+
+// Document operations
+message GetDocumentRequest {
+  string database = 1;
+  string document_id = 2;
+  string branch = 3;
+  string revision = 4;
+  RequestMeta meta = 5;
+}
+
+message GetDocumentResponse {
+  string document_json = 1;  // JSON-encoded document
+  string revision = 2;
+  string branch = 3;
+}
+
+message CreateDocumentRequest {
+  string database = 1;
+  string document_json = 2;  // JSON-encoded document
+  string commit_message = 3;
+  RequestMeta meta = 4;
+}
+
+message CreateDocumentResponse {
+  string document_id = 1;
+  string revision = 2;
+}
+
+message UpdateDocumentRequest {
+  string database = 1;
+  string document_id = 2;
+  string updates_json = 3;  // JSON-encoded updates
+  string commit_message = 4;
+  RequestMeta meta = 5;
+}
+
+message UpdateDocumentResponse {
+  string revision = 1;
+}
+
+message DeleteDocumentRequest {
+  string database = 1;
+  string document_id = 2;
+  string commit_message = 3;
+  RequestMeta meta = 4;
+}
+
+message DeleteDocumentResponse {
+  string revision = 1;
+}
+
+// Query operations
+message ExecuteQueryRequest {
+  string database = 1;
+  string query_json = 2;  // JSON-encoded WOQL query
+  bool is_write = 3;
+  string commit_message = 4;
+  RequestMeta meta = 5;
+}
+
+message ExecuteQueryResponse {
+  string result_json = 1;  // JSON-encoded result
+  string revision = 2;
+}
+
+message StreamQueryRequest {
+  string database = 1;
+  string query_json = 2;  // JSON-encoded WOQL query
+  int32 batch_size = 3;
+  RequestMeta meta = 4;
+}
+
+message StreamQueryResponse {
+  string result_json = 1;  // JSON-encoded batch result
+  bool has_more = 2;
+  string cursor = 3;
+}
+
+// Schema operations
+message GetSchemaRequest {
+  string database = 1;
+  RequestMeta meta = 2;
+}
+
+message GetSchemaResponse {
+  string schema_json = 1;  // JSON-encoded schema
+  string revision = 2;
+}
+
+message UpdateSchemaRequest {
+  string database = 1;
+  string schema_json = 2;  // JSON-encoded schema
+  string commit_message = 3;
+  RequestMeta meta = 4;
+}
+
+message UpdateSchemaResponse {
+  string revision = 1;
+}
+
+// Branch operations
+message SwitchBranchRequest {
+  string database = 1;
+  string branch = 2;
+  RequestMeta meta = 3;
+}
+
+message SwitchBranchResponse {
+  bool success = 1;
+  string current_branch = 2;
+}
+
+// Health check
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  bool healthy = 1;
+  map<string, string> details = 2;
+}
+
+// Messages for simplified services (as per STEP2 spec)
+message CommitMeta {
+  string author = 1;
+  string commit_msg = 2;
+  string trace_id = 3;
+  string branch = 4;
+}
+
+message DocumentId { 
+  string id = 1; 
+  string database = 2;
+  CommitMeta meta = 3;
+}
+
+message Document { 
+  bytes json = 1;
+  string database = 2;
+  CommitMeta meta = 3;
+}
+
+message WOQL { 
+  string query = 1; 
+  string database = 2;
+  CommitMeta meta = 3; 
+}
+
+message SchemaRequest {
+  string database = 1;
+  CommitMeta meta = 2;
+}
+
+message Schema {
+  bytes json = 1;
+  string database = 2;
+  CommitMeta meta = 3;
+}
+
+message Empty {}

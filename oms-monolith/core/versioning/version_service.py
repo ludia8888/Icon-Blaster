@@ -12,7 +12,7 @@ from models.etag import (
     ResourceDelta, VersionConflict, CacheValidation,
     calculate_content_hash, generate_commit_hash, create_json_patch
 )
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from shared.database.sqlite_connector import SQLiteConnector, get_sqlite_connector
 from utils.logger import get_logger
 from .delta_compression import EnhancedDeltaEncoder, DeltaType, DeltaStorageOptimizer

@@ -3,8 +3,8 @@ Branch Event Publisher Adapter
 Provides domain-specific event publishing methods for branch service
 """
 from typing import Optional, Dict, Any
-from core.event_publisher.nats_publisher import NATSEventPublisher
-from core.event_publisher.cloudevents_enhanced import CloudEventBuilder, EventType
+from core.events.unified_publisher import UnifiedEventPublisher
+from core.events.backends.cloudevents_enhanced import CloudEventBuilder, EventType
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -13,11 +13,11 @@ logger = get_logger(__name__)
 class BranchEventPublisher:
     """
     Domain-specific event publisher for branch operations
-    Wraps NATSEventPublisher with branch-specific methods
+    Wraps UnifiedEventPublisher with branch-specific methods
     """
     
     def __init__(self, nats_url: Optional[str] = None):
-        self.publisher = NATSEventPublisher(nats_url)
+        self.publisher = UnifiedEventPublisher()
         self._initialized = False
     
     async def initialize(self) -> None:

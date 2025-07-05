@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from middleware.auth_middleware import get_current_user
 from core.documents import (
     UnfoldLevel, UnfoldContext, UnfoldableDocument,
@@ -16,7 +16,7 @@ from core.documents import (
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/v1/documents", tags=["Documents"])
+router = APIRouter(prefix="/documents", tags=["Documents"])
 
 
 # Request/Response Models

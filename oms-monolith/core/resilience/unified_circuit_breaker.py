@@ -142,7 +142,7 @@ class UnifiedCircuitBreaker:
         
         # Backpressure
         self._active_calls = 0
-        self._call_queue: asyncio.Queue = asyncio.Queue() if config.enable_backpressure else None
+        self._call_queue: asyncio.Queue = asyncio.Queue() if self.config.enable_backpressure else None
         
         # Recovery state (for gradual recovery)
         self._recovery_percentage = 0.0

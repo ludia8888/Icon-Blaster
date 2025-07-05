@@ -356,6 +356,42 @@ graph TB
 
 ## 🏗️ 마이크로서비스 아키텍처
 
+### Palantir Foundry 스타일 MSA 설계
+
+OMS는 Palantir Foundry의 다음 원칙들을 따릅니다:
+- **Asset-First**: 데이터 자산 중심 설계
+- **Strong Ontology**: 강력한 온톨로지 기반
+- **Immutable Log**: 변경 불가능한 로그 기반
+
+### 마이그레이션 로드맵
+
+#### STEP 1: Data-Kernel Gateway 구현 ✅
+- TerminusDB 접근을 위한 중앙 게이트웨이 구축
+- REST 및 gRPC 이중 인터페이스
+- 인증 미들웨어, 컨텍스트 주입, 트레이싱
+
+#### STEP 2: gRPC Stub 마이그레이션 ✅
+- Proto 파일 정의 및 서비스 구현
+- FastAPI와 함께 gRPC 서버 실행
+- TerminusGatewayClient를 통한 원활한 마이그레이션
+
+#### STEP 3: Branch/Author 컨텍스트 관리 ✅
+- 브랜치 명명 규칙: `<env>/<service>/<purpose>`
+- 작성자 형식: `<user>@<service>`
+- TerminusContextMiddleware를 통한 자동 메타데이터 주입
+
+#### STEP 4: Commit Hook Pipeline ✅
+- 포괄적인 검증 및 이벤트 파이프라인
+- Validators: Rule, Tamper, Schema, PII
+- Event Sinks: NATS, Audit, Webhook, Metrics
+- 롤백 지원과 함께 TerminusService 통합
+
+#### STEP 5: 마이크로서비스 추출 ✅
+- Vector-Embedding 서비스 분리
+- Advanced-Scheduler 서비스 분리
+- Event-Gateway 서비스 분리
+- Docker Compose를 통한 오케스트레이션
+
 ### 서비스 분해도
 
 ```mermaid
@@ -538,6 +574,76 @@ graph TB
 
 ## 🚀 배포 아키텍처
 
+### 배포 옵션
+
+#### 1. 모놀리스 모드 (기본)
+```bash
+docker-compose up
+```
+모든 서비스가 단일 컨테이너 내에서 실행됩니다.
+
+#### 2. 마이크로서비스 모드
+```bash
+# 기본 인프라 시작
+docker-compose up -d
+
+# 마이크로서비스 시작
+docker-compose -f docker-compose.microservices.yml up -d
+```
+
+#### 3. 하이브리드 모드
+환경 변수를 통해 특정 서비스만 활성화:
+```bash
+export USE_EMBEDDING_MS=true
+export USE_SCHEDULER_MS=false
+export USE_EVENT_GATEWAY=false
+docker-compose up
+```
+
+### 환경 변수 설정
+
+#### Data-Kernel Gateway
+- `USE_DATA_KERNEL_GATEWAY`: 게이트웨이 모드 활성화 (기본: false)
+- `DATA_KERNEL_GRPC_ENDPOINT`: 게이트웨이 gRPC 엔드포인트
+
+#### 마이크로서비스
+- `USE_EMBEDDING_MS`: 임베딩 마이크로서비스 사용
+- `EMBEDDING_SERVICE_ENDPOINT`: 임베딩 서비스 gRPC 엔드포인트
+- `USE_SCHEDULER_MS`: 스케줄러 마이크로서비스 사용
+- `SCHEDULER_SERVICE_ENDPOINT`: 스케줄러 서비스 gRPC 엔드포인트
+- `USE_EVENT_GATEWAY`: 이벤트 게이트웨이 마이크로서비스 사용
+- `EVENT_GATEWAY_ENDPOINT`: 이벤트 게이트웨이 gRPC 엔드포인트
+
+### 마이그레이션 전략
+
+#### 단계 1: Data-Kernel Gateway
+1. Data-Kernel Gateway 배포
+2. `USE_DATA_KERNEL_GATEWAY=true` 설정
+3. 모든 TerminusDB 작업이 게이트웨이를 통해 작동하는지 확인
+
+#### 단계 2: Embedding Service
+1. embedding-service 컨테이너 배포
+2. `USE_EMBEDDING_MS=true` 설정
+3. 콜드 스타트 시간 및 응답 대기 시간 모니터링
+4. GPU/CPU 사용량 기반 스케일링
+
+#### 단계 3: Scheduler Service
+1. scheduler-service 및 워커 배포
+2. `USE_SCHEDULER_MS=true` 설정
+3. 작업 실행 및 영속성 확인
+4. 워커 독립적 스케일링
+
+#### 단계 4: Event Gateway
+1. event-gateway 컨테이너 배포
+2. `USE_EVENT_GATEWAY=true` 설정
+3. 이벤트 흐름 및 웹훅 전달 확인
+4. NATS 성능 모니터링
+
+#### 단계 5: 정리
+1. 모놀리스에서 사용하지 않는 모듈 제거
+2. 모놀리스 이미지 크기 최적화
+3. CI/CD 파이프라인 업데이트
+
 ### 프로덕션 환경 구성
 
 ```yaml
@@ -610,17 +716,40 @@ services:
    - 지연 시간 최소화
    - 재해 복구 계획
 
+### 모니터링 및 운영
+
+#### 헬스 체크
+모든 서비스는 헬스 엔드포인트를 노출합니다:
+- Data-Kernel: `http://localhost:8080/health`
+- Embedding: `http://localhost:8001/health`
+- Scheduler: `http://localhost:8002/health`
+- Event Gateway: `http://localhost:8003/health`
+
+#### 메트릭
+각 서비스에서 `/metrics`로 Prometheus 메트릭 이용 가능
+
+#### 트레이싱
+OpenTelemetry 트레이스가 모든 서비스를 통해 흐릅니다:
+```
+Client → OMS → Gateway → TerminusDB
+         ↓
+    Microservice
+```
+
+#### 로깅
+트레이스 상관 관계가 있는 구조화된 JSON 로그
+
 ## 🔮 미래 로드맵
 
 ### 단기 (3-6개월)
-- [ ] Rust 백엔드 통합 완성
-- [ ] GraphQL Federation 구현
-- [ ] 실시간 협업 기능
+- [ ] 서비스 메시 (Istio/Linkerd) 도입
+- [ ] 외부 접근을 위한 API Gateway (Kong/Traefik)
+- [ ] 고용량 이벤트를 위한 메시지 스트리밍 (Kafka)
 - [ ] AI 기반 스키마 추천
 
 ### 중기 (6-12개월)
-- [ ] 멀티 리전 지원
-- [ ] 고급 보안 기능 (Zero Trust)
+- [ ] 공유 캐시를 위한 Redis Cluster
+- [ ] 모델 관리를 위한 ML Platform (Kubeflow)
 - [ ] 자동 스케일링 고도화
 - [ ] 고급 분석 도구
 

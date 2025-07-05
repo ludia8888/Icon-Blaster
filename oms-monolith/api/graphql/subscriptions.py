@@ -10,16 +10,37 @@ from typing import AsyncGenerator, Optional
 import strawberry
 from strawberry.types import Info
 
-from core.auth import UserContext as User
+from core.auth_utils import UserContext as User
 
 from .realtime_publisher import realtime_publisher
-from .schema import (
-    ActionProgressEvent,
-    BranchChangeEvent,
-    ProposalUpdateEvent,
-    ResourceTypeEnum,
-    SchemaChangeEvent,
-)
+# Simple subscription types for working schema
+@strawberry.type
+class ActionProgressEvent:
+    id: str
+    message: str
+
+@strawberry.type  
+class BranchChangeEvent:
+    id: str
+    action: str
+
+@strawberry.type
+class ProposalUpdateEvent:
+    id: str
+    status: str
+
+from enum import Enum
+
+@strawberry.enum  
+class ResourceTypeEnum(Enum):
+    OBJECT_TYPE = "object_type"
+    PROPERTY = "property"
+
+@strawberry.type
+class SchemaChangeEvent:
+    id: str
+    resource_type: ResourceTypeEnum
+    action: str
 
 logger = logging.getLogger(__name__)
 

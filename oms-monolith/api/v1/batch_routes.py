@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 import asyncio
 from datetime import datetime
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from middleware.auth_middleware import get_current_user
 from core.schema.service import SchemaService
 from core.branch import BranchService
@@ -18,7 +18,7 @@ from utils.logger import get_logger
 from shared.cache.smart_cache import SmartCacheManager
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/v1/batch", tags=["Batch Operations"])
+router = APIRouter(prefix="/batch", tags=["Batch Operations"])
 
 
 # Request/Response Models

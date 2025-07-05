@@ -2,7 +2,14 @@
 
 .PHONY: help
 help:
-	@echo "OMS Integration Test Commands:"
+	@echo "OMS Commands:"
+	@echo "Development:"
+	@echo "  make proto               - Generate Python stubs from proto files"
+	@echo "  make install             - Install dependencies"
+	@echo "  make lint                - Run linters"
+	@echo "  make run                 - Run the application"
+	@echo ""
+	@echo "Integration Testing:"
 	@echo "  make integration-up      - Start all services for integration testing"
 	@echo "  make integration-test    - Run integration tests"
 	@echo "  make integration-down    - Stop and clean up all services"
@@ -94,3 +101,63 @@ quick-test: integration-up integration-test integration-down
 # Full test with cleanup
 .PHONY: full-test
 full-test: integration-clean integration-up integration-test integration-clean
+
+# Proto generation
+.PHONY: proto
+proto:
+	@echo "Generating Python stubs from proto files..."
+	@mkdir -p shared/proto_stubs
+	@mkdir -p data_kernel/proto
+	@mkdir -p services/embedding-service/proto
+	# Data-Kernel proto
+	python -m grpc_tools.protoc \
+		-I data_kernel/proto \
+		--python_out=shared/proto_stubs \
+		--grpc_python_out=shared/proto_stubs \
+		--pyi_out=shared/proto_stubs \
+		data_kernel/proto/data_kernel.proto
+	# Also generate for data_kernel module itself
+	python -m grpc_tools.protoc \
+		-I data_kernel/proto \
+		--python_out=data_kernel/proto \
+		--grpc_python_out=data_kernel/proto \
+		--pyi_out=data_kernel/proto \
+		data_kernel/proto/data_kernel.proto
+	# Embedding service proto
+	python -m grpc_tools.protoc \
+		-I services/embedding-service/proto \
+		--python_out=services/embedding-service/proto \
+		--grpc_python_out=services/embedding-service/proto \
+		--pyi_out=services/embedding-service/proto \
+		services/embedding-service/proto/embedding_service.proto
+	# Create __init__.py files
+	@touch shared/proto_stubs/__init__.py
+	@touch services/embedding-service/proto/__init__.py
+	@echo "Proto stubs generated successfully!"
+
+# Install dependencies
+.PHONY: install
+install:
+	pip install -r requirements.txt
+	@if [ -f data_kernel/requirements.txt ]; then pip install -r data_kernel/requirements.txt; fi
+
+# Run linters
+.PHONY: lint
+lint:
+	ruff check .
+	mypy .
+
+# Run the application
+.PHONY: run
+run:
+	python -m uvicorn bootstrap.app:app --reload --host 0.0.0.0 --port 8000
+
+# Clean generated files
+.PHONY: clean
+clean:
+	rm -rf shared/proto_stubs
+	rm -f data_kernel/proto/*_pb2.py
+	rm -f data_kernel/proto/*_pb2_grpc.py
+	rm -f data_kernel/proto/*_pb2.pyi
+	find . -type d -name __pycache__ -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete

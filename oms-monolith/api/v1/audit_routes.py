@@ -7,14 +7,14 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from pydantic import BaseModel, Field
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from middleware.auth_middleware import get_current_user
 from core.audit.audit_service import get_audit_service, AuditServiceError
 from models.audit_events import AuditEventFilter, AuditAction, ResourceType
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/v1/audit", tags=["Audit Management"])
+router = APIRouter(prefix="/audit", tags=["Audit Management"])
 
 
 # Request/Response Models

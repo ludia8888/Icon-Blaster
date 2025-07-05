@@ -4,6 +4,7 @@ REQ-OMS-F2-AC4: Preview 기능 지원
 섹션 8.2.3의 DiffEngine 구현
 """
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
 from core.branch.models import (
@@ -26,7 +27,7 @@ class DiffEngine:
 
     def __init__(self, tdb_endpoint: str):
         self.tdb_endpoint = tdb_endpoint
-        self.db_name = "oms"
+        self.db_name = os.getenv("TERMINUSDB_DB", "oms")
 
     async def calculate_branch_diff(
         self,

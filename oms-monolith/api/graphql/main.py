@@ -1,7 +1,7 @@
 """
-REQ-OMS-001: GraphQL Service 진입점
-섹션 10.2의 GraphQL API 명세 구현
-성능 요구사항: P99 응답시간 < 200ms
+GraphQL WebSocket Service - Handles real-time subscriptions
+This service focuses on WebSocket connections and GraphQL subscriptions.
+For HTTP GraphQL queries/mutations, use modular_main.py
 """
 import asyncio
 import json
@@ -10,14 +10,10 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from fastapi import Depends, FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-try:
-    from strawberry.fastapi import GraphQLRouter
-except ImportError:
-    from strawberry.asgi import GraphQL as GraphQLRouter
 
 from core.iam.scope_rbac_middleware import create_scope_rbac_middleware
 
@@ -25,10 +21,9 @@ from core.iam.scope_rbac_middleware import create_scope_rbac_middleware
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from api.graphql.auth import get_current_user_optional, GraphQLWebSocketAuth, AuthenticationManager
-from core.auth import UserContext
+from core.auth_utils import UserContext
 
 from .realtime_publisher import realtime_publisher
-from .resolvers import schema
 from .websocket_manager import websocket_manager
 
 # 로깅 설정
@@ -95,8 +90,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="OMS GraphQL Service",
-    description="GraphQL API for Ontology Management System",
+    title="OMS GraphQL WebSocket Service",
+    description="WebSocket service for GraphQL subscriptions",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -117,25 +112,8 @@ rbac_middleware = create_scope_rbac_middleware({
 app.middleware("http")(rbac_middleware)
 
 
-async def get_context(
-    request: Request,
-    current_user: UserContext = Depends(get_current_user_optional)
-):
-    """GraphQL 컨텍스트 생성"""
-    return {
-        "request": request,
-        "user": current_user
-    }
-
-
-# GraphQL 라우터 설정
-graphql_app = GraphQLRouter(
-    schema,
-    context_getter=get_context,
-    graphiql=True  # GraphQL Playground 활성화
-)
-
-app.include_router(graphql_app, prefix="/graphql")
+# Remove GraphQL router - this service only handles WebSocket connections
+# For GraphQL HTTP endpoints, use modular_main.py
 
 
 @app.get("/health")
@@ -161,8 +139,12 @@ async def root():
 
 @app.get("/schema")
 async def get_schema():
-    """GraphQL 스키마 반환"""
-    return {"schema": str(schema)}
+    """WebSocket subscription info"""
+    return {
+        "service": "websocket-only",
+        "subscriptions": ["object_type_updates"],
+        "note": "For GraphQL schema, use the HTTP endpoint on port 8006"
+    }
 
 
 @app.websocket("/ws")

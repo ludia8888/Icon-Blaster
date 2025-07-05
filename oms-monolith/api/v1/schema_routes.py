@@ -9,9 +9,9 @@ from core.interfaces import SchemaServiceProtocol
 from middleware.auth_middleware import get_current_user
 from database.dependencies import get_secure_database
 from database.clients.secure_database_adapter import SecureDatabaseAdapter
-from core.auth import UserContext
+from core.auth_utils import UserContext
 
-router = APIRouter(prefix="/api/v1/schemas", tags=["Schema Management"])
+router = APIRouter(prefix="/schemas", tags=["Schema Management"])
 
 @router.get("/{branch}/object-types")
 async def list_object_types(

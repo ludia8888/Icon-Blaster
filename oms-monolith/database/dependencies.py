@@ -7,7 +7,7 @@ from fastapi import Depends, Request
 
 from database.clients.unified_database_client import get_unified_database_client
 from database.clients.secure_database_adapter import SecureDatabaseAdapter
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from middleware.auth_middleware import get_current_user
 from utils.logger import get_logger
 

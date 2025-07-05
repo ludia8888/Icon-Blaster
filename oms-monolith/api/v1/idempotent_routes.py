@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from middleware.auth_middleware import get_current_user
 from core.idempotent.schema_event_consumer import get_schema_consumer
 from models.idempotency import (
@@ -18,7 +18,7 @@ from utils.logger import get_logger
 from utils.git_utils import get_current_commit_hash
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/v1/idempotent", tags=["Idempotent Processing"])
+router = APIRouter(prefix="/idempotent", tags=["Idempotent Processing"])
 
 
 # Request/Response Models

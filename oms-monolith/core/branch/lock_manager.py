@@ -13,7 +13,7 @@ from models.branch_state import (
     LockType, LockScope, is_valid_transition, HeartbeatRecord,
     is_lock_expired_by_ttl, is_lock_expired_by_heartbeat
 )
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

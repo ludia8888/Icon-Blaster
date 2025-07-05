@@ -18,7 +18,7 @@ from shared.iam_contracts import (
     TokenValidationResponse,
     UserInfoResponse
 )
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from utils.logger import get_logger
 from prometheus_client import Counter, Histogram, Gauge
 from database.clients.unified_http_client import create_iam_client

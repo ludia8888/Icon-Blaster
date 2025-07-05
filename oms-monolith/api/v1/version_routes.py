@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Query
 from pydantic import BaseModel, Field
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from middleware.auth_middleware import get_current_user
 from core.versioning.version_service import get_version_service
 from models.etag import (
@@ -15,7 +15,7 @@ from models.etag import (
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/v1/versions", tags=["Version Tracking"])
+router = APIRouter(prefix="/versions", tags=["Version Tracking"])
 
 
 # Request/Response Models

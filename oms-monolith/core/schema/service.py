@@ -3,9 +3,11 @@ Schema Service - Fixed DB Connection
 SimpleTerminusDBClient 사용으로 DB 연결 문제 해결
 """
 import logging
+import os
 from typing import Any, Dict, List, Optional
-from database.unified_terminus_client import SimpleTerminusDBClient
+from database.clients.terminus_db import TerminusDBClient
 from models.domain import ObjectType, ObjectTypeCreate
+from shared.terminus_context import get_author, get_branch
 
 logger = logging.getLogger(__name__)
 
@@ -15,27 +17,24 @@ class SchemaService:
 
     def __init__(self, tdb_endpoint: Optional[str] = None, event_publisher: Optional[Any] = None):
         self.tdb_endpoint = tdb_endpoint or "http://localhost:6363"
-        self.db_name = "oms"
+        self.db_name = os.getenv("TERMINUSDB_DB", "oms")
         self.tdb = None  # initialize에서 연결
         self.event_publisher = event_publisher
 
     async def initialize(self):
-        """서비스 초기화 - SimpleTerminusDBClient 사용"""
+        """서비스 초기화 - TerminusDBClient 사용"""
         try:
-            # SimpleTerminusDBClient 사용
-            self.tdb = SimpleTerminusDBClient(
+            # TerminusDBClient 사용
+            self.tdb = TerminusDBClient(
                 endpoint=self.tdb_endpoint,
                 username="admin",
-                password="root",
-                database=self.db_name
+                password="changeme-admin-pass",
+                service_name="schema-service"
             )
             
             # 연결
-            connected = await self.tdb.connect()
-            if connected:
-                logger.info(f"Connected to TerminusDB at {self.tdb_endpoint}")
-            else:
-                logger.error("Failed to connect to TerminusDB")
+            await self.tdb.connect()
+            logger.info(f"Connected to TerminusDB at {self.tdb_endpoint}")
                 
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")
@@ -112,9 +111,9 @@ class SchemaService:
                     description=data.description,
                     properties=[],
                     version_hash=str(uuid.uuid4())[:16],
-                    created_by="system",
+                    created_by=get_author(),
                     created_at=datetime.now(),
-                    modified_by="system",
+                    modified_by=get_author(),
                     modified_at=datetime.now()
                 )
             else:

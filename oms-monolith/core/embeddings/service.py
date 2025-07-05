@@ -16,7 +16,7 @@ from .providers import (
     EmbeddingProviderError, EmbeddingAPIError, EmbeddingBatchSizeError, EmbeddingTokenLimitError
 )
 from core.validation.models import ValidationResult
-from resilience.unified_circuit_breaker import circuit_breaker
+from core.resilience.unified_circuit_breaker import circuit_breaker
 from prometheus_client import Counter, Histogram, Gauge
 from utils.logger import get_logger
 

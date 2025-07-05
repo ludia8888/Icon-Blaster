@@ -1,7 +1,6 @@
 """Validation service provider"""
 
 from core.validation.service import ValidationService
-from database.unified_terminus_client import SimpleTerminusDBClient
 from .base import Provider
 from .database import DatabaseProvider
 

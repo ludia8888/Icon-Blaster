@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 import json
 import time
+from contextlib import asynccontextmanager
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,7 @@ class RealtimePublisher:
         self.subscriptions: Dict[str, RealtimeSubscription] = {}
         self.user_subscriptions: Dict[str, Set[str]] = {}
         self._cleanup_task = None
+        self.nc: Optional[object] = None
         # Don't start cleanup task in __init__ to avoid event loop issues
     
     def _start_cleanup_task(self):
@@ -155,6 +157,33 @@ class RealtimePublisher:
     def get_user_subscription_count(self, user_id: str) -> int:
         """사용자별 구독 수"""
         return len(self.user_subscriptions.get(user_id, set()))
+    
+    async def connect(self):
+        """NATS JetStream 연결 (현재는 더미 구현).
+
+        GraphQL 서비스 라이프사이클에서 호출되므로 존재만 해도 된다.
+        추후 nats-py 사용 시 실제 연결 로직으로 대체 가능.
+        """
+        if self.nc is None:
+            # 더미 객체로 연결 완료 표시
+            self.nc = object()
+            logger.info("RealtimePublisher dummy connect called – marked as connected")
+
+    async def disconnect(self):
+        """NATS 연결 해제 (더미)."""
+        if self.nc is not None:
+            self.nc = None
+            logger.info("RealtimePublisher dummy disconnect called – marked as disconnected")
+
+    @asynccontextmanager
+    async def connection(self):
+        """NATS 연결 컨텍스트 매니저 (더미)."""
+        try:
+            await self.connect()
+            yield self
+        finally:
+            # 유지 연결이 필요하면 disconnect 생략 가능
+            pass
 
 # 전역 실시간 발행자 인스턴스
 realtime_publisher = RealtimePublisher()

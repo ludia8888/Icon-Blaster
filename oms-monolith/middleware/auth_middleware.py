@@ -52,7 +52,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from core.auth import get_permission_checker, UserContext
+from core.auth_utils import get_permission_checker, UserContext
 from core.integrations.user_service_client import validate_jwt_token, UserServiceError
 from core.iam.iam_integration import get_iam_integration
 from utils.logger import get_logger
@@ -198,9 +198,15 @@ def get_current_user(request: Request) -> UserContext:
     현재 요청의 사용자 정보 반환
     FastAPI 의존성으로 사용
     """
-    # Use unified auth module
-    from core.auth.unified_auth import get_current_user_standard
-    return get_current_user_standard(request)
+    # Get user context from request state
+    if hasattr(request.state, 'user_context') and request.state.user_context:
+        return request.state.user_context
+    
+    # If not in state, this is an error - auth middleware should have set it
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required"
+    )
 
 
 async def require_permission(

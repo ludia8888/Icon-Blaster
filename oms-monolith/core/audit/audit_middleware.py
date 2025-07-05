@@ -82,7 +82,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import StreamingResponse
 import json
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from core.events.unified_publisher import UnifiedEventPublisher, PublisherBackend, PublisherConfig
 from models.audit_events import AuditAction, TargetInfo, ResourceType, ChangeDetails
 from utils.logger import get_logger

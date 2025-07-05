@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from middleware.auth_middleware import get_current_user
 from core.branch.lock_manager import get_lock_manager, LockConflictError, InvalidStateTransitionError
 from models.branch_state import (
@@ -17,7 +17,7 @@ from models.branch_state import (
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/v1/branch-locks", tags=["Branch Lock Management"])
+router = APIRouter(prefix="/branch-locks", tags=["Branch Lock Management"])
 
 
 # Request/Response Models

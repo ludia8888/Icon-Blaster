@@ -11,10 +11,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements
-COPY requirements.txt .
+COPY requirements-minimal.txt requirements-otel.txt ./
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements-minimal.txt -r requirements-otel.txt
 
 # Copy application code
 COPY . .

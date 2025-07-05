@@ -7,7 +7,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
-from core.auth import UserContext
+from core.auth_utils import UserContext
 from middleware.auth_middleware import get_current_user
 from core.time_travel import (
     TemporalOperator, TemporalReference, TemporalQuery,
@@ -17,7 +17,7 @@ from core.time_travel import (
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/v1/time-travel", tags=["Time Travel"])
+router = APIRouter(prefix="/time-travel", tags=["Time Travel"])
 
 
 # Request/Response Models
