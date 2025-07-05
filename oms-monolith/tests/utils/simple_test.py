@@ -307,7 +307,6 @@ modules_to_check = [
     ("Unfoldable Documents", "core.documents.unfoldable"),
     ("Metadata Frames", "core.documents.metadata_frames"),
     ("Time Travel", "core.time_travel"),
-    ("Vector Embeddings", "core.embeddings"),
     ("Graph Analysis", "services.graph_analysis"),
     ("Smart Cache", "shared.cache.smart_cache"),
     ("Jaeger Tracing", "infra.tracing.jaeger_adapter")

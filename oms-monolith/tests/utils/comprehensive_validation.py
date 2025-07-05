@@ -65,7 +65,6 @@ class SystemValidator:
         required_modules = {
             "core.versioning.delta_compression": "Delta Encoding",
             "shared.cache.smart_cache": "Smart Cache", 
-            "core.embeddings.service": "Vector Embeddings",
             "core.time_travel.service": "Time Travel",
             "services.graph_analysis": "Graph Analysis",
             "core.documents.unfoldable": "Unfoldable Documents",

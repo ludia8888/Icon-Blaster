@@ -12,7 +12,6 @@ from services.graph_analysis import GraphAnalysisService, DeepLinkingQuery, Path
 from core.graph.repositories import SubgraphData, GraphNode, GraphEdge
 from shared.cache.smart_cache import SmartCache
 from infra.tracing.jaeger_adapter import JaegerTracingManager, get_tracing_manager
-from core.events.unified_publisher import UnifiedEventPublisher
 
 
 @pytest.fixture
@@ -104,7 +103,7 @@ async def mock_tracing_manager():
 @pytest.fixture
 async def graph_analysis_service(mock_graph_repository, mock_smart_cache):
     """Create GraphAnalysisService with mocked dependencies."""
-    event_publisher = AsyncMock(spec=UnifiedEventPublisher)
+    event_publisher = AsyncMock()
     
     service = GraphAnalysisService(
         graph_repository=mock_graph_repository,
