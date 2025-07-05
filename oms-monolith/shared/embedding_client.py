@@ -12,6 +12,76 @@ logger = logging.getLogger(__name__)
 USE_EMBEDDING_MS = os.getenv("USE_EMBEDDING_MS", "false").lower() == "true"
 
 
+class LocalEmbeddingService:
+    """Local embedding service using sentence transformers."""
+    
+    def __init__(self):
+        self.model = None
+    
+    async def initialize(self):
+        """Initialize the local model."""
+        from sentence_transformers import SentenceTransformer
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+    
+    async def generate_embedding(self, text: str, metadata=None):
+        """Generate embedding for text."""
+        embedding = self.model.encode(text)
+        return embedding.tolist() if hasattr(embedding, 'tolist') else list(embedding)
+    
+    async def generate_batch_embeddings(self, texts: List[str], metadata=None):
+        """Generate embeddings for multiple texts."""
+        embeddings = self.model.encode(texts)
+        return [emb.tolist() if hasattr(emb, 'tolist') else list(emb) for emb in embeddings]
+    
+    async def calculate_similarity(self, embedding1, embedding2, metric="cosine"):
+        """Calculate similarity between embeddings."""
+        import numpy as np
+        from sklearn.metrics.pairwise import cosine_similarity
+        
+        if isinstance(embedding1, list):
+            embedding1 = np.array(embedding1)
+        if isinstance(embedding2, list):
+            embedding2 = np.array(embedding2)
+        
+        if metric == "cosine":
+            return float(cosine_similarity([embedding1], [embedding2])[0][0])
+        else:
+            return 0.0
+    
+    async def find_similar(self, query_embedding, collection="default", top_k=10, 
+                          min_similarity=0.0, filters=None):
+        """Find similar documents (basic implementation)."""
+        return []  # Basic implementation
+
+
+class DummyEmbeddingService:
+    """Dummy embedding service for testing."""
+    
+    async def generate_embedding(self, text: str, metadata=None):
+        """Generate dummy embedding."""
+        import hashlib
+        import numpy as np
+        
+        # Generate deterministic embedding based on text hash
+        hash_obj = hashlib.md5(text.encode())
+        seed = int(hash_obj.hexdigest()[:8], 16)
+        np.random.seed(seed)
+        return np.random.random(384).tolist()
+    
+    async def generate_batch_embeddings(self, texts: List[str], metadata=None):
+        """Generate dummy embeddings for multiple texts."""
+        return [await self.generate_embedding(text) for text in texts]
+    
+    async def calculate_similarity(self, embedding1, embedding2, metric="cosine"):
+        """Calculate dummy similarity."""
+        return 0.5  # Return fixed similarity
+    
+    async def find_similar(self, query_embedding, collection="default", top_k=10,
+                          min_similarity=0.0, filters=None):
+        """Find similar documents (dummy implementation)."""
+        return []
+
+
 class EmbeddingClient:
     """
     Unified client for embedding operations.
@@ -36,11 +106,14 @@ class EmbeddingClient:
             await self._client.initialize()
         else:
             logger.info("Using local embedding service")
-            from core.embeddings.service import VectorEmbeddingService
-            from core.embeddings.providers import EmbeddingServiceProvider
-            provider = EmbeddingServiceProvider()
-            await provider.initialize()
-            self._client = await provider.provide()
+            # Use basic sentence transformers for local mode
+            try:
+                from sentence_transformers import SentenceTransformer
+                self._client = LocalEmbeddingService()
+                await self._client.initialize()
+            except ImportError:
+                logger.warning("sentence-transformers not available, using dummy service")
+                self._client = DummyEmbeddingService()
         
         self._initialized = True
     

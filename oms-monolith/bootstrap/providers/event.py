@@ -1,23 +1,43 @@
-"""Event publisher provider"""
+"""
+Event publisher provider.
+Uses event gateway stub to support both local and microservice modes.
+"""
 
 import os
-from core.events.unified_publisher import UnifiedEventPublisher
-from .base import SingletonProvider
+from shared.event_gateway_stub import get_event_gateway_stub, EventGatewayStub
+from .base import Provider
+from utils.logger import get_logger
 
-class EventProvider(SingletonProvider[UnifiedEventPublisher]):
-    """Provider for event service instances"""
+logger = get_logger(__name__)
+
+
+class EventProvider(Provider[EventGatewayStub]):
+    """Provider for event gateway service stub."""
     
-    def __init__(self, broker_url: str | None = None):
+    def __init__(self):
         super().__init__()
-        self.broker_url = broker_url or os.getenv("EVENT_BROKER_URL", "redis://localhost:6379")
+        self._stub = None
     
-    async def _create(self) -> UnifiedEventPublisher:
-        """Create and initialize event service"""
-        service = UnifiedEventPublisher()
-        await service.initialize()
-        return service
+    async def provide(self) -> EventGatewayStub:
+        """Provide event gateway stub instance."""
+        if not self._stub:
+            self._stub = get_event_gateway_stub()
+            mode = "microservice" if os.getenv("USE_EVENT_GATEWAY", "false").lower() == "true" else "local"
+            logger.info(f"Event gateway provider initialized in {mode} mode")
+        return self._stub
+    
+    async def initialize(self) -> None:
+        """Initialize the provider."""
+        # Stub is initialized on first use
+        pass
     
     async def shutdown(self) -> None:
-        """Close event service connections"""
-        if self._instance:
-            await self._instance.close()
+        """Close event service connections."""
+        # Stub cleanup is handled internally
+        logger.info("Event provider shutdown complete")
+
+
+# For backward compatibility
+def get_event_provider() -> EventProvider:
+    """Get event provider instance."""
+    return EventProvider()

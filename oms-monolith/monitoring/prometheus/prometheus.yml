@@ -1,56 +1,94 @@
-# Prometheus configuration for OMS Phase 6 Load Testing
-
 global:
-  scrape_interval: 10s
-  evaluation_interval: 10s
+  scrape_interval: 15s
+  evaluation_interval: 15s
   external_labels:
-    monitor: 'oms-load-test'
-    environment: 'test'
+    monitor: 'oms-cluster'
+    environment: 'production'
 
-# Alerting configuration
+# Alertmanager configuration
 alerting:
   alertmanagers:
     - static_configs:
         - targets:
-          - alertmanager:9093
+            - alertmanager:9093
 
-# Load rules files
+# Load rules
 rule_files:
-  - 'rules/*.yml'
+  - "/etc/prometheus/rules/*.yml"
 
 # Scrape configurations
 scrape_configs:
-  # OMS Application metrics
-  - job_name: 'oms-application'
+  # OMS Monolith
+  - job_name: 'oms-monolith'
     static_configs:
-      - targets: ['localhost:8001']
-    metrics_path: '/metrics'
-    
-  # TerminusDB metrics
+      - targets: ['oms-monolith:8091']
+        labels:
+          service: 'oms-monolith'
+          type: 'api'
+
+  # Data-Kernel Gateway
+  - job_name: 'data-kernel'
+    static_configs:
+      - targets: ['data-kernel:8080']
+        labels:
+          service: 'data-kernel'
+          type: 'gateway'
+
+  # Microservices
+  - job_name: 'embedding-service'
+    static_configs:
+      - targets: ['embedding-service:8001']
+        labels:
+          service: 'embedding-service'
+          type: 'microservice'
+
+  - job_name: 'scheduler-service'
+    static_configs:
+      - targets: ['scheduler-service:8002']
+        labels:
+          service: 'scheduler-service'
+          type: 'microservice'
+
+  - job_name: 'event-gateway'
+    static_configs:
+      - targets: ['event-gateway:8003']
+        labels:
+          service: 'event-gateway'
+          type: 'microservice'
+
+  # Infrastructure
   - job_name: 'terminusdb'
     static_configs:
-      - targets: ['localhost:6363']
-    metrics_path: '/metrics'
-    
-  # NATS metrics
+      - targets: ['terminusdb:6363']
+        labels:
+          service: 'terminusdb'
+          type: 'database'
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+        labels:
+          service: 'postgres'
+          type: 'database'
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+        labels:
+          service: 'redis'
+          type: 'cache'
+
   - job_name: 'nats'
     static_configs:
-      - targets: ['localhost:8222']
-    metrics_path: '/metrics'
-    
-  # MinIO/S3 metrics
-  - job_name: 'minio'
+      - targets: ['nats:8222']
+        labels:
+          service: 'nats'
+          type: 'messaging'
+
+  # Jaeger
+  - job_name: 'jaeger'
     static_configs:
-      - targets: ['localhost:9000']
-    metrics_path: '/minio/v2/metrics/cluster'
-    
-  # Node exporter for system metrics
-  - job_name: 'node'
-    static_configs:
-      - targets: ['localhost:9100']
-      
-  # Push gateway for batch job metrics
-  - job_name: 'pushgateway'
-    static_configs:
-      - targets: ['localhost:9091']
-    honor_labels: true
+      - targets: ['jaeger:14269']
+        labels:
+          service: 'jaeger'
+          type: 'tracing'

@@ -12,6 +12,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from app.embeddings.service import VectorEmbeddingService
 from app.embeddings.providers import EmbeddingServiceProvider
+from app.startup_optimizer import EmbeddingServiceOptimizer, profile_startup
 
 logger = logging.getLogger(__name__)
 
@@ -69,16 +70,25 @@ class SearchResponse(BaseModel):
 
 # Application lifespan
 @asynccontextmanager
+@profile_startup
 async def lifespan(app: FastAPI):
-    """Manage application lifecycle"""
-    logger.info("Starting Embedding Service...")
+    """Manage application lifecycle with optimized startup"""
+    logger.info("Starting Embedding Service with optimization...")
     
     # Initialize embedding service
     provider = EmbeddingServiceProvider()
+    service = VectorEmbeddingService()
+    
+    # Use startup optimizer
+    optimizer = EmbeddingServiceOptimizer(service)
+    startup_stats = await optimizer.optimize_startup()
+    
+    # Complete provider initialization
     await provider.initialize()
     app.state.provider = provider
+    app.state.service = service
     
-    logger.info("Embedding Service started successfully")
+    logger.info(f"Embedding Service started - {startup_stats}")
     
     yield
     

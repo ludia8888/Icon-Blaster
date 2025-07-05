@@ -1,0 +1,138 @@
+groups:
+  - name: oms_alerts
+    interval: 30s
+    rules:
+      # Service availability
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.service }} is down"
+          description: "{{ $labels.service }} has been down for more than 2 minutes."
+      
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Error rate is above 5% for {{ $labels.service }}"
+      
+      # Response time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time on {{ $labels.service }}"
+          description: "95th percentile response time is above 1s"
+      
+      # Memory usage
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes / 1024 / 1024 / 1024) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.service }}"
+          description: "Memory usage is above 2GB"
+      
+      # Event Gateway specific
+      - alert: EventPublishingFailure
+        expr: rate(event_gateway_events_published_total[5m]) < 0.1 AND rate(http_requests_total{handler="/api/v1/events"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Event publishing failure"
+          description: "Events are being submitted but not published successfully"
+      
+      - alert: WebhookDeliveryFailure
+        expr: rate(event_gateway_webhook_deliveries_total{status="failed"}[5m]) > rate(event_gateway_webhook_deliveries_total{status="success"}[5m])
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High webhook delivery failure rate"
+          description: "More webhook deliveries are failing than succeeding"
+      
+      # Scheduler specific
+      - alert: SchedulerJobFailure
+        expr: rate(scheduler_jobs_executed_total{status="failed"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High job failure rate in scheduler"
+          description: "Job failure rate is above 10%"
+      
+      - alert: SchedulerQueueBacklog
+        expr: scheduler_jobs_queued > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Scheduler queue backlog"
+          description: "More than 100 jobs queued for execution"
+      
+      # Embedding service specific
+      - alert: EmbeddingServiceSlow
+        expr: histogram_quantile(0.95, rate(embedding_generation_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Embedding generation slow"
+          description: "95th percentile embedding generation time is above 5s"
+      
+      - alert: EmbeddingCacheMissHigh
+        expr: rate(embedding_cache_hits_total[5m]) / (rate(embedding_cache_hits_total[5m]) + rate(embedding_cache_misses_total[5m])) < 0.5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low embedding cache hit rate"
+          description: "Cache hit rate is below 50%"
+      
+      # Database specific
+      - alert: TerminusDBConnectionFailure
+        expr: terminus_connection_errors_total > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TerminusDB connection failures"
+          description: "Cannot connect to TerminusDB"
+      
+      - alert: RedisHighMemory
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis is using more than 90% of allocated memory"
+      
+      # NATS specific
+      - alert: NATSConnectionLost
+        expr: nats_connections < 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "NATS connection lost"
+          description: "No active NATS connections"
+      
+      - alert: NATSHighLatency
+        expr: nats_latency_seconds > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "NATS high latency"
+          description: "NATS message latency is above 100ms"
