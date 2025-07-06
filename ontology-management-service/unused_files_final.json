@@ -1,0 +1,1306 @@
+{
+  "summary": {
+    "total_checked": 244,
+    "definitely_unused": 73,
+    "possibly_used": 171,
+    "errors": 0
+  },
+  "unused_by_category": {
+    "api_routes": [
+      "api/auth_examples.py",
+      "api/gateway/graphql_proxy.py",
+      "api/graphql/working_schema.py"
+    ],
+    "database": [],
+    "middleware": [
+      "middleware/common/redis_utils.py",
+      "middleware/component_middleware.py",
+      "middleware/coordinator.py",
+      "middleware/discovery/balancer.py",
+      "middleware/discovery/coordinator.py",
+      "middleware/dlq/coordinator.py",
+      "middleware/dlq/deduplicator.py",
+      "middleware/dlq/detector.py",
+      "middleware/etag_middleware.py",
+      "middleware/event_state_store.py",
+      "middleware/health/coordinator.py",
+      "middleware/health/monitor.py",
+      "middleware/issue_tracking_middleware.py",
+      "middleware/rate_limiting/coordinator.py",
+      "middleware/rate_limiting/limiter.py",
+      "middleware/schema_freeze_middleware.py",
+      "middleware/service_config.py",
+      "middleware/three_way_merge.py"
+    ],
+    "core": [
+      "core/action/dlq_handler.py",
+      "core/audit/database_interface.py",
+      "core/audit/sidecar_validator.py",
+      "core/auth/resource_permission_checker.py",
+      "core/branch/foundry_branch_service.py",
+      "core/event_consumer/iam_event_handler.py",
+      "core/events/backends/change_detector.py",
+      "core/events/backends/cloudevents_adapter.py",
+      "core/events/backends/cloudevents_migration.py",
+      "core/events/backends/enhanced_event_service.py",
+      "core/events/backends/eventbridge_adapter.py",
+      "core/events/backends/nats_backend.py",
+      "core/events/backends/nats_config.py",
+      "core/events/backends/nats_publisher.py",
+      "core/events/backends/outbox_processor.py",
+      "core/events/backends/outbox_service.py",
+      "core/events/backends/state_store.py",
+      "core/graph/index_generator.py",
+      "core/merge/unified_merge.py",
+      "core/scheduler/advanced_scheduler.py",
+      "core/schema_generator/asyncapi_generator.py",
+      "core/schema_generator/graphql_to_asyncapi.py",
+      "core/schema_generator/sdk_generator.py",
+      "core/time_travel/db_optimizations.py",
+      "core/validation/ci_integration.py",
+      "core/validation/input_sanitization.py",
+      "core/validation/migration_planner.py",
+      "core/validation/naming_convention_v2.py",
+      "core/validation/rules/data_impact_analyzer.py",
+      "core/validation/rules/example_decorated_rule.py",
+      "core/validation/rules/naming_convention_rule.py",
+      "core/validation/rules/primary_key.py",
+      "core/validation/rules/required_field.py",
+      "core/validation/rules/shared_property.py",
+      "core/validation/rules/type_incompatibility.py",
+      "core/validation/tampering_detection.py",
+      "core/validation/validation_logging.py",
+      "core/versioning/merge_engine_fix.py"
+    ],
+    "shared": [
+      "shared/cache/terminusdb_cache.py",
+      "shared/models/data_types.py",
+      "shared/models/function_types.py"
+    ],
+    "other": [
+      "bootstrap/database_config.py",
+      "check_imports.py",
+      "config/circuit_breaker_secure.py",
+      "infra/siem/serializer.py",
+      "infrastructure/aws/cloudwatch_alarms.py",
+      "infrastructure/aws/eventbridge_rules.py",
+      "infrastructure/aws/eventbridge_setup.py",
+      "models/function_types.py",
+      "models/override_request.py",
+      "sdks/python/setup.py",
+      "utils/safe_json_encoder.py"
+    ]
+  },
+  "all_unused": [
+    "api/auth_examples.py",
+    "api/gateway/graphql_proxy.py",
+    "api/graphql/working_schema.py",
+    "bootstrap/database_config.py",
+    "check_imports.py",
+    "config/circuit_breaker_secure.py",
+    "core/action/dlq_handler.py",
+    "core/audit/database_interface.py",
+    "core/audit/sidecar_validator.py",
+    "core/auth/resource_permission_checker.py",
+    "core/branch/foundry_branch_service.py",
+    "core/event_consumer/iam_event_handler.py",
+    "core/events/backends/change_detector.py",
+    "core/events/backends/cloudevents_adapter.py",
+    "core/events/backends/cloudevents_migration.py",
+    "core/events/backends/enhanced_event_service.py",
+    "core/events/backends/eventbridge_adapter.py",
+    "core/events/backends/nats_backend.py",
+    "core/events/backends/nats_config.py",
+    "core/events/backends/nats_publisher.py",
+    "core/events/backends/outbox_processor.py",
+    "core/events/backends/outbox_service.py",
+    "core/events/backends/state_store.py",
+    "core/graph/index_generator.py",
+    "core/merge/unified_merge.py",
+    "core/scheduler/advanced_scheduler.py",
+    "core/schema_generator/asyncapi_generator.py",
+    "core/schema_generator/graphql_to_asyncapi.py",
+    "core/schema_generator/sdk_generator.py",
+    "core/time_travel/db_optimizations.py",
+    "core/validation/ci_integration.py",
+    "core/validation/input_sanitization.py",
+    "core/validation/migration_planner.py",
+    "core/validation/naming_convention_v2.py",
+    "core/validation/rules/data_impact_analyzer.py",
+    "core/validation/rules/example_decorated_rule.py",
+    "core/validation/rules/naming_convention_rule.py",
+    "core/validation/rules/primary_key.py",
+    "core/validation/rules/required_field.py",
+    "core/validation/rules/shared_property.py",
+    "core/validation/rules/type_incompatibility.py",
+    "core/validation/tampering_detection.py",
+    "core/validation/validation_logging.py",
+    "core/versioning/merge_engine_fix.py",
+    "infra/siem/serializer.py",
+    "infrastructure/aws/cloudwatch_alarms.py",
+    "infrastructure/aws/eventbridge_rules.py",
+    "infrastructure/aws/eventbridge_setup.py",
+    "middleware/common/redis_utils.py",
+    "middleware/component_middleware.py",
+    "middleware/coordinator.py",
+    "middleware/discovery/balancer.py",
+    "middleware/discovery/coordinator.py",
+    "middleware/dlq/coordinator.py",
+    "middleware/dlq/deduplicator.py",
+    "middleware/dlq/detector.py",
+    "middleware/etag_middleware.py",
+    "middleware/event_state_store.py",
+    "middleware/health/coordinator.py",
+    "middleware/health/monitor.py",
+    "middleware/issue_tracking_middleware.py",
+    "middleware/rate_limiting/coordinator.py",
+    "middleware/rate_limiting/limiter.py",
+    "middleware/schema_freeze_middleware.py",
+    "middleware/service_config.py",
+    "middleware/three_way_merge.py",
+    "models/function_types.py",
+    "models/override_request.py",
+    "sdks/python/setup.py",
+    "shared/cache/terminusdb_cache.py",
+    "shared/models/data_types.py",
+    "shared/models/function_types.py",
+    "utils/safe_json_encoder.py"
+  ],
+  "possibly_used": [
+    {
+      "file": "api/gateway/circuit_breaker.py",
+      "references": [
+        "./middleware/coordinator.py:            stats['circuit_breaker'] = await self.circuit_breaker.get_stats()"
+      ]
+    },
+    {
+      "file": "api/gateway/models.py",
+      "references": [
+        "./reference_check.json:        \"./api/gateway/rate_limiter.py:from api.gateway.models import RateLimitPolicy, RequestContext\",",
+        "./reference_check.json:        \"./api/gateway/router.py:from api.gateway.models import RequestContext, ServiceRoute\","
+      ]
+    },
+    {
+      "file": "api/gateway/rate_limiter.py",
+      "references": [
+        "./middleware/coordinator.py:            stats['rate_limiter'] = await self.rate_limiter.get_stats()"
+      ]
+    },
+    {
+      "file": "api/gateway/router.py",
+      "references": [
+        "./api/v1/schema_generation/__init__.py:__all__ = [\"router\"]"
+      ]
+    },
+    {
+      "file": "api/graphql/config.py",
+      "references": [
+        "./middleware/discovery/health.py:            \"config\": {",
+        "./middleware/dlq/coordinator.py:            \"config\": {"
+      ]
+    },
+    {
+      "file": "api/graphql/middleware/cache.py",
+      "references": [
+        "./core/validation/rule_registry.py:            elif 'cache' in params and 'tdb' in params:",
+        "./core/validation/rule_registry.py:            elif 'cache' in params:"
+      ]
+    },
+    {
+      "file": "api/graphql/middleware/security.py",
+      "references": [
+        "./middleware/service_config.py:    SECURITY = \"security\"",
+        "./core/issue_tracking/issue_service.py:            elif \"security\" in labels:"
+      ]
+    },
+    {
+      "file": "api/graphql/realtime_publisher.py",
+      "references": [
+        "./reference_check.json:        \"./scripts/fix_imports.py:    r'from \\\\.realtime_publisher': r'from api.graphql.realtime_publisher',\",",
+        "./reference_check.json:        \"./scripts/fix_imports.py:    r'from realtime_publisher': r'from api.graphql.realtime_publisher',\","
+      ]
+    },
+    {
+      "file": "api/graphql/subscriptions.py",
+      "references": [
+        "./reference_check.json:        \"./scripts/fix_imports.py:    r'from \\\\.subscriptions': r'from api.graphql.subscriptions',\",",
+        "./reference_check.json:        \"./scripts/fix_imports.py:    r'from subscriptions': r'from api.graphql.subscriptions',\","
+      ]
+    },
+    {
+      "file": "api/graphql/websocket_manager.py",
+      "references": [
+        "./reference_check.json:        \"./scripts/fix_imports.py:    r'from \\\\.websocket_manager': r'from api.graphql.websocket_manager',\",",
+        "./reference_check.json:        \"./scripts/fix_imports.py:    r'from websocket_manager': r'from api.graphql.websocket_manager',\","
+      ]
+    },
+    {
+      "file": "api/v1/audit_routes.py",
+      "references": [
+        "./reference_check.json:      \"file\": \"api/v1/audit_routes.py\",",
+        "./import_analysis.json:      \"api/v1/audit_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/batch_routes.py",
+      "references": [
+        "./reference_check.json:      \"file\": \"api/v1/batch_routes.py\",",
+        "./import_analysis.json:      \"api/v1/batch_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/branch_lock_routes.py",
+      "references": [
+        "./reference_check.json:      \"file\": \"api/v1/branch_lock_routes.py\",",
+        "./import_analysis.json:      \"api/v1/branch_lock_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/document_routes.py",
+      "references": [
+        "./tests/integration/test_metadata_frames.py:from api.v1.document_routes import router",
+        "./tests/integration/test_unfoldable_documents.py:from api.v1.document_routes import router"
+      ]
+    },
+    {
+      "file": "api/v1/graph_health_routes.py",
+      "references": [
+        "./reference_check.json:    \"api/v1/graph_health_routes.py\"",
+        "./import_analysis.json:      \"api/v1/graph_health_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/health_routes.py",
+      "references": [
+        "./reference_check.json:      \"file\": \"api/v1/health_routes.py\",",
+        "./import_analysis.json:      \"api/v1/health_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/idempotent_routes.py",
+      "references": [
+        "./reference_check.json:      \"file\": \"api/v1/idempotent_routes.py\",",
+        "./import_analysis.json:      \"api/v1/idempotent_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/issue_tracking_routes.py",
+      "references": [
+        "./import_analysis.json:      \"api/v1/issue_tracking_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/schema_generation/endpoints.py",
+      "references": [
+        "./import_analysis.json:      \"api/v1/schema_generation/endpoints.py\",",
+        "./import_analysis.json:      \"api/v1/semantic_types/endpoints.py\","
+      ]
+    },
+    {
+      "file": "api/v1/schema_routes.py",
+      "references": [
+        "./import_analysis.json:      \"api/v1/schema_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/semantic_types/endpoints.py",
+      "references": [
+        "./import_analysis.json:      \"api/v1/schema_generation/endpoints.py\",",
+        "./import_analysis.json:      \"api/v1/semantic_types/endpoints.py\","
+      ]
+    },
+    {
+      "file": "api/v1/shadow_index_routes.py",
+      "references": [
+        "./import_analysis.json:      \"api/v1/shadow_index_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/struct_types/endpoints.py",
+      "references": [
+        "./import_analysis.json:      \"api/v1/schema_generation/endpoints.py\",",
+        "./import_analysis.json:      \"api/v1/semantic_types/endpoints.py\","
+      ]
+    },
+    {
+      "file": "api/v1/system_routes.py",
+      "references": [
+        "./import_analysis.json:      \"api/v1/system_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/time_travel_routes.py",
+      "references": [
+        "./import_analysis.json:      \"api/v1/time_travel_routes.py\","
+      ]
+    },
+    {
+      "file": "api/v1/version_routes.py",
+      "references": [
+        "./import_analysis.json:      \"api/v1/version_routes.py\","
+      ]
+    },
+    {
+      "file": "bootstrap/providers/base.py",
+      "references": [
+        "./core/branch/foundry_branch_service.py:                    \"base\": conflict_error.actual_commit,"
+      ]
+    },
+    {
+      "file": "bootstrap/providers/database.py",
+      "references": [
+        "./middleware/health/checks/database.py:                    db='database'",
+        "./core/audit/audit_database.py:                database = pg_config.pop('database', 'audit_db')"
+      ]
+    },
+    {
+      "file": "bootstrap/providers/embedding.py",
+      "references": [
+        "./core/embeddings/service.py:                        \"embedding\": embedding,",
+        "./core/embeddings/service.py:            if \"embedding\" in result:"
+      ]
+    },
+    {
+      "file": "bootstrap/providers/event.py",
+      "references": [
+        "./core/events/backends/outbox_service.py:            \"event\": cloud_event.model_dump(),",
+        "./core/events/backends/audit_backend.py:                        \"event\": event,"
+      ]
+    },
+    {
+      "file": "bootstrap/providers/graph_analysis.py",
+      "references": [
+        "./infra/tracing/jaeger_adapter.py:                            operation_type: str = \"graph_analysis\",",
+        "./infra/tracing/jaeger_adapter.py:            \"service.component\": \"graph_analysis\","
+      ]
+    },
+    {
+      "file": "bootstrap/providers/schema.py",
+      "references": [
+        "./core/documents/metadata_frames.py:            'schema',      # Schema definition metadata",
+        "./core/documents/metadata_frames.py:            frame_type='schema',"
+      ]
+    },
+    {
+      "file": "bootstrap/providers/validation.py",
+      "references": [
+        "./core/documents/metadata_frames.py:            'validation',  # Validation rules",
+        "./core/documents/metadata_frames.py:                frame_type='validation',"
+      ]
+    },
+    {
+      "file": "config/redis_config.py",
+      "references": [
+        "./bootstrap/providers/embedding.py:from config.redis_config import get_redis_client",
+        "./shared/cache/smart_cache.py:from config.redis_config import get_redis_client"
+      ]
+    },
+    {
+      "file": "core/action/metadata_service.py",
+      "references": [
+        "./core/action/service.py:from core.action.metadata_service import ActionMetadataService",
+        "./core/action/routes.py:from core.action.metadata_service import ActionMetadataService"
+      ]
+    },
+    {
+      "file": "core/action/models.py",
+      "references": [
+        "./tests/integration/archive/test_unified_database.py:sys.modules['models'] = MagicMock()"
+      ]
+    },
+    {
+      "file": "core/action/routes.py",
+      "references": [
+        "./reference_check.json:        \"./core/action/routes.py:router = APIRouter(prefix=\\\"/action-types\\\", tags=[\\\"action-types\\\"])\",",
+        "./reference_check.json:        \"./core/action/routes.py:@router.post(\\\"\\\", response_model=ActionTypeModel)\","
+      ]
+    },
+    {
+      "file": "core/action/service.py",
+      "references": [
+        "./database/clients/unified_http_client.py:    ['service', 'endpoint']",
+        "./grpc_services/server.py:    ['service', 'method', 'status']"
+      ]
+    },
+    {
+      "file": "core/api/schema_generator.py",
+      "references": [
+        "./scripts/generate_schemas.py:from core.api.schema_generator import GraphQLSchemaGenerator, OpenAPISchemaGenerator",
+        "./scripts/validate_complete_system.py:from core.api.schema_generator import graphql_generator, openapi_generator"
+      ]
+    },
+    {
+      "file": "core/audit/audit_database.py",
+      "references": [
+        "./core/audit/audit_service.py:from core.audit.audit_database import get_audit_database, AuditDatabase",
+        "./core/audit/sidecar_validator.py:            from core.audit.audit_database import get_audit_database"
+      ]
+    },
+    {
+      "file": "core/audit/audit_migration_adapter.py",
+      "references": [
+        "./bootstrap/database_config.py:from core.audit.audit_migration_adapter import AuditMigrationAdapter",
+        "./tests/integration/archive/test_unified_database.py:from core.audit.audit_migration_adapter import AuditMigrationAdapter"
+      ]
+    },
+    {
+      "file": "core/audit/audit_service.py",
+      "references": [
+        "./tests/integration/archive/test_integration.py:        from core.audit.audit_service import AuditService",
+        "./tests/test_audit_publisher_integration.py:from core.audit.audit_service import AuditService"
+      ]
+    },
+    {
+      "file": "core/audit/terminusdb_audit_service.py",
+      "references": [
+        "./bootstrap/database_config.py:from core.audit.terminusdb_audit_service import TerminusAuditService",
+        "./tests/integration/archive/test_unified_database.py:from core.audit.terminusdb_audit_service import TerminusAuditService"
+      ]
+    },
+    {
+      "file": "core/backup/main.py",
+      "references": [
+        "./core/time_travel/metrics.py:                    \"branch\": getattr(args[1], 'branch', 'main') if len(args) > 1 else 'main'",
+        "./core/history/service.py:        protected = ['main', 'master', 'production', 'release']"
+      ]
+    },
+    {
+      "file": "core/backup/production_backup.py",
+      "references": [
+        "./tests/test_streaming_performance.py:from core.backup.production_backup import ProductionBackupOrchestrator",
+        "./tests/test_mtls_fallback_integration.py:        from core.backup.production_backup import ProductionBackupOrchestrator"
+      ]
+    },
+    {
+      "file": "core/branch/distributed_lock_manager.py",
+      "references": [
+        "./migrations/migrate_to_distributed_locks.py:from core.branch.distributed_lock_manager import DistributedLockManager, DISTRIBUTED_LOCK_SCHEMA"
+      ]
+    },
+    {
+      "file": "core/branch/lock_manager.py",
+      "references": [
+        "./middleware/schema_freeze_middleware.py:from core.branch.lock_manager import get_lock_manager, LockConflictError",
+        "./migrations/migrate_to_distributed_locks.py:from core.branch.lock_manager import BranchLockManager"
+      ]
+    },
+    {
+      "file": "core/concurrency/optimistic_lock.py",
+      "references": [
+        "./core/branch/foundry_branch_service.py:from core.concurrency.optimistic_lock import FoundryStyleLockManager"
+      ]
+    },
+    {
+      "file": "core/documents/metadata_frames.py",
+      "references": [
+        "./tests/integration/archive/test_full_stack_local.py:            from core.documents.metadata_frames import MetadataFrameParser",
+        "./tests/integration/archive/test_full_stack_fixed.py:            from core.documents.metadata_frames import MetadataFrameParser"
+      ]
+    },
+    {
+      "file": "core/documents/unfoldable.py",
+      "references": [
+        "./tests/integration/archive/test_full_stack_local.py:            from core.documents.unfoldable import UnfoldableDocument, FoldingLevel",
+        "./tests/integration/archive/test_full_stack_fixed.py:            from core.documents.unfoldable import UnfoldableDocument"
+      ]
+    },
+    {
+      "file": "core/embeddings/providers.py",
+      "references": [
+        "./core/embeddings/__init__.py:    from core.embeddings.providers import EmbeddingConfig, EmbeddingProvider",
+        "./bootstrap/providers/embedding.py:from core.embeddings.providers import EmbeddingProviderFactory, EmbeddingConfig, EmbeddingProvider"
+      ]
+    },
+    {
+      "file": "core/embeddings/service.py",
+      "references": [
+        "./core/embeddings/__init__.py:    from core.embeddings.service import VectorEmbeddingService",
+        "./bootstrap/providers/embedding.py:from core.embeddings.service import VectorEmbeddingService"
+      ]
+    },
+    {
+      "file": "core/event_consumer/funnel_indexing_handler.py",
+      "references": [
+        "./core/event_subscriber/main.py:from core.event_consumer.funnel_indexing_handler import get_funnel_indexing_handler"
+      ]
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "references": [
+        "./core/time_travel/metrics.py:                    \"branch\": getattr(args[1], 'branch', 'main') if len(args) > 1 else 'main'",
+        "./core/history/service.py:        protected = ['main', 'master', 'production', 'release']"
+      ]
+    },
+    {
+      "file": "core/events/backends/audit_backend.py",
+      "references": [
+        "./tests/test_audit_publisher_integration.py:from core.events.backends.audit_backend import AuditEventBackend"
+      ]
+    },
+    {
+      "file": "core/events/backends/cloudevents_enhanced.py",
+      "references": [
+        "./core/events/branch_event_publisher.py:from core.events.backends.cloudevents_enhanced import CloudEventBuilder, EventType"
+      ]
+    },
+    {
+      "file": "core/events/backends/http_backend.py",
+      "references": [
+        "./core/events/backends/audit_backend.py:from core.events.backends.http_backend import HTTPEventBackend"
+      ]
+    },
+    {
+      "file": "core/events/backends/models.py",
+      "references": [
+        "./tests/integration/archive/test_unified_database.py:sys.modules['models'] = MagicMock()"
+      ]
+    },
+    {
+      "file": "core/events/branch_event_publisher.py",
+      "references": [
+        "./tests/integration/archive/test_integration_manual.py:        from core.events.branch_event_publisher import BranchEventPublisher",
+        "./tests/integration/test_nats_event_flow.py:from core.events.branch_event_publisher import BranchEventPublisher"
+      ]
+    },
+    {
+      "file": "core/graph/metadata_generator.py",
+      "references": [
+        "./core/api/schema_generator.py:from core.graph.metadata_generator import graph_metadata_generator"
+      ]
+    },
+    {
+      "file": "core/graph/repositories.py",
+      "references": [
+        "./tests/integration/test_graph_analysis_tracing_cache.py:from core.graph.repositories import SubgraphData, GraphNode, GraphEdge",
+        "./tests/integration/test_graph_analysis_tracing_cache.py:    from core.graph.repositories import TerminusGraphRepository"
+      ]
+    },
+    {
+      "file": "core/health/health_checker.py",
+      "references": [
+        "./middleware/discovery/coordinator.py:            \"health_checker\": self.health_checker.get_stats()"
+      ]
+    },
+    {
+      "file": "core/history/models.py",
+      "references": [
+        "./scripts/verify_imports.py:                    # \uc0ac\uc6a9\uc790 \ud53c\ub4dc\ubc31: \"from core.history.models import CommitDetail\" \uac19\uc740 \uad6c\ubb38\uc744",
+        "./scripts/enhanced_import_check.py:                        # \uc0ac\uc6a9\uc790 \ud53c\ub4dc\ubc31: \"from core.history.models import CommitDetail\" \uac19\uc740 \uad6c\ubb38\uc744"
+      ]
+    },
+    {
+      "file": "core/history/routes.py",
+      "references": [
+        "./reference_check.json:        \"./core/action/routes.py:router = APIRouter(prefix=\\\"/action-types\\\", tags=[\\\"action-types\\\"])\",",
+        "./reference_check.json:        \"./core/action/routes.py:@router.post(\\\"\\\", response_model=ActionTypeModel)\","
+      ]
+    },
+    {
+      "file": "core/history/service.py",
+      "references": [
+        "./database/clients/unified_http_client.py:    ['service', 'endpoint']",
+        "./grpc_services/server.py:    ['service', 'method', 'status']"
+      ]
+    },
+    {
+      "file": "core/idempotent/consumer_service.py",
+      "references": [
+        "./core/idempotent/schema_event_consumer.py:from core.idempotent.consumer_service import IdempotentConsumer"
+      ]
+    },
+    {
+      "file": "core/idempotent/schema_event_consumer.py",
+      "references": [
+        "./api/v1/idempotent_routes.py:from core.idempotent.schema_event_consumer import get_schema_consumer"
+      ]
+    },
+    {
+      "file": "core/integrations/iam_service_client.py",
+      "references": [
+        "./tests/test_mtls_fallback_integration.py:from core.integrations.iam_service_client_with_fallback import ("
+      ]
+    },
+    {
+      "file": "core/integrations/iam_service_client_with_fallback.py",
+      "references": [
+        "./tests/test_mtls_fallback_integration.py:from core.integrations.iam_service_client_with_fallback import ("
+      ]
+    },
+    {
+      "file": "core/interfaces/database.py",
+      "references": [
+        "./middleware/health/checks/database.py:                    db='database'",
+        "./core/audit/audit_database.py:                database = pg_config.pop('database', 'audit_db')"
+      ]
+    },
+    {
+      "file": "core/interfaces/event.py",
+      "references": [
+        "./core/events/backends/outbox_service.py:            \"event\": cloud_event.model_dump(),",
+        "./core/events/backends/audit_backend.py:                        \"event\": event,"
+      ]
+    },
+    {
+      "file": "core/interfaces/schema.py",
+      "references": [
+        "./core/documents/metadata_frames.py:            'schema',      # Schema definition metadata",
+        "./core/documents/metadata_frames.py:            frame_type='schema',"
+      ]
+    },
+    {
+      "file": "core/interfaces/validation.py",
+      "references": [
+        "./core/documents/metadata_frames.py:            'validation',  # Validation rules",
+        "./core/documents/metadata_frames.py:                frame_type='validation',"
+      ]
+    },
+    {
+      "file": "core/issue_tracking/issue_database.py",
+      "references": [
+        "./core/issue_tracking/issue_service.py:            from core.issue_tracking.issue_database import get_issue_database",
+        "./tests/integration/archive/test_integration.py:        from core.issue_tracking.issue_database import IssueTrackingDatabase"
+      ]
+    },
+    {
+      "file": "core/issue_tracking/issue_service.py",
+      "references": [
+        "./middleware/issue_tracking_middleware.py:from core.issue_tracking.issue_service import get_issue_service",
+        "./api/v1/issue_tracking_routes.py:from core.issue_tracking.issue_service import get_issue_service"
+      ]
+    },
+    {
+      "file": "core/monitoring/audit_metrics.py",
+      "references": [
+        "./migrations/production_audit_fields_migration.py:from core.monitoring.audit_metrics import get_metrics_collector"
+      ]
+    },
+    {
+      "file": "core/schema/conflict_resolver.py",
+      "references": [
+        "./core/versioning/merge_engine.py:from core.schema.conflict_resolver import ConflictResolver",
+        "./scripts/validate_complete_system.py:from core.schema.conflict_resolver import conflict_resolver"
+      ]
+    },
+    {
+      "file": "core/schema/registry.py",
+      "references": [
+        "./scripts/generate_schemas.py:from core.schema.registry import schema_registry",
+        "./api/v1/schema_generation/endpoints.py:from core.schema.registry import schema_registry"
+      ]
+    },
+    {
+      "file": "core/schema/service_adapter.py",
+      "references": [
+        "./bootstrap/providers/schema.py:from core.schema.service_adapter import SchemaServiceAdapter"
+      ]
+    },
+    {
+      "file": "core/security/pii_handler.py",
+      "references": [
+        "./scripts/fix_imports.py:    r'^from security\\.pii_handler': r'from core.security.pii_handler',",
+        "./scripts/fix_imports.py:    r'^from pii_handler': r'from core.security.pii_handler',"
+      ]
+    },
+    {
+      "file": "core/shadow_index/manager.py",
+      "references": [
+        "./core/event_consumer/funnel_indexing_handler.py:from core.shadow_index.manager import get_shadow_manager",
+        "./api/v1/shadow_index_routes.py:from core.shadow_index.manager import get_shadow_manager, ShadowIndexConflictError, SwitchValidationError"
+      ]
+    },
+    {
+      "file": "core/time_travel/cache.py",
+      "references": [
+        "./core/validation/rule_registry.py:            elif 'cache' in params and 'tdb' in params:",
+        "./core/validation/rule_registry.py:            elif 'cache' in params:"
+      ]
+    },
+    {
+      "file": "core/time_travel/metrics.py",
+      "references": [
+        "./middleware/health/coordinator.py:            \"metrics\": {",
+        "./middleware/health/checks/redis.py:                        \"metrics\": metrics,"
+      ]
+    },
+    {
+      "file": "core/time_travel/models.py",
+      "references": [
+        "./tests/integration/archive/test_full_stack_local.py:            from core.time_travel.models import TemporalResourceQuery"
+      ]
+    },
+    {
+      "file": "core/time_travel/service.py",
+      "references": [
+        "./tests/integration/archive/test_full_stack_local.py:            from core.time_travel.service import TimeTravelService",
+        "./tests/integration/archive/test_full_stack_fixed.py:            from core.time_travel.service import TimeTravelQueryService"
+      ]
+    },
+    {
+      "file": "core/validation/adapters.py",
+      "references": [
+        "./core/validation/container.py:from core.validation.adapters import (",
+        "./core/validation/container.py:    from core.validation.adapters import ("
+      ]
+    },
+    {
+      "file": "core/validation/container.py",
+      "references": [
+        "./core/validation/dependencies.py:from core.validation.container import ValidationContainer, get_container"
+      ]
+    },
+    {
+      "file": "core/validation/decorators.py",
+      "references": [
+        "./core/validation/rules/example_decorated_rule.py:from core.validation.decorators import validation_rule"
+      ]
+    },
+    {
+      "file": "core/validation/dependencies.py",
+      "references": [
+        "./middleware/health/models.py:            \"dependencies\": {",
+        "./core/scheduler/advanced_scheduler.py:                    if await self._check_dependencies(job[\"dependencies\"]):"
+      ]
+    },
+    {
+      "file": "core/validation/events.py",
+      "references": [
+        "./infra/siem/serializer.py:from core.validation.events import (",
+        "./core/validation/tampering_detection.py:from core.validation.events import TamperingEvent, TamperingType, EventSeverity"
+      ]
+    },
+    {
+      "file": "core/validation/interfaces.py",
+      "references": [
+        "./core/validation/service.py:from core.validation.interfaces import BreakingChangeRule",
+        "./core/validation/rule_registry.py:from core.validation.interfaces import BreakingChangeRule"
+      ]
+    },
+    {
+      "file": "core/validation/models.py",
+      "references": [
+        "./core/embeddings/service.py:from core.validation.models import ValidationResult",
+        "./core/validation/migration_planner.py:from core.validation.models import ("
+      ]
+    },
+    {
+      "file": "core/validation/naming_config.py",
+      "references": [
+        "./core/validation/ci_integration.py:from core.validation.naming_config import get_naming_config_service"
+      ]
+    },
+    {
+      "file": "core/validation/naming_convention.py",
+      "references": [
+        "./core/validation/schema_validator.py:from core.validation.naming_convention import (",
+        "./core/validation/ci_integration.py:from core.validation.naming_convention import ("
+      ]
+    },
+    {
+      "file": "core/validation/naming_history.py",
+      "references": [
+        "./core/validation/naming_config.py:from core.validation.naming_history import get_naming_history_service"
+      ]
+    },
+    {
+      "file": "core/validation/policy_signing.py",
+      "references": [
+        "./core/validation/tampering_detection.py:from core.validation.policy_signing import SignedNamingPolicy, get_policy_signing_manager"
+      ]
+    },
+    {
+      "file": "core/validation/ports.py",
+      "references": [
+        "./core/validation/service.py:from core.validation.ports import CachePort, TerminusPort, EventPort, ValidationContext as PortContext",
+        "./core/validation/rule_registry.py:from core.validation.ports import CachePort, TerminusPort, EventPort"
+      ]
+    },
+    {
+      "file": "core/validation/rule_registry.py",
+      "references": [
+        "./core/validation/service.py:from core.validation.rule_registry import RuleRegistry, load_rules",
+        "./core/validation/container.py:from core.validation.rule_registry import RuleRegistry"
+      ]
+    },
+    {
+      "file": "core/validation/rules/base.py",
+      "references": [
+        "./core/validation/rules/type_incompatibility.py:from core.validation.rules.base import BreakingChangeRule",
+        "./core/validation/rules/primary_key.py:from core.validation.rules.base import BreakingChangeRule"
+      ]
+    },
+    {
+      "file": "core/validation/rules/data_type.py",
+      "references": [
+        "./core/schema_generator/asyncapi_generator.py:                    \"data_type\": {\"type\": \"string\"},",
+        "./core/validation/rules/required_field.py:                    \"type\": \"data_type\","
+      ]
+    },
+    {
+      "file": "core/validation/rules/primary_key_change.py",
+      "references": [
+        "./core/validation/migration_planner.py:        pk_changes = [c for c in changes if c.rule_id == \"primary_key_change\"]"
+      ]
+    },
+    {
+      "file": "core/validation/rules/type_change.py",
+      "references": [
+        "./core/merge/unified_merge.py:    TYPE_CHANGE = \"type_change\"       # Type mismatch",
+        "./core/merge/unified_merge.py:                \"type\": \"type_change\","
+      ]
+    },
+    {
+      "file": "core/validation/schema_validator.py",
+      "references": [
+        "./core/validation/naming_config.py:from core.validation.schema_validator import ("
+      ]
+    },
+    {
+      "file": "core/validation/service.py",
+      "references": [
+        "./core/validation/container.py:from core.validation.service import ValidationService",
+        "./core/validation/dependencies.py:from core.validation.service import ValidationService"
+      ]
+    },
+    {
+      "file": "core/validation/version_manager.py",
+      "references": [
+        "./core/validation/naming_config.py:from core.validation.version_manager import ("
+      ]
+    },
+    {
+      "file": "core/versioning/dag_compaction.py",
+      "references": [
+        "./scripts/deploy_production.py:from core.versioning.dag_compaction import dag_compactor",
+        "./scripts/validate_complete_system.py:from core.versioning.dag_compaction import dag_compactor"
+      ]
+    },
+    {
+      "file": "core/versioning/delta_compression.py",
+      "references": [
+        "./tests/integration/archive/test_full_stack_local.py:            from core.versioning.delta_compression import DeltaEncoder, DeltaType",
+        "./tests/integration/archive/test_full_stack_fixed.py:            from core.versioning.delta_compression import EnhancedDeltaEncoder, DeltaType"
+      ]
+    },
+    {
+      "file": "core/versioning/merge_engine.py",
+      "references": [
+        "./scripts/validate_complete_system.py:from core.versioning.merge_engine import merge_engine",
+        "./scripts/run_all_tests.py:            from core.versioning.merge_engine import merge_engine"
+      ]
+    },
+    {
+      "file": "core/versioning/version_service.py",
+      "references": [
+        "./middleware/etag_middleware.py:from core.versioning.version_service import get_version_service",
+        "./tests/integration/test_time_travel_queries.py:from core.versioning.version_service import VersionTrackingService"
+      ]
+    },
+    {
+      "file": "database/clients/redis_ha_client.py",
+      "references": [
+        "./core/database/__init__.py:from database.clients.redis_ha_client import RedisHAClient"
+      ]
+    },
+    {
+      "file": "database/dependencies.py",
+      "references": [
+        "./api/v1/schema_routes.py:from database.dependencies import get_secure_database",
+        "./api/v1/batch_routes.py:from database.dependencies import get_secure_database"
+      ]
+    },
+    {
+      "file": "infra/siem/adapter.py",
+      "references": [
+        "./infra/siem/config.py:from infra.siem.adapter import ("
+      ]
+    },
+    {
+      "file": "infra/siem/config.py",
+      "references": [
+        "./middleware/discovery/health.py:            \"config\": {",
+        "./middleware/dlq/coordinator.py:            \"config\": {"
+      ]
+    },
+    {
+      "file": "infra/siem/port.py",
+      "references": [
+        "./infra/siem/config.py:from infra.siem.port import ISiemPort",
+        "./core/validation/tampering_detection.py:from infra.siem.port import ISiemPort"
+      ]
+    },
+    {
+      "file": "infra/tracing/jaeger_adapter.py",
+      "references": [
+        "./tests/integration/archive/test_full_stack_local.py:            from infra.tracing.jaeger_adapter import JaegerAdapter",
+        "./tests/integration/archive/test_full_stack_fixed.py:            from infra.tracing.jaeger_adapter import JaegerTracingManager"
+      ]
+    },
+    {
+      "file": "infra/tracing/otel_init.py",
+      "references": [
+        "./bootstrap/app.py:from infra.tracing.otel_init import get_otel_manager",
+        "./api/graphql/modular_main.py:                from infra.tracing.otel_init import get_otel_manager"
+      ]
+    },
+    {
+      "file": "middleware/circuit_breaker.py",
+      "references": [
+        "./middleware/coordinator.py:            stats['circuit_breaker'] = await self.circuit_breaker.get_stats()"
+      ]
+    },
+    {
+      "file": "middleware/discovery/health.py",
+      "references": [
+        "./middleware/coordinator.py:            stats['health'] = await self.health.get_stats()"
+      ]
+    },
+    {
+      "file": "middleware/discovery/models.py",
+      "references": [
+        "./tests/integration/archive/test_unified_database.py:sys.modules['models'] = MagicMock()"
+      ]
+    },
+    {
+      "file": "middleware/discovery/providers/base.py",
+      "references": [
+        "./core/branch/foundry_branch_service.py:                    \"base\": conflict_error.actual_commit,"
+      ]
+    },
+    {
+      "file": "middleware/discovery/providers/dns.py",
+      "references": [
+        "./middleware/discovery/coordinator.py:        elif self.config.provider_type == \"dns\":"
+      ]
+    },
+    {
+      "file": "middleware/discovery/providers/redis.py",
+      "references": [
+        "./core/backup/production_backup.py:        for component in ['terminusdb', 'redis']:",
+        "./core/backup/production_backup.py:        for component in ['terminusdb', 'redis']:"
+      ]
+    },
+    {
+      "file": "middleware/dlq/handler.py",
+      "references": [
+        "./core/event_consumer/funnel_indexing_handler.py:                    \"handler\": \"FunnelIndexingEventHandler\",",
+        "./core/event_consumer/funnel_indexing_handler.py:                \"handler\": \"FunnelIndexingEventHandler\","
+      ]
+    },
+    {
+      "file": "middleware/dlq/models.py",
+      "references": [
+        "./tests/integration/archive/test_unified_database.py:sys.modules['models'] = MagicMock()"
+      ]
+    },
+    {
+      "file": "middleware/dlq/storage/base.py",
+      "references": [
+        "./core/branch/foundry_branch_service.py:                    \"base\": conflict_error.actual_commit,"
+      ]
+    },
+    {
+      "file": "middleware/dlq/storage/redis.py",
+      "references": [
+        "./core/backup/production_backup.py:        for component in ['terminusdb', 'redis']:",
+        "./core/backup/production_backup.py:        for component in ['terminusdb', 'redis']:"
+      ]
+    },
+    {
+      "file": "middleware/etag_analytics.py",
+      "references": [
+        "./middleware/etag_middleware.py:from middleware.etag_analytics import get_etag_analytics",
+        "./api/v1/system_routes.py:from middleware.etag_analytics import get_etag_analytics"
+      ]
+    },
+    {
+      "file": "middleware/health/checks/base.py",
+      "references": [
+        "./core/branch/foundry_branch_service.py:                    \"base\": conflict_error.actual_commit,"
+      ]
+    },
+    {
+      "file": "middleware/health/checks/database.py",
+      "references": [
+        "./core/audit/audit_database.py:                database = pg_config.pop('database', 'audit_db')",
+        "./analyze_imports.py:                    if imp_parts[0] in ['api', 'core', 'database', 'middleware', 'shared', 'bootstrap']:"
+      ]
+    },
+    {
+      "file": "middleware/health/checks/http.py",
+      "references": [
+        "./scripts/enhanced_import_check.py:            'urllib', 'http', 'email', 'xml', 'html', 'warnings'"
+      ]
+    },
+    {
+      "file": "middleware/health/checks/redis.py",
+      "references": [
+        "./core/backup/production_backup.py:        for component in ['terminusdb', 'redis']:",
+        "./core/backup/production_backup.py:        for component in ['terminusdb', 'redis']:"
+      ]
+    },
+    {
+      "file": "middleware/health/checks/system.py",
+      "references": [
+        "./core/action/metadata_service.py:            createdBy=action_data.get('createdBy', 'system'),",
+        "./core/action/metadata_service.py:            modifiedBy=action_data.get('modifiedBy', 'system'),"
+      ]
+    },
+    {
+      "file": "middleware/health/dependency.py",
+      "references": [
+        "./core/validation/rules/data_impact_analyzer.py:        \"reference\", \"foreign_key\", \"dependency\""
+      ]
+    },
+    {
+      "file": "middleware/health/models.py",
+      "references": [
+        "./tests/integration/archive/test_unified_database.py:sys.modules['models'] = MagicMock()"
+      ]
+    },
+    {
+      "file": "middleware/rate_limiting/adaptive.py",
+      "references": [
+        "./middleware/rate_limiting/models.py:    ADAPTIVE = \"adaptive\""
+      ]
+    },
+    {
+      "file": "middleware/rate_limiting/models.py",
+      "references": [
+        "./tests/integration/archive/test_unified_database.py:sys.modules['models'] = MagicMock()"
+      ]
+    },
+    {
+      "file": "middleware/rate_limiting/strategies/base.py",
+      "references": [
+        "./core/branch/foundry_branch_service.py:                    \"base\": conflict_error.actual_commit,"
+      ]
+    },
+    {
+      "file": "middleware/rate_limiting/strategies/leaky_bucket.py",
+      "references": [
+        "./middleware/rate_limiting/models.py:    LEAKY_BUCKET = \"leaky_bucket\""
+      ]
+    },
+    {
+      "file": "middleware/rate_limiting/strategies/sliding_window.py",
+      "references": [
+        "./middleware/rate_limiting/models.py:    SLIDING_WINDOW = \"sliding_window\""
+      ]
+    },
+    {
+      "file": "middleware/rate_limiting/strategies/token_bucket.py",
+      "references": [
+        "./middleware/rate_limiting/models.py:    TOKEN_BUCKET = \"token_bucket\""
+      ]
+    },
+    {
+      "file": "models/action_types.py",
+      "references": [
+        "./middleware/etag_middleware.py:            \"/api/v1/schemas/{branch}/action-types\": \"action_types\",",
+        "./middleware/etag_middleware.py:            if resource_type in [\"object_types\", \"link_types\", \"action_types\"]:"
+      ]
+    },
+    {
+      "file": "models/audit_events.py",
+      "references": [
+        "./core/event_consumer/funnel_indexing_handler.py:from models.audit_events import AuditEventV1, AuditAction, create_audit_event, ActorInfo, TargetInfo, ResourceType",
+        "./core/audit/audit_migration_adapter.py:from models.audit_events import AuditEventV1, AuditEventFilter, AuditAction, ResourceType"
+      ]
+    },
+    {
+      "file": "models/branch_state.py",
+      "references": [
+        "./middleware/schema_freeze_middleware.py:from models.branch_state import BranchState",
+        "./migrations/migrate_to_distributed_locks.py:from models.branch_state import BranchStateInfo"
+      ]
+    },
+    {
+      "file": "models/data_types.py",
+      "references": [
+        "./models/struct_types.py:from models.data_types import DataType"
+      ]
+    },
+    {
+      "file": "models/domain.py",
+      "references": [
+        "./core/branch/service.py:from models.domain import Branch",
+        "./core/idempotent/schema_event_consumer.py:from models.domain import ObjectType, LinkType"
+      ]
+    },
+    {
+      "file": "models/etag.py",
+      "references": [
+        "./middleware/etag_middleware.py:from models.etag import DeltaRequest",
+        "./core/time_travel/service.py:from models.etag import ResourceVersion, VersionInfo"
+      ]
+    },
+    {
+      "file": "models/exceptions.py",
+      "references": [
+        "./core/branch/foundry_branch_service.py:from models.exceptions import ConflictError, ConcurrencyError",
+        "./core/concurrency/optimistic_lock.py:from models.exceptions import ConcurrencyError, ConflictError"
+      ]
+    },
+    {
+      "file": "models/idempotency.py",
+      "references": [
+        "./core/idempotent/schema_event_consumer.py:from models.idempotency import EventEnvelope",
+        "./core/idempotent/consumer_service.py:from models.idempotency import ("
+      ]
+    },
+    {
+      "file": "models/issue_tracking.py",
+      "references": [
+        "./middleware/issue_tracking_middleware.py:from models.issue_tracking import IssueReference, parse_issue_reference, extract_issue_references",
+        "./core/issue_tracking/issue_database.py:from models.issue_tracking import ("
+      ]
+    },
+    {
+      "file": "models/permissions.py",
+      "references": [
+        "./core/auth.py:from models.permissions import get_permission_checker as _get_permission_checker, PermissionChecker",
+        "./core/iam/scope_rbac_middleware.py:from models.permissions import ResourceType, Action"
+      ]
+    },
+    {
+      "file": "models/scope_role_mapping.py",
+      "references": [
+        "./core/iam/iam_integration.py:        from models.scope_role_mapping import ScopeRoleMatrix"
+      ]
+    },
+    {
+      "file": "models/semantic_types.py",
+      "references": [
+        "./core/schema/registry.py:from models.semantic_types import SemanticType",
+        "./core/api/schema_generator.py:from models.semantic_types import semantic_type_registry"
+      ]
+    },
+    {
+      "file": "models/shadow_index.py",
+      "references": [
+        "./core/shadow_index/manager.py:from models.shadow_index import (",
+        "./core/event_consumer/funnel_indexing_handler.py:from models.shadow_index import IndexType, SwitchRequest"
+      ]
+    },
+    {
+      "file": "models/struct_types.py",
+      "references": [
+        "./core/api/schema_generator.py:from models.struct_types import struct_type_registry",
+        "./scripts/validate_complete_system.py:from models.struct_types import struct_type_registry, StructType"
+      ]
+    },
+    {
+      "file": "sdks/python/oms_event_sdk/client.py",
+      "references": [
+        "./bootstrap/database_config.py:        \"client\": client,"
+      ]
+    },
+    {
+      "file": "sdks/python/oms_event_sdk/models.py",
+      "references": [
+        "./tests/integration/archive/test_unified_database.py:sys.modules['models'] = MagicMock()"
+      ]
+    },
+    {
+      "file": "sdks/python/oms_event_sdk_py/client.py",
+      "references": [
+        "./bootstrap/database_config.py:        \"client\": client,"
+      ]
+    },
+    {
+      "file": "sdks/python/oms_event_sdk_py/models.py",
+      "references": [
+        "./tests/integration/archive/test_unified_database.py:sys.modules['models'] = MagicMock()"
+      ]
+    },
+    {
+      "file": "services/graph_analysis.py",
+      "references": [
+        "./tests/integration/archive/test_full_stack_local.py:            from services.graph_analysis import GraphAnalysisService",
+        "./tests/integration/archive/test_full_stack_fixed.py:            from services.graph_analysis import GraphAnalysisService"
+      ]
+    },
+    {
+      "file": "shared/audit/audit_logger.py",
+      "references": [
+        "./core/scheduler/advanced_scheduler.py:from shared.audit.audit_logger import AuditLogger",
+        "./scripts/fix_imports.py:    r'from shared\\.audit\\.audit_logger': r'from shared.audit.audit_logger',"
+      ]
+    },
+    {
+      "file": "shared/events.py",
+      "references": [
+        "./core/event_consumer/iam_event_handler.py:from shared.events.cloudevents_enhanced import EnhancedCloudEvent",
+        "./core/history/service.py:from shared.events import EventPublisher"
+      ]
+    },
+    {
+      "file": "shared/infrastructure/nats_client.py",
+      "references": [
+        "./core/action/dlq_handler.py:from shared.infrastructure.nats_client import NATSClient",
+        "./core/events/backends/outbox_service.py:from shared.infrastructure.nats_client import NATSClient"
+      ]
+    },
+    {
+      "file": "shared/infrastructure/real_nats_client.py",
+      "references": [
+        "./core/events/backends/nats_backend.py:from shared.infrastructure.real_nats_client import RealNATSClient",
+        "./tests/integration/test_real_nats_integration.py:from shared.infrastructure.real_nats_client import RealNATSClient"
+      ]
+    },
+    {
+      "file": "shared/models/action_types.py",
+      "references": [
+        "./middleware/etag_middleware.py:            \"/api/v1/schemas/{branch}/action-types\": \"action_types\",",
+        "./middleware/etag_middleware.py:            if resource_type in [\"object_types\", \"link_types\", \"action_types\"]:"
+      ]
+    },
+    {
+      "file": "shared/models/domain.py",
+      "references": [
+        "./middleware/discovery/coordinator.py:            domain = self.config.provider_config.get(\"domain\", \"local\")"
+      ]
+    },
+    {
+      "file": "shared/utils.py",
+      "references": [
+        "./core/backup/production_backup.py:from shared.utils import DB_CRITICAL_CONFIG, with_retry",
+        "./scripts/fix_imports.py:    r'from utils\\.logging': r'from shared.utils.logging',"
+      ]
+    },
+    {
+      "file": "utils/audit_id_generator.py",
+      "references": [
+        "./core/event_consumer/funnel_indexing_handler.py:from utils.audit_id_generator import AuditIDGenerator",
+        "./models/audit_events.py:            from utils.audit_id_generator import AuditIDGenerator"
+      ]
+    },
+    {
+      "file": "utils/git_utils.py",
+      "references": [
+        "./api/v1/idempotent_routes.py:from utils.git_utils import get_current_commit_hash"
+      ]
+    },
+    {
+      "file": "utils/logger.py",
+      "references": [
+        "./middleware/etag_analytics.py:from utils.logger import get_logger",
+        "./middleware/issue_tracking_middleware.py:from utils.logger import get_logger"
+      ]
+    },
+    {
+      "file": "utils/retry_strategy.py",
+      "references": [
+        "./middleware/common/__init__.py:from utils.retry_strategy import RetryStrategy",
+        "./database/clients/terminus_db.py:from utils.retry_strategy import with_retry, DB_WRITE_CONFIG, DB_READ_CONFIG, DB_CRITICAL_CONFIG"
+      ]
+    },
+    {
+      "file": "utils/unified_logger.py",
+      "references": [
+        "./utils/logger.py:from utils.unified_logger import (",
+        "./shared/cache/smart_cache.py:from utils.unified_logger import get_logger"
+      ]
+    }
+  ]
+}
