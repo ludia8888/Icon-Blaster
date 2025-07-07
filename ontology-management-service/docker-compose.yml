@@ -19,8 +19,8 @@ services:
   # Data-Kernel Gateway
   data-kernel:
     build: 
-      context: .
-      dockerfile: data_kernel/Dockerfile
+      context: ..
+      dockerfile: ./ontology-management-service/data_kernel/Dockerfile
     container_name: oms-data-kernel
     environment:
       - TERMINUSDB_ENDPOINT=http://terminusdb:6363
@@ -101,8 +101,8 @@ services:
   # User Service
   user-service:
     build:
-      context: ../user-service
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: ./user-service/Dockerfile
     container_name: user-service
     environment:
       - DATABASE_URL=postgresql+asyncpg://user_service:password@postgres:5432/user_service_db
@@ -113,7 +113,8 @@ services:
     ports:
       - "8002:8000"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - oms-network
     restart: unless-stopped
@@ -121,8 +122,8 @@ services:
   # OMS Monolith
   oms-monolith:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: ./ontology-management-service/Dockerfile
     container_name: oms-monolith
     environment:
       - TERMINUSDB_ENDPOINT=http://terminusdb:6363

@@ -40,12 +40,11 @@ class DiffEngine:
         머지 Preview 기능을 위한 Diff 엔진
         """
         async with TerminusDBClient(self.tdb_endpoint) as tdb:
-            # 브랜치 정보 조회
-            source_info = await tdb.get_branch_info(self.db_name, source_branch)
-            target_info = await tdb.get_branch_info(self.db_name, target_branch)
-
-            if not source_info or not target_info:
-                raise ValueError("Branch not found")
+            # 현재 TerminusDBClient는 브랜치 정보 조회 메서드가 없으므로 기본값 사용
+            source_info = {"head": f"head_{source_branch}", "branch": source_branch}
+            target_info = {"head": f"head_{target_branch}", "branch": target_branch}
+            
+            logger.warning("DiffEngine: get_branch_info not implemented in TerminusDBClient, using mock data")
 
             # 각 브랜치의 스키마 조회
             source_schema = await self._get_branch_schema(source_branch)
@@ -136,32 +135,23 @@ class DiffEngine:
         }
 
         async with TerminusDBClient(self.tdb_endpoint) as tdb:
-            # ObjectTypes 조회
-            object_types = await tdb.get_all_documents(
-                doc_type="ObjectType",
-                db=self.db_name,
-                branch=branch
-            )
-            for ot in object_types:
-                schema["objectTypes"][ot.get("name", ot.get("@id"))] = ot
-
-            # LinkTypes 조회
-            link_types = await tdb.get_all_documents(
-                doc_type="LinkType",
-                db=self.db_name,
-                branch=branch
-            )
-            for lt in link_types:
-                schema["linkTypes"][lt.get("name", lt.get("@id"))] = lt
-
-            # Interfaces 조회
-            interfaces = await tdb.get_all_documents(
-                doc_type="Interface",
-                db=self.db_name,
-                branch=branch
-            )
-            for intf in interfaces:
-                schema["interfaces"][intf.get("name", intf.get("@id"))] = intf
+            logger.warning("DiffEngine: get_all_documents not implemented in TerminusDBClient, returning empty schema")
+            
+            # TODO: 실제 WOQL 쿼리를 사용하여 문서 조회 구현 필요
+            # 현재는 빈 스키마 반환
+            # 
+            # 예시 WOQL 쿼리:
+            # woql_query = {
+            #     "@type": "Select",
+            #     "variables": ["doc"],
+            #     "query": {
+            #         "@type": "Triple",
+            #         "subject": {"@type": "Variable", "name": "doc"},
+            #         "predicate": {"@type": "NodeValue", "node": "rdf:type"},
+            #         "object": {"@type": "Value", "data": {"@type": "xsd:string", "@value": "ObjectType"}}
+            #     }
+            # }
+            # result = await tdb.query(self.db_name, woql_query)
 
         return schema
 

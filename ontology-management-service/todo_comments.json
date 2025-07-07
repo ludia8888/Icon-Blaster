@@ -1,0 +1,542 @@
+{
+  "generated_at": "2025-07-07T13:45:29.982289",
+  "total_comments": 67,
+  "comments": [
+    {
+      "file": "middleware/health/coordinator.py",
+      "line": 272,
+      "type": "TODO",
+      "content": "Send alert to notification system",
+      "priority": "low",
+      "context": "L271: \nL272: # TODO: Send alert to notification system\nL273: "
+    },
+    {
+      "file": "database/clients/unified_database_client.py",
+      "line": 87,
+      "type": "TODO",
+      "content": "Re-enable when fixed",
+      "priority": "low",
+      "context": "L86: self,\nL87: # terminus_client: Optional[TerminusDBClient], # TODO: Re-enable when fixed\nL88: postgres_client: Optional[PostgresClient] = None,"
+    },
+    {
+      "file": "database/clients/terminusdb_client.py",
+      "line": 105,
+      "type": "TODO",
+      "content": "Implement proper WOQL query translation from `query` dict",
+      "priority": "low",
+      "context": "L104: try:\nL105: # TODO: Implement proper WOQL query translation from `query` dict\nL106: # For now, we only support fetching by type."
+    },
+    {
+      "file": "archive_audit_20250706/audit_service_full.py",
+      "line": 433,
+      "type": "TODO",
+      "content": "Integrate with alerting system (Slack, email, PagerDuty, etc.)",
+      "priority": "low",
+      "context": "L432: \nL433: # TODO: Integrate with alerting system (Slack, email, PagerDuty, etc.)\nL434: "
+    },
+    {
+      "file": "archive_audit_20250706/audit_service_full.py",
+      "line": 453,
+      "type": "TODO",
+      "content": "Implement automatic response (rate limiting, account suspension, etc.)",
+      "priority": "low",
+      "context": "L452: )\nL453: # TODO: Implement automatic response (rate limiting, account suspension, etc.)\nL454: "
+    },
+    {
+      "file": "archive_audit_20250706/audit_service.py",
+      "line": 433,
+      "type": "TODO",
+      "content": "Integrate with alerting system (Slack, email, PagerDuty, etc.)",
+      "priority": "low",
+      "context": "L432: \nL433: # TODO: Integrate with alerting system (Slack, email, PagerDuty, etc.)\nL434: "
+    },
+    {
+      "file": "archive_audit_20250706/audit_service.py",
+      "line": 453,
+      "type": "TODO",
+      "content": "Implement automatic response (rate limiting, account suspension, etc.)",
+      "priority": "low",
+      "context": "L452: )\nL453: # TODO: Implement automatic response (rate limiting, account suspension, etc.)\nL454: "
+    },
+    {
+      "file": "archive_audit_20250706/audit_service_original.py",
+      "line": 433,
+      "type": "TODO",
+      "content": "Integrate with alerting system (Slack, email, PagerDuty, etc.)",
+      "priority": "low",
+      "context": "L432: \nL433: # TODO: Integrate with alerting system (Slack, email, PagerDuty, etc.)\nL434: "
+    },
+    {
+      "file": "archive_audit_20250706/audit_service_original.py",
+      "line": 453,
+      "type": "TODO",
+      "content": "Implement automatic response (rate limiting, account suspension, etc.)",
+      "priority": "low",
+      "context": "L452: )\nL453: # TODO: Implement automatic response (rate limiting, account suspension, etc.)\nL454: "
+    },
+    {
+      "file": "archive_audit_20250706/shared_audit/audit_logger.py",
+      "line": 50,
+      "type": "TODO",
+      "content": "\uc2e4\uc81c \uad6c\ud604\uc5d0\uc11c\ub294 \ub370\uc774\ud130\ubca0\uc774\uc2a4\ub098 \uc678\ubd80 \ub85c\uae45 \uc2dc\uc2a4\ud15c\uc5d0 \uc800\uc7a5",
+      "priority": "low",
+      "context": "L49: \nL50: # TODO: \uc2e4\uc81c \uad6c\ud604\uc5d0\uc11c\ub294 \ub370\uc774\ud130\ubca0\uc774\uc2a4\ub098 \uc678\ubd80 \ub85c\uae45 \uc2dc\uc2a4\ud15c\uc5d0 \uc800\uc7a5\nL51: "
+    },
+    {
+      "file": "core/branch/service.py",
+      "line": 450,
+      "type": "TODO",
+      "content": "\ud0c0\uac9f \ube0c\ub79c\uce58 \ubcc0\uacbd \uac80\uc99d \ucd94\uac00 \ud544\uc694",
+      "priority": "low",
+      "context": "L449: current_source = await self._get_branch_info(proposal.source_branch)\nL450: # TODO: \ud0c0\uac9f \ube0c\ub79c\uce58 \ubcc0\uacbd \uac80\uc99d \ucd94\uac00 \ud544\uc694\nL451: # current_target = await self._get_branch_info(proposal.target_branch)"
+    },
+    {
+      "file": "core/branch/service.py",
+      "line": 524,
+      "type": "TODO",
+      "content": "Map strategy",
+      "priority": "low",
+      "context": "L523: theirs=source_docs, # 'theirs' is the source branch with new changes\nL524: strategy=MiddlewareMergeStrategy.AUTO_RESOLVE # TODO: Map strategy\nL525: )"
+    },
+    {
+      "file": "core/branch/service.py",
+      "line": 538,
+      "type": "TODO",
+      "content": "Create MergeCommit object",
+      "priority": "low",
+      "context": "L537: )\nL538: # TODO: Create MergeCommit object\nL539: "
+    },
+    {
+      "file": "core/branch/service.py",
+      "line": 850,
+      "type": "TODO",
+      "content": "\ube0c\ub79c\uce58 \ubcf4\ud638 \uaddc\uce59 \uad6c\ud604",
+      "priority": "low",
+      "context": "L849: \"\"\"\ube0c\ub79c\uce58 \ubcf4\ud638 \uc5ec\ubd80 \ud655\uc778\"\"\"\nL850: # TODO: \ube0c\ub79c\uce58 \ubcf4\ud638 \uaddc\uce59 \uad6c\ud604\nL851: return branch_name in [\"main\", \"master\", \"production\"]"
+    },
+    {
+      "file": "core/branch/lock_manager.py",
+      "line": 711,
+      "type": "TODO",
+      "content": "Implement actual auto-merge logic",
+      "priority": "low",
+      "context": "L710: logger.info(f\"Auto-merge candidate: {branch_state.branch_name}\")\nL711: # TODO: Implement actual auto-merge logic\nL712: "
+    },
+    {
+      "file": "core/branch/lock_manager.py",
+      "line": 744,
+      "type": "TODO",
+      "content": "Query recent commits/events for this branch",
+      "priority": "low",
+      "context": "L743: if not detected_types:\nL744: # TODO: Query recent commits/events for this branch\nL745: # For now, assume object_type changes are most common"
+    },
+    {
+      "file": "core/branch/diff_engine.py",
+      "line": 170,
+      "type": "TODO",
+      "content": "\ucee4\ubc0b \uae30\ubc18 \uc2a4\ud0a4\ub9c8 \uc870\ud68c \uad6c\ud604",
+      "priority": "low",
+      "context": "L169: \"\"\"\ud2b9\uc815 \ucee4\ubc0b\uc758 \uc2a4\ud0a4\ub9c8 \uc870\ud68c\"\"\"\nL170: # TODO: \ucee4\ubc0b \uae30\ubc18 \uc2a4\ud0a4\ub9c8 \uc870\ud68c \uad6c\ud604\nL171: # \ud604\uc7ac\ub294 \ube0c\ub79c\uce58 \uc2a4\ud0a4\ub9c8\ub97c \ubc18\ud658"
+    },
+    {
+      "file": "core/branch/merge_validators.py",
+      "line": 172,
+      "type": "TODO",
+      "content": "\uc2e4\uc81c \uc2a4\ud0a4\ub9c8\uc5d0\uc11c \uaddc\uce59 \ucd94\ucd9c \ub85c\uc9c1 \uad6c\ud604",
+      "priority": "low",
+      "context": "L171: \"\"\"\uc2a4\ud0a4\ub9c8\uc5d0\uc11c \uc0c1\ud0dc \uc804\uc774 \uaddc\uce59 \ucd94\ucd9c\"\"\"\nL172: # TODO: \uc2e4\uc81c \uc2a4\ud0a4\ub9c8\uc5d0\uc11c \uaddc\uce59 \ucd94\ucd9c \ub85c\uc9c1 \uad6c\ud604\nL173: # \uc784\uc2dc\ub85c \ud558\ub4dc\ucf54\ub529\ub41c \uaddc\uce59 \ubc18\ud658"
+    },
+    {
+      "file": "core/auth_utils/__init__.py",
+      "line": 10,
+      "type": "TODO",
+      "content": "Implement proper permission checking logic",
+      "priority": "low",
+      "context": "L9: # For now, return a simple lambda that always returns True\nL10: # TODO: Implement proper permission checking logic\nL11: return lambda user, permission: True"
+    },
+    {
+      "file": "core/event_consumer/funnel_indexing_handler.py",
+      "line": 265,
+      "type": "TODO",
+      "content": "Implement actual conflict detection logic",
+      "priority": "low",
+      "context": "L264: \nL265: # TODO: Implement actual conflict detection logic\nL266: # This might involve:"
+    },
+    {
+      "file": "core/event_consumer/funnel_indexing_handler.py",
+      "line": 367,
+      "type": "TODO",
+      "content": "Save to audit database",
+      "priority": "low",
+      "context": "L366: \nL367: # TODO: Save to audit database\nL368: logger.info(f\"Audit log created: {audit_id} for {action.value} on {branch_name}\")"
+    },
+    {
+      "file": "core/event_consumer/funnel_indexing_handler.py",
+      "line": 575,
+      "type": "TODO",
+      "content": "Save to audit database",
+      "priority": "low",
+      "context": "L574: \nL575: # TODO: Save to audit database\nL576: logger.info(f\"Shadow index audit log created: {audit_id} for {action_type} on {branch_name}\")"
+    },
+    {
+      "file": "core/event_consumer/funnel_indexing_handler.py",
+      "line": 595,
+      "type": "TODO",
+      "content": "Implement actual alerting",
+      "priority": "low",
+      "context": "L594: \nL595: # TODO: Implement actual alerting\nL596: # Could include:"
+    },
+    {
+      "file": "core/event_consumer/funnel_indexing_handler.py",
+      "line": 629,
+      "type": "TODO",
+      "content": "Implement actual alerting (email, Slack, etc.)",
+      "priority": "low",
+      "context": "L628: \nL629: # TODO: Implement actual alerting (email, Slack, etc.)\nL630: # This could integrate with:"
+    },
+    {
+      "file": "core/event_consumer/funnel_indexing_handler.py",
+      "line": 645,
+      "type": "TODO",
+      "content": "Implement actual notifications",
+      "priority": "low",
+      "context": "L644: \nL645: # TODO: Implement actual notifications\nL646: # This could send notifications to:"
+    },
+    {
+      "file": "core/schema/repository.py",
+      "line": 20,
+      "type": "TODO",
+      "content": "\ud604\uc7ac UnifiedDatabaseClient\ub97c \uc9c1\uc811 \ubc1b\uace0 \uc788\uc9c0\ub9cc,",
+      "priority": "low",
+      "context": "L19: \nL20: # TODO: \ud604\uc7ac UnifiedDatabaseClient\ub97c \uc9c1\uc811 \ubc1b\uace0 \uc788\uc9c0\ub9cc,\nL21: # \uc774 \ub9ac\ud3ec\uc9c0\ud1a0\ub9ac\ub294 TerminusDB\uc5d0 \ud2b9\ud654\ub41c \uc791\uc5c5\uc744 \uc218\ud589\ud558\ubbc0\ub85c,"
+    },
+    {
+      "file": "core/history/routes.py",
+      "line": 16,
+      "type": "TODO",
+      "content": "Update to use actual event publisher",
+      "priority": "low",
+      "context": "L15: )\nL16: # TODO: Update to use actual event publisher\nL17: # from core.events.publisher import EventPublisher as HistoryEventPublisher"
+    },
+    {
+      "file": "core/history/routes.py",
+      "line": 26,
+      "type": "TODO",
+      "content": "\uc2e4\uc81c \uad6c\ud604\uc5d0\uc11c\ub294 DI \ucee8\ud14c\uc774\ub108 \uc0ac\uc6a9",
+      "priority": "low",
+      "context": "L25: \"\"\"History Event Publisher \uc758\uc874\uc131 \uc8fc\uc785\"\"\"\nL26: # TODO: \uc2e4\uc81c \uad6c\ud604\uc5d0\uc11c\ub294 DI \ucee8\ud14c\uc774\ub108 \uc0ac\uc6a9\nL27: from database.clients.terminus_db import get_terminus_client"
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "line": 255,
+      "type": "TODO",
+      "content": "\uc2e4\uc81c \uac10\uc0ac \ub85c\uadf8 \uc800\uc7a5\uc18c\uc5d0 \uc800\uc7a5",
+      "priority": "low",
+      "context": "L254: \"\"\"\uac10\uc0ac \ub85c\uadf8 \uc800\uc7a5\"\"\"\nL255: # TODO: \uc2e4\uc81c \uac10\uc0ac \ub85c\uadf8 \uc800\uc7a5\uc18c\uc5d0 \uc800\uc7a5\nL256: logger.debug(f\"Saving audit log for {event_type}: {event_data}\")"
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "line": 260,
+      "type": "TODO",
+      "content": "\uad00\ub828 \uce90\uc2dc \ubb34\ud6a8\ud654 \ub85c\uc9c1",
+      "priority": "low",
+      "context": "L259: \"\"\"\uce90\uc2dc \ubb34\ud6a8\ud654\"\"\"\nL260: # TODO: \uad00\ub828 \uce90\uc2dc \ubb34\ud6a8\ud654 \ub85c\uc9c1\nL261: logger.debug(f\"Invalidating cache for: {event_data}\")"
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "line": 265,
+      "type": "TODO",
+      "content": "\uc678\ubd80 \uc2dc\uc2a4\ud15c \uc6f9\ud6c5 \ud638\ucd9c",
+      "priority": "low",
+      "context": "L264: \"\"\"\uc678\ubd80 \uc2dc\uc2a4\ud15c \uc54c\ub9bc\"\"\"\nL265: # TODO: \uc678\ubd80 \uc2dc\uc2a4\ud15c \uc6f9\ud6c5 \ud638\ucd9c\nL266: logger.debug(f\"Notifying external systems about {event_type}: {event_data}\")"
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "line": 270,
+      "type": "TODO",
+      "content": "\ube0c\ub79c\uce58 \ubcf4\ud638 \uaddc\uce59 \uc790\ub3d9 \uc124\uc815",
+      "priority": "low",
+      "context": "L269: \"\"\"\ube0c\ub79c\uce58 \ubcf4\ud638 \uaddc\uce59 \uc124\uc815\"\"\"\nL270: # TODO: \ube0c\ub79c\uce58 \ubcf4\ud638 \uaddc\uce59 \uc790\ub3d9 \uc124\uc815\nL271: logger.debug(f\"Setting up branch protection: {event_data}\")"
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "line": 275,
+      "type": "TODO",
+      "content": "CI/CD \ud30c\uc774\ud504\ub77c\uc778 \ud2b8\ub9ac\uac70",
+      "priority": "low",
+      "context": "L274: \"\"\"\ubc30\ud3ec \ud2b8\ub9ac\uac70\"\"\"\nL275: # TODO: CI/CD \ud30c\uc774\ud504\ub77c\uc778 \ud2b8\ub9ac\uac70\nL276: logger.debug(f\"Triggering deployment: {event_data}\")"
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "line": 280,
+      "type": "TODO",
+      "content": "\uc774\uba54\uc77c/\uc2ac\ub799 \uc54c\ub9bc \ubc1c\uc1a1",
+      "priority": "low",
+      "context": "L279: \"\"\"\uc54c\ub9bc \ubc1c\uc1a1\"\"\"\nL280: # TODO: \uc774\uba54\uc77c/\uc2ac\ub799 \uc54c\ub9bc \ubc1c\uc1a1\nL281: logger.debug(f\"Sending notifications: {event_data}\")"
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "line": 285,
+      "type": "TODO",
+      "content": "\uc561\uc158 \uc2e4\ud589 \uc0c1\ud0dc \ucd94\uc801",
+      "priority": "low",
+      "context": "L284: \"\"\"\uc561\uc158 \uc2e4\ud589 \ucd94\uc801\"\"\"\nL285: # TODO: \uc561\uc158 \uc2e4\ud589 \uc0c1\ud0dc \ucd94\uc801\nL286: logger.debug(f\"Tracking action execution: {event_data}\")"
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "line": 290,
+      "type": "TODO",
+      "content": "\uba54\ud2b8\ub9ad \uc800\uc7a5\uc18c\uc5d0 \uc5c5\ub370\uc774\ud2b8",
+      "priority": "low",
+      "context": "L289: \"\"\"\uc561\uc158 \uba54\ud2b8\ub9ad \uc5c5\ub370\uc774\ud2b8\"\"\"\nL290: # TODO: \uba54\ud2b8\ub9ad \uc800\uc7a5\uc18c\uc5d0 \uc5c5\ub370\uc774\ud2b8\nL291: logger.debug(f\"Updating action metrics ({status}): {event_data}\")"
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "line": 295,
+      "type": "TODO",
+      "content": "\uc911\uc694\ud55c \uc561\uc158 \uc2e4\ud328\uc2dc \uc989\uc2dc \uc54c\ub78c",
+      "priority": "low",
+      "context": "L294: \"\"\"\uc2e4\ud328 \uc54c\ub78c \ubc1c\uc1a1\"\"\"\nL295: # TODO: \uc911\uc694\ud55c \uc561\uc158 \uc2e4\ud328\uc2dc \uc989\uc2dc \uc54c\ub78c\nL296: logger.warning(f\"Sending failure alert: {event_data}\")"
+    },
+    {
+      "file": "core/event_subscriber/main.py",
+      "line": 300,
+      "type": "TODO",
+      "content": "\uac80\uc99d \ud1b5\uacc4 \uc5c5\ub370\uc774\ud2b8",
+      "priority": "low",
+      "context": "L299: \"\"\"\uac80\uc99d \ud1b5\uacc4 \uc5c5\ub370\uc774\ud2b8\"\"\"\nL300: # TODO: \uac80\uc99d \ud1b5\uacc4 \uc5c5\ub370\uc774\ud2b8\nL301: logger.debug(f\"Updating validation stats: {event_data}\")"
+    },
+    {
+      "file": "bootstrap/providers/database.py",
+      "line": 62,
+      "type": "TODO",
+      "content": "Implement when client is fixed",
+      "priority": "low",
+      "context": "L61: \nL62: # class TerminusDBClientProvider... # TODO: Implement when client is fixed\nL63: "
+    },
+    {
+      "file": "bootstrap/providers/branch.py",
+      "line": 29,
+      "type": "TODO",
+      "content": "This is a temporary fix. BranchService needs to be refactored",
+      "priority": "low",
+      "context": "L28: \nL29: # TODO: This is a temporary fix. BranchService needs to be refactored\nL30: # to accept UnifiedDatabaseClient and other dependencies via DI."
+    },
+    {
+      "file": "shared/scheduler_stub.py",
+      "line": 151,
+      "type": "TODO",
+      "content": "Implement actual logic",
+      "priority": "low",
+      "context": "L150: logger.info(f\"Refreshing embeddings for collection: {collection}\")\nL151: # TODO: Implement actual logic\nL152: "
+    },
+    {
+      "file": "shared/scheduler_stub.py",
+      "line": 157,
+      "type": "TODO",
+      "content": "Implement actual logic",
+      "priority": "low",
+      "context": "L156: logger.info(f\"Cleaning up data older than {retention_days} days\")\nL157: # TODO: Implement actual logic\nL158: "
+    },
+    {
+      "file": "shared/cache/smart_cache.py",
+      "line": 397,
+      "type": "TODO",
+      "content": "Fix observe_cache_latency call",
+      "priority": "low",
+      "context": "L396: duration = asyncio.get_event_loop().time() - start_time\nL397: # observe_cache_latency(\"get\", \"redis\", duration) # TODO: Fix observe_cache_latency call\nL398: "
+    },
+    {
+      "file": "shared/cache/smart_cache.py",
+      "line": 418,
+      "type": "TODO",
+      "content": "Fix observe_cache_latency call",
+      "priority": "low",
+      "context": "L417: duration = asyncio.get_event_loop().time() - start_time\nL418: # observe_cache_latency(\"set\", \"redis\", duration) # TODO: Fix observe_cache_latency call\nL419: return True"
+    },
+    {
+      "file": "shared/cache/smart_cache.py",
+      "line": 435,
+      "type": "TODO",
+      "content": "Fix observe_cache_latency call",
+      "priority": "low",
+      "context": "L434: duration = asyncio.get_event_loop().time() - start_time\nL435: # observe_cache_latency(\"delete\", \"redis\", duration) # TODO: Fix observe_cache_latency call\nL436: return True"
+    },
+    {
+      "file": "shared/cache/smart_cache.py",
+      "line": 544,
+      "type": "TODO",
+      "content": "Fix delete_document call",
+      "priority": "low",
+      "context": "L543: try:\nL544: # await self.terminus_client.delete_document(key, \"cache\") # TODO: Fix delete_document call\nL545: logger.info(f\"Deleted from TerminusDB cache: {key}\")"
+    },
+    {
+      "file": "models/struct_types.py",
+      "line": 130,
+      "type": "TODO",
+      "content": "Validate against data_type_id and semantic_type_id",
+      "priority": "low",
+      "context": "L129: field_value = value[field.name]\nL130: # TODO: Validate against data_type_id and semantic_type_id\nL131: # This would integrate with DataTypeRegistry and SemanticTypeRegistry"
+    },
+    {
+      "file": "data_kernel/grpc_server.py",
+      "line": 281,
+      "type": "TODO",
+      "content": "Get actual revision from TerminusDB",
+      "priority": "low",
+      "context": "L280: document_id=doc_id.id,\nL281: revision=\"\"  # TODO: Get actual revision from TerminusDB\nL282: )"
+    },
+    {
+      "file": "data_kernel/service/terminus_service.py",
+      "line": 67,
+      "type": "TODO",
+      "content": "Implement branch support in TerminusDB client",
+      "priority": "low",
+      "context": "L66: \"\"\"Retrieve a document from TerminusDB.\"\"\"\nL67: # TODO: Implement branch support in TerminusDB client\nL68: # For now, we'll use the default query mechanism"
+    },
+    {
+      "file": "data_kernel/service/terminus_service.py",
+      "line": 228,
+      "type": "TODO",
+      "content": "Implement actual rollback using TerminusDB API",
+      "priority": "low",
+      "context": "L227: \nL228: # TODO: Implement actual rollback using TerminusDB API\nL229: # This would use /api/branch/{branch}/reset/{commit_id}"
+    },
+    {
+      "file": "data_kernel/hook/validators.py",
+      "line": 31,
+      "type": "TODO",
+      "content": "Initialize ValidationService properly",
+      "priority": "low",
+      "context": "L30: \"\"\"Initialize validation service\"\"\"\nL31: # TODO: Initialize ValidationService properly\nL32: # For now, we'll skip initialization as it requires database setup"
+    },
+    {
+      "file": "data_kernel/hook/validators.py",
+      "line": 142,
+      "type": "TODO",
+      "content": "Implement actual schema validation",
+      "priority": "low",
+      "context": "L141: \nL142: # TODO: Implement actual schema validation\nL143: # For now, we'll do basic type checking"
+    },
+    {
+      "file": "data_kernel/hook/sinks.py",
+      "line": 39,
+      "type": "TODO",
+      "content": "Fix UnifiedPublisher initialization",
+      "priority": "low",
+      "context": "L38: try:\nL39: # TODO: Fix UnifiedPublisher initialization\nL40: # For now, we'll create a basic NATS backend"
+    },
+    {
+      "file": "grpc_services/server.py",
+      "line": 19,
+      "type": "TODO",
+      "content": "Generate protobuf files first with: protoc --python_out=. --grpc_python_out=. *.proto",
+      "priority": "low",
+      "context": "L18: # Import generated proto files\nL19: # TODO: Generate protobuf files first with: protoc --python_out=. --grpc_python_out=. *.proto\nL20: try:"
+    },
+    {
+      "file": "archive_microservices_20250705/backends/enhanced_event_service.py",
+      "line": 209,
+      "type": "TODO",
+      "content": "NATS publisher \uc5f0\ub3d9",
+      "priority": "low",
+      "context": "L208: logger.info(f\"Publishing event immediately: {event.id}\")\nL209: # TODO: NATS publisher \uc5f0\ub3d9\nL210: return event.id"
+    },
+    {
+      "file": "scripts/clean_todo_comments.py",
+      "line": 18,
+      "type": "TODO",
+      "content": ", FIXME, HACK, XXX",
+      "priority": "low",
+      "context": "L17: self.line_num = line_num\nL18: self.comment_type = comment_type  # TODO, FIXME, HACK, XXX\nL19: self.content = content"
+    },
+    {
+      "file": "scripts/clean_todo_comments.py",
+      "line": 126,
+      "type": "TODO",
+      "content": "Comments Report",
+      "priority": "low",
+      "context": "L125: \"\"\"Generate a summary report of all TODO comments\"\"\"\nL126: report = f\"\"\"# TODO Comments Report\nL127: Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    },
+    {
+      "file": "api/v1/semantic_types/endpoints.py",
+      "line": 253,
+      "type": "TODO",
+      "content": "Check if type is in use by any properties",
+      "priority": "low",
+      "context": "L252: \nL253: # TODO: Check if type is in use by any properties\nL254: # This would require querying properties with this semantic_type_id"
+    },
+    {
+      "file": "api/v1/struct_types/endpoints.py",
+      "line": 301,
+      "type": "TODO",
+      "content": "Check if type is in use by any properties",
+      "priority": "low",
+      "context": "L300: \nL301: # TODO: Check if type is in use by any properties\nL302: # This would require querying properties with data_type_id = struct_type_id"
+    },
+    {
+      "file": "api/graphql/subscriptions.py",
+      "line": 345,
+      "type": "TODO",
+      "content": "\uc791\uc5c5 \uc18c\uc720\uc790 \ud655\uc778 \ub85c\uc9c1 \uad6c\ud604",
+      "priority": "low",
+      "context": "L344: if user_jobs_only:\nL345: # TODO: \uc791\uc5c5 \uc18c\uc720\uc790 \ud655\uc778 \ub85c\uc9c1 \uad6c\ud604\nL346: pass"
+    },
+    {
+      "file": "workers/tasks/maintenance.py",
+      "line": 65,
+      "type": "TODO",
+      "content": "Send alerts to monitoring system",
+      "priority": "low",
+      "context": "L64: \nL65: # TODO: Send alerts to monitoring system\nL66: # await send_alert(\"Stuck jobs detected\", {\"job_ids\": stuck_jobs})"
+    },
+    {
+      "file": "workers/tasks/maintenance.py",
+      "line": 103,
+      "type": "TODO",
+      "content": "Send to monitoring system",
+      "priority": "low",
+      "context": "L102: \nL103: # TODO: Send to monitoring system\nL104: # await send_metrics(\"job_stats\", result)"
+    },
+    {
+      "file": "services/scheduler-service/app/scheduler/executors.py",
+      "line": 67,
+      "type": "TODO",
+      "content": "Implement actual embedding refresh logic",
+      "priority": "low",
+      "context": "L66: \nL67: # TODO: Implement actual embedding refresh logic\nL68: # This would typically:"
+    },
+    {
+      "file": "services/scheduler-service/app/scheduler/executors.py",
+      "line": 96,
+      "type": "TODO",
+      "content": "Implement actual data sync logic",
+      "priority": "low",
+      "context": "L95: \nL96: # TODO: Implement actual data sync logic\nL97: # This would typically:"
+    },
+    {
+      "file": "services/scheduler-service/app/scheduler/executors.py",
+      "line": 127,
+      "type": "TODO",
+      "content": "Implement actual report generation logic",
+      "priority": "low",
+      "context": "L126: \nL127: # TODO: Implement actual report generation logic\nL128: # This would typically:"
+    },
+    {
+      "file": "services/scheduler-service/app/scheduler/executors.py",
+      "line": 157,
+      "type": "TODO",
+      "content": "Implement actual cleanup logic",
+      "priority": "low",
+      "context": "L156: \nL157: # TODO: Implement actual cleanup logic\nL158: # This would typically:"
+    },
+    {
+      "file": "services/scheduler-service/app/scheduler/executors.py",
+      "line": 225,
+      "type": "TODO",
+      "content": "Implement custom script execution",
+      "priority": "low",
+      "context": "L224: \nL225: # TODO: Implement custom script execution\nL226: # This would need careful security considerations:"
+    }
+  ]
+}

@@ -131,6 +131,12 @@ def test_create_and_get_schema_object_flow(
         },
     )
     
+    # <<< FIX: Mock the correct permission check method >>>
+    mocker.patch(
+        "core.iam.iam_integration.IAMIntegration.check_scope",
+        return_value=True
+    )
+
     # 2. Setup Mock for the database layer
     mock_terminus_client = mock_udc.get_client("terminus")
 
@@ -140,13 +146,13 @@ def test_create_and_get_schema_object_flow(
         "description": "A type for testing purposes."
     }
 
-    mock_terminus_client.create.return_value = "TestObjectType/123"
-    mock_terminus_client.read.return_value = [{
+    mock_terminus_client.create = AsyncMock(return_value="TestObjectType/123")
+    mock_terminus_client.read = AsyncMock(return_value=[{
         "@id": "TestObjectType/123",
         "name": "TestObjectType",
         "displayName": "Test Object Type",
         "description": "A type for testing purposes."
-    }]
+    }])
 
     # 2. Action: Call the create endpoint
     # Schema routes include branch in the path

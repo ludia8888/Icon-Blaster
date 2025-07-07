@@ -2,6 +2,7 @@
 Health check routes for graph analysis services.
 Provides comprehensive health monitoring for Redis, TerminusDB, and tracing.
 """
+import os
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -9,6 +10,8 @@ import asyncio
 from datetime import datetime
 
 from common_logging.setup import get_logger
+from database.clients.terminus_db import TerminusDBClient
+from infra.tracing.jaeger_adapter import get_tracing_manager, JaegerTracingManager
 
 logger = get_logger(__name__)
 
@@ -16,13 +19,6 @@ logger = get_logger(__name__)
 async def redis_health_check():
     """Temporary Redis health check implementation"""
     return {"status": "healthy", "message": "Redis health check not implemented"}
-
-def get_tracing_manager():
-    """Temporary tracing manager"""
-    class DummyTracingManager:
-        async def get_health(self):
-            return {"status": "healthy", "message": "Tracing not configured"}
-    return DummyTracingManager()
 
 class GraphAnalysisProviderFactory:
     """Temporary GraphAnalysisProviderFactory"""
@@ -32,15 +28,6 @@ class GraphAnalysisProviderFactory:
             async def health_check(self):
                 return {"status": "healthy", "message": "Graph analysis not configured"}
         return DummyProvider()
-
-class TerminusDBClient:
-    """Temporary TerminusDBClient"""
-    @staticmethod
-    def get_instance():
-        class DummyClient:
-            async def health_check(self):
-                return {"status": "healthy", "message": "TerminusDB not configured"}
-        return DummyClient()
 
 router = APIRouter(prefix="/graph/health", tags=["graph", "health"])
 
@@ -208,23 +195,34 @@ async def invalidate_cache() -> JSONResponse:
 
 async def _check_terminus_health() -> Dict[str, Any]:
     """Check TerminusDB connectivity and basic operations."""
+    start_time = datetime.utcnow()
     try:
-        # Create a test client
-        client = TerminusDBClient()
-        
-        # Test basic connectivity
-        # This would depend on the actual TerminusDBClient implementation
-        # For now, return mock health data
-        
-        return {
-            "status": "healthy",
-            "connectivity": "ok",
-            "response_time_ms": 50,  # Would be actual measured time
-            "version": "11.0.0",  # Would be actual version
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        # 환경 변수에서 TerminusDB 접속 정보 로드
+        endpoint = os.getenv("TERMINUSDB_ENDPOINT", "http://localhost:6363")
+        user = os.getenv("TERMINUSDB_USER", "admin")
+        password = os.getenv("TERMINUSDB_PASSWORD", "changeme-admin-pass")
+
+        async with TerminusDBClient(endpoint=endpoint, username=user, password=password) as client:
+            is_connected = await client.ping()
+            
+            if not is_connected:
+                raise ConnectionError("TerminusDB ping failed")
+                
+            # 추가 정보 (예: 버전)를 얻기 위해 get_databases 또는 유사한 메서드 호출 시도
+            # info = await client.get_databases() # get_databases는 현재 ping과 같은 info를 사용하므로 중복
+            
+            end_time = datetime.utcnow()
+            response_time = (end_time - start_time).total_seconds() * 1000
+
+            return {
+                "status": "healthy",
+                "connectivity": "ok",
+                "response_time_ms": round(response_time, 2),
+                "timestamp": datetime.utcnow().isoformat()
+            }
         
     except Exception as e:
+        logger.error(f"TerminusDB health check failed: {e}", exc_info=True)
         return {
             "status": "unhealthy",
             "error": str(e),
@@ -237,10 +235,10 @@ async def _check_tracing_health() -> Dict[str, Any]:
     try:
         tracing_manager = await get_tracing_manager()
         
-        if not tracing_manager._initialized:
+        if not tracing_manager or not tracing_manager._initialized:
             return {
                 "status": "disabled",
-                "message": "Tracing not enabled",
+                "message": "Tracing not enabled or initialized",
                 "timestamp": datetime.utcnow().isoformat()
             }
         
@@ -249,15 +247,20 @@ async def _check_tracing_health() -> Dict[str, Any]:
         test_span.set_attribute("health_check", True)
         test_span.end()
         
+        config = tracing_manager.config
         return {
             "status": "healthy",
-            "jaeger_enabled": tracing_manager.config.enabled,
-            "siem_enabled": tracing_manager.config.siem_enabled,
-            "service_name": tracing_manager.config.service_name,
+            "provider": "jaeger",
+            "service_name": config.service_name,
+            "agent_host": config.agent_host,
+            "agent_port": config.agent_port,
+            "sampling_rate": config.sampling_rate,
+            "siem_enabled": config.siem_enabled,
             "timestamp": datetime.utcnow().isoformat()
         }
-        
+
     except Exception as e:
+        logger.error(f"Tracing health check failed: {e}", exc_info=True)
         return {
             "status": "unhealthy",
             "error": str(e),
@@ -266,7 +269,7 @@ async def _check_tracing_health() -> Dict[str, Any]:
 
 
 async def _check_graph_service_health() -> Dict[str, Any]:
-    """Check graph analysis service health."""
+    """Check graph analysis service and its components."""
     try:
         # This is a basic check - in practice would test actual service functionality
         return {

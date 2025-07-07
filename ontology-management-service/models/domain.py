@@ -13,12 +13,16 @@ IMPORTANT - Naming Convention Strategy (ADR-005):
 이 전략은 TerminusDB 호환성과 Python 관례 사이의 균형을 맞추기 위함입니다.
 각 모델 클래스에는 설계 의도가 주석으로 명시되어 있습니다.
 """
+import logging
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
-from .merge_hints import SchemaMergeMetadata
+# from .merge_hints import SchemaMergeMetadata # 존재하지 않는 모듈 import 주석 처리
+from .action_types import ActionType
+
+logger = logging.getLogger(__name__)
 
 
 class Status(str, Enum):
@@ -214,10 +218,10 @@ class ObjectType(BaseModel):
         default_factory=dict,
         description="상태별 전이 규칙"
     )
-    merge_metadata: Optional[SchemaMergeMetadata] = Field(
-        default=None,
-        description="병합 전략 및 힌트 메타데이터"
-    )
+    # merge_metadata: Optional[SchemaMergeMetadata] = Field( # SchemaMergeMetadata를 찾을 수 없으므로 주석 처리
+    #     None,
+    #     description="병합 시 특별한 처리가 필요한 필드 그룹에 대한 메타데이터"
+    # )
 
     @field_validator("name")
     @classmethod

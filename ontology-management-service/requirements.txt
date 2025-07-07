@@ -129,10 +129,10 @@ jsondiff==2.0.0
 python-json-logger==2.0.7
 
 # Common Security Package
-common_security @ file:///Users/isihyeon/Desktop/Arrakis-Project/packages/backend/common_security
+# common_security @ file:///Users/isihyeon/Desktop/Arrakis-Project/packages/backend/common_security
 
 # Common Logging Package
-common_logging @ file:///Users/isihyeon/Desktop/Arrakis-Project/packages/backend/common_logging
+# common_logging @ file:///Users/isihyeon/Desktop/Arrakis-Project/packages/backend/common_logging
 
 # Compression
 python-lz4==0.1.0

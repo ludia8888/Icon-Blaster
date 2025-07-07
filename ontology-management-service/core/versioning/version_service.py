@@ -126,6 +126,7 @@ class VersionTrackingService:
     ) -> ResourceVersion:
         """Track a change to a resource"""
         await self._ensure_initialized()
+        assert self._connector is not None
         
         # Calculate content hash
         content_hash = calculate_content_hash(content)
@@ -264,6 +265,7 @@ class VersionTrackingService:
     ) -> Optional[ResourceVersion]:
         """Get version info for a resource"""
         await self._ensure_initialized()
+        assert self._connector is not None
         
         if version is None:
             # Get latest version
@@ -337,6 +339,7 @@ class VersionTrackingService:
     ) -> DeltaResponse:
         """Get delta changes for a resource"""
         await self._ensure_initialized()
+        assert self._connector is not None
             
         # Get current version
         current = await self.get_resource_version(resource_type, resource_id, branch)
@@ -484,6 +487,7 @@ class VersionTrackingService:
     ) -> CacheValidation:
         """Validate multiple resource ETags"""
         await self._ensure_initialized()
+        assert self._connector is not None
         
         for resource_key, client_etag in validation.resource_etags.items():
             # Parse resource key (format: "type:id")
@@ -587,6 +591,7 @@ class VersionTrackingService:
     ) -> Dict[str, Any]:
         """Get version summary for a branch"""
         await self._ensure_initialized()
+        assert self._connector is not None
         
         # Build query with named parameters
         base_query = """
@@ -630,6 +635,29 @@ class VersionTrackingService:
                 summary["last_modified"] = row['last_modified']
         
         return summary
+
+    async def get_version_by_commit_hash(self, commit_hash: str) -> Optional[ResourceVersion]:
+        """Get a resource version by its commit hash."""
+        await self._ensure_initialized()
+        assert self._connector is not None
+        
+        row = await self._connector.fetch_one(
+            """
+            SELECT * FROM resource_versions
+            WHERE commit_hash = :commit_hash
+            """,
+            {"commit_hash": commit_hash}
+        )
+        
+        if not row:
+            return None
+            
+        return await self.get_resource_version(
+            row['resource_type'],
+            row['resource_id'],
+            row['branch'],
+            row['version']
+        )
 
 
 # Global instance

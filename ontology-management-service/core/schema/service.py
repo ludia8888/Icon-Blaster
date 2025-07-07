@@ -78,11 +78,11 @@ class SchemaService(SchemaServiceProtocol):
             if use_branch_workflow:
                 # 브랜치 기반 워크플로우 사용
                 # 1. 스키마 생성을 위한 브랜치 생성
-                create_branch_name = f"schema-create/{data.name}-{uuid.uuid4().hex[:8]}"
+                create_branch_name = f"schema-create/{data.name.lower()}-{uuid.uuid4().hex[:8]}"
                 await self.branch_service.create_branch(
-                    branch_name=create_branch_name,
-                    parent_branch="main",
-                    created_by=get_author()
+                    name=create_branch_name,
+                    from_branch="main",
+                    user_id=get_author()
                 )
                 
                 # 2. 새 브랜치에서 스키마 생성
@@ -232,9 +232,9 @@ class SchemaService(SchemaServiceProtocol):
             # 1. 스키마 변경을 위한 브랜치 생성
             change_branch_name = f"schema-change/{schema_id}-{uuid.uuid4().hex[:8]}"
             await self.branch_service.create_branch(
-                branch_name=change_branch_name,
-                parent_branch="main",
-                created_by=updated_by
+                name=change_branch_name,
+                from_branch="main",
+                user_id=updated_by
             )
             logger.info(f"Created branch '{change_branch_name}' for schema update")
             
@@ -291,7 +291,28 @@ class SchemaService(SchemaServiceProtocol):
         raise NotImplementedError
 
     async def validate_schema(self, schema_def: Dict[str, Any]) -> Dict[str, Any]:
-        raise NotImplementedError
+        """Validate a schema definition."""
+        errors = []
+        warnings = []
+        
+        # Basic validation
+        if not schema_def.get("name"):
+            errors.append({"field": "name", "message": "Schema name is required"})
+            
+        if not schema_def.get("type") and "branch" not in schema_def:
+            # If branch is present, this might be object type creation
+            schema_def["type"] = "object"
+            
+        # For object types, check required fields
+        if schema_def.get("type") == "object" or "branch" in schema_def:
+            # Object types should have at least a name
+            pass  # Basic validation passed
+            
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings
+        }
 
     async def get_schema_version(self, schema_id: str, version: int) -> Dict[str, Any]:
         raise NotImplementedError
@@ -378,3 +399,16 @@ class SchemaService(SchemaServiceProtocol):
         except Exception as e:
             logger.error(f"Error rejecting schema change PR {pr_id}: {e}")
             raise
+
+    async def get_schema_by_name(self, name: str, branch: str) -> Optional[Dict[str, Any]]:
+        """이름으로 스키마를 조회합니다 (실제 구현)"""
+        try:
+            # 권한 확인 (읽기)
+            user = {"user_id": get_author(), "branch": branch}
+            if not await self._check_permission(user, "schema:read", branch):
+                raise PermissionError(f"사용자 {get_author()}는 스키마 읽기 권한이 없습니다.")
+
+            return await self.repository.get_object_type_by_name(name=name, branch=branch)
+        except Exception as e:
+            logger.error(f"Error getting schema by name '{name}' in service: {e}", exc_info=True)
+            return None

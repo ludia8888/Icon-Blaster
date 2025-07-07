@@ -15,6 +15,10 @@ class SchemaServiceProtocol(Protocol):
         """Get schema by ID"""
         ...
     
+    async def get_schema_by_name(self, name: str, branch: str) -> Optional[Dict[str, Any]]:
+        """Get schema by name and branch"""
+        ...
+    
     async def update_schema(self, schema_id: str, name: Optional[str] = None,
                           schema_def: Optional[Dict[str, Any]] = None,
                           updated_by: Optional[str] = None) -> Dict[str, Any]:

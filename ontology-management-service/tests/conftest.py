@@ -1,57 +1,89 @@
-"""conftest.py
-Test configuration for ontology-management-service.
-Sets up Python path, test fixtures, and mock dependencies.
-"""
-
-from __future__ import annotations
-
-import os
 import sys
-from pathlib import Path
+import os
+
+# Add project root to the Python path to resolve module imports during tests
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+"""
+Configuration for pytest tests.
+This file sets up fixtures and application context for integration tests.
+"""
+import asyncio
 from typing import AsyncGenerator, Generator
 import pytest
-import asyncio
-from unittest.mock import AsyncMock, MagicMock
-from fastapi.testclient import TestClient
+from starlette.testclient import TestClient
 from httpx import AsyncClient
+from unittest.mock import MagicMock, AsyncMock
 
-# --------------------------------------------------------------------------------------------------
-# Path Configuration
-# --------------------------------------------------------------------------------------------------
-SERVICE_ROOT: Path = Path(__file__).resolve().parent.parent
-service_root_str = str(SERVICE_ROOT)
+from bootstrap.app import create_app
+from bootstrap.config import AppConfig, SQLiteConfig, RedisConfig
+from bootstrap.dependencies import get_redis_client, get_db_client, get_branch_service
+from database.clients.unified_database_client import UnifiedDatabaseClient
 
-# Add service root to Python path
-if service_root_str not in sys.path:
-    sys.path.insert(0, service_root_str)
+@pytest.fixture(scope="session")
+def test_config() -> AppConfig:
+    """Provides a test-specific AppConfig instance."""
+    return AppConfig(
+        postgres=None,
+        sqlite=SQLiteConfig(db_name=":memory:"),
+        redis=RedisConfig(host="localhost", port=6379, db=0),
+    )
 
-# Add common packages if available
-COMMON_PACKAGES_PATH = SERVICE_ROOT.parent.parent / "packages" / "backend"
-if COMMON_PACKAGES_PATH.exists():
-    common_packages_str = str(COMMON_PACKAGES_PATH)
-    if common_packages_str not in sys.path:
-        sys.path.insert(0, common_packages_str)
+@pytest.fixture(scope="session")
+def test_app(test_config: AppConfig) -> TestClient:
+    """
+    Creates and configures a FastAPI app instance for testing,
+    and yields a TestClient for making requests.
+    """
+    app = create_app(test_config)
 
-# --------------------------------------------------------------------------------------------------
-# Environment Configuration
-# --------------------------------------------------------------------------------------------------
-os.environ.update({
-    "ENVIRONMENT": "test",
-    "DEBUG": "true",
-    "DATABASE_URL": "sqlite:///./test.db",
-    "REDIS_URL": "redis://localhost:6379/1",
-    "JWT_SECRET": "test-secret-key-for-testing-purposes-only",
-    "JWT_ALGORITHM": "HS256",
-    "ACCESS_TOKEN_EXPIRE_MINUTES": "30",
-    "IAM_SERVICE_URL": "http://localhost:8000",
-    "IAM_VERIFY_SSL": "false",
-    "JWT_LOCAL_VALIDATION": "true",
-    "IAM_PERMISSION_CACHE_TTL": "300",
-})
+    # --- Dependency Overrides ---
+    mock_redis = MagicMock()
+    mock_db_client = MagicMock(spec=UnifiedDatabaseClient)
+    
+    # Mock the return value for the specific terminus client
+    mock_terminus_client = MagicMock()
+    mock_db_client.get_client.return_value = mock_terminus_client
 
-# --------------------------------------------------------------------------------------------------
-# Test Fixtures
-# --------------------------------------------------------------------------------------------------
+    # Override the main dependency providers
+    app.dependency_overrides[get_redis_client] = lambda: mock_redis
+    app.dependency_overrides[get_db_client] = lambda: mock_db_client
+
+    # ---- NEW MOCK STRATEGY FOR BranchService ----
+    class DummyBranchService:
+        async def create_branch(self, *args, **kwargs):
+            print("DUMMY MOCK create_branch called with:", args, kwargs)
+            return True
+
+        async def commit_changes(self, *args, **kwargs):
+            return "new_commit_sha"
+
+        async def create_pull_request(self, *args, **kwargs):
+            return {"pr_id": "123"}
+
+    dummy_branch_service_instance = DummyBranchService()
+
+    async def override_get_branch_service(*args, **kwargs):
+        print("DUMMY MOCK get_branch_service called")
+        return dummy_branch_service_instance
+
+    app.dependency_overrides[get_branch_service] = override_get_branch_service
+    # --- End of Overrides ---
+
+    with TestClient(app) as client:
+        yield client
+    
+    # Clean up overridden dependencies after tests are done
+    app.dependency_overrides = {}
+
+@pytest.fixture
+def mock_udc(test_app: TestClient) -> MagicMock:
+    """
+    Provides access to the mocked UnifiedDatabaseClient instance
+    used in the test_app fixture.
+    """
+    return test_app.app.dependency_overrides[get_db_client]()
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
@@ -78,7 +110,7 @@ def client(app) -> Generator[TestClient, None, None]:
     mock_redis.exists = AsyncMock(return_value=False)
     
     # Mock dependencies
-    from bootstrap.dependencies import get_redis_client, get_database
+    from bootstrap.dependencies import get_redis_client, get_db_client, get_branch_service
     from database.clients.unified_database_client import UnifiedDatabaseClient
     
     # Create mock database client
@@ -89,8 +121,23 @@ def client(app) -> Generator[TestClient, None, None]:
     
     # Override dependencies
     app.dependency_overrides[get_redis_client] = lambda: mock_redis
-    app.dependency_overrides[get_database] = lambda: mock_db
+    app.dependency_overrides[get_db_client] = lambda: mock_db
     
+    # <<< FIX: Override the problematic BranchService dependency >>>
+    mock_branch_service_instance = MagicMock()
+    # Configure create_branch to accept any keyword arguments
+    async def mock_create_branch(*args, **kwargs):
+        return True
+    mock_branch_service_instance.create_branch.side_effect = mock_create_branch
+    mock_branch_service_instance.commit_changes = AsyncMock(return_value="new_commit_sha")
+    mock_branch_service_instance.create_pull_request = AsyncMock(return_value={"pr_id": "123", "status": "open"})
+
+    async def override_get_branch_service():
+        return mock_branch_service_instance
+
+    app.dependency_overrides[get_branch_service] = override_get_branch_service
+    # <<< END FIX >>>
+
     with TestClient(app) as test_client:
         yield test_client
     

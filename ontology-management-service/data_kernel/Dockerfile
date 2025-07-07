@@ -9,13 +9,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY requirements.txt .
-COPY data_kernel/requirements.txt data_kernel/
+COPY ontology-management-service/requirements.txt .
+COPY ontology-management-service/data_kernel/requirements.txt data_kernel/
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -r data_kernel/requirements.txt
 
 # Copy the application code
-COPY . .
+COPY ontology-management-service/ .
 
 # Generate proto stubs
 RUN python -m grpc_tools.protoc \

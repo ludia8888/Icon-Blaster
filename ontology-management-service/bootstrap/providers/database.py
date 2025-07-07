@@ -5,6 +5,8 @@ from typing import Optional
 from bootstrap.config import AppConfig
 from database.clients.postgres_client import PostgresClient
 from database.clients.sqlite_client import SQLiteClient
+from database.clients.postgres_client_secure import PostgresClientSecure
+from database.clients.sqlite_client_secure import SQLiteClientSecure
 from database.clients.unified_database_client import UnifiedDatabaseClient
 # from database.clients.terminusdb_client import TerminusDBClient # TODO
 from .base import SingletonProvider
@@ -22,7 +24,7 @@ class PostgresClientProvider(SingletonProvider[PostgresClient]):
         config = self._container.resolve(AppConfig)
         if not config.postgres:
             raise ValueError("PostgreSQL configuration is missing.")
-        client = PostgresClient(config.postgres.model_dump())
+        client = PostgresClientSecure(config.postgres.model_dump())
         await client.connect()
         return client
 

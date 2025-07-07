@@ -41,3 +41,7 @@ class EventProvider(Provider[EventGatewayStub]):
 def get_event_provider() -> EventProvider:
     """Get event provider instance."""
     return EventProvider()
+
+def get_event_gateway() -> EventGatewayStub:
+    """Get event gateway stub instance directly."""
+    return get_event_gateway_stub()

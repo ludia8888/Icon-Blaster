@@ -22,6 +22,8 @@ class BranchState(str, Enum):
     ACTIVE = "ACTIVE"                    # Normal operation, read/write allowed
     LOCKED_FOR_WRITE = "LOCKED_FOR_WRITE"  # Indexing in progress, read-only
     READY = "READY"                      # Indexing complete, ready for merge
+    MERGED = "MERGED"                    # Branch has been successfully merged
+    FAILED = "FAILED"                    # An operation on the branch failed
     ARCHIVED = "ARCHIVED"                # Branch deleted, historical record
     ERROR = "ERROR"                      # Error state, requires manual intervention
 

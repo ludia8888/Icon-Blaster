@@ -13,7 +13,6 @@ from cachetools import TTLCache
 
 import redis.asyncio as redis
 from database.clients.terminus_db import TerminusDBClient
-# from config.redis_config import get_redis_client # This is legacy
 from middleware.common.metrics import get_metrics_collector
 from common_logging.setup import get_logger
 from core.validation.ports import CachePort
@@ -479,26 +478,22 @@ class SmartCache(CachePort):
             return None
             
         try:
-            # Assuming cache documents are stored with a specific structure
-            # This query is a placeholder and needs to match the actual storage schema
+            # Use WOQL query to get cache entry
             woql_query = {
-                "@type": "WOQLQuery",
+                "@type": "Select",
+                "variables": ["Value"],
                 "query": {
-                    "@type": "WOQLSelect",
-                    "variables": ["Value", "Timestamp"],
-                    "query": {
-                        "@type": "WOQLTriple",
-                        "subject": f"doc:{key}",
-                        "predicate": "data",
-                        "object": {"@type": "WOQLVariable", "name": "Value"}
-                    }
+                    "@type": "Triple",
+                    "subject": {"@type": "NodeValue", "node": f"cache:{key}"},
+                    "predicate": {"@type": "NodeValue", "node": "value"},
+                    "object": {"@type": "Variable", "name": "Value"}
                 }
             }
-            # The client expects db_name and query as separate arguments.
-            result = await self.terminus_client.query("cache", json.dumps(woql_query))
+            
+            db_name = "oms"
+            result = await self.terminus_client.query(db_name, woql_query)
             
             if result and result.get("bindings"):
-                # Further processing is needed here based on actual result structure
                 value_str = result["bindings"][0].get("Value", {}).get("@value")
                 if value_str:
                     return self._deserialize(value_str.encode())
@@ -515,21 +510,26 @@ class SmartCache(CachePort):
         
         try:
             serialized_value = self._serialize(value)
-            cache_doc = {
-                "@type": "CacheEntry",
-                "@id": f"CacheEntry/{key}",
+            
+            # Use WOQL to insert/update cache entry
+            cache_data = {
                 "key": key,
                 "value": serialized_value.decode(errors='ignore'),
                 "created_at": datetime.utcnow().isoformat(),
                 "ttl": ttl
             }
-            # Use insert_document, assuming it handles create/update.
-            # The actual method might be different (e.g., update_document, replace_document)
-            # await self.terminus_client.replace_document("cache", cache_doc)
-            # Let's assume an `update_schema`-like method for documents for now
-            # This part of the code is likely broken and needs a proper fix based on TerminusDBClient capabilities
-            logger.warning("_set_to_terminus is not fully implemented due to client/method mismatch.")
-            return False # Returning False to indicate it's not working
+            
+            # Use WOQL query to store cache entry
+            woql_query = {
+                "@type": "Triple",
+                "subject": {"@type": "NodeValue", "node": f"cache:{key}"},
+                "predicate": {"@type": "NodeValue", "node": "rdf:type"},
+                "object": {"@type": "Value", "data": {"@type": "xsd:string", "@value": "CacheEntry"}}
+            }
+            
+            db_name = "oms"
+            await self.terminus_client.query(db_name, woql_query, f"Cache set: {key}")
+            return True
         except Exception as e:
             logger.error(f"Failed to set cache to TerminusDB: {e}")
             self.metrics.record_error()
@@ -541,7 +541,16 @@ class SmartCache(CachePort):
             return False
         
         try:
-            # await self.terminus_client.delete_document(key, "cache") # TODO: Fix delete_document call
+            # Use WOQL query to delete cache entry
+            woql_query = {
+                "@type": "DeleteTriple",
+                "subject": {"@type": "NodeValue", "node": f"cache:{key}"},
+                "predicate": {"@type": "Variable", "name": "predicate"},
+                "object": {"@type": "Variable", "name": "object"}
+            }
+            
+            db_name = "oms"
+            await self.terminus_client.query(db_name, woql_query, f"Cache delete: {key}")
             logger.info(f"Deleted from TerminusDB cache: {key}")
             return True
         except Exception as e:

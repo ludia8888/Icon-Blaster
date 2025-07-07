@@ -34,6 +34,7 @@ BENEFITS:
 
 import asyncio
 import json
+import os
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
@@ -41,18 +42,16 @@ from typing import Dict, Any, List, Optional, Union, AsyncIterator, TypeVar
 from contextlib import asynccontextmanager
 import logging
 
-# from terminusdb_client import WOQLClient
-# from terminusdb_client.errors import DatabaseError
-
-# from shared.database.postgres_connector import PostgresConnector
-# from shared.database.sqlite_connector import SQLiteConnector
-from .postgres_client import PostgresClient
-from .sqlite_client import SQLiteClient
-# Placeholder for the yet-to-be-fixed TerminusDB client
-# from .terminusdb_client import TerminusDBClient
+from .postgres_client_secure import PostgresClientSecure
+from .sqlite_client_secure import SQLiteClientSecure
+from .terminus_db import TerminusDBClient
 
 from common_logging.setup import get_logger
 from core.validation.ports import TerminusPort
+
+# Type aliases for the client classes
+PostgresClient = PostgresClientSecure
+SQLiteClient = SQLiteClientSecure
 
 logger = get_logger(__name__)
 
@@ -84,12 +83,12 @@ class UnifiedDatabaseClient:
     
     def __init__(
         self,
-        # terminus_client: Optional[TerminusDBClient], # TODO: Re-enable when fixed
+        terminus_client: Optional[TerminusDBClient] = None,
         postgres_client: Optional[PostgresClient] = None,
         sqlite_client: Optional[SQLiteClient] = None,
         default_backend: DatabaseBackend = DatabaseBackend.TERMINUSDB
     ):
-        # self.terminus_client = terminus_client
+        self.terminus_client = terminus_client
         self.postgres_client = postgres_client
         self.sqlite_client = sqlite_client
         self.default_backend = default_backend
@@ -128,8 +127,8 @@ class UnifiedDatabaseClient:
             if self._connected:
                 return
             
-            # if self.terminus_client:
-            #     await self.terminus_client.connect()
+            if self.terminus_client:
+                await self.terminus_client._initialize_client()
             
             if self.postgres_client:
                 await self.postgres_client.connect()
@@ -146,7 +145,10 @@ class UnifiedDatabaseClient:
         for pattern, backend in self._routing_rules.items():
             if pattern in collection.lower():
                 # Check if backend is available
-                if backend == DatabaseBackend.POSTGRESQL and (not self.postgres_client or not self.postgres_client.is_connected):
+                if backend == DatabaseBackend.TERMINUSDB and (not self.terminus_client or not self.terminus_client._client):
+                    # Fallback to SQLite
+                    return DatabaseBackend.SQLITE
+                elif backend == DatabaseBackend.POSTGRESQL and (not self.postgres_client or not self.postgres_client.is_connected):
                     # Fallback to SQLite
                     return DatabaseBackend.SQLITE
                 return backend
@@ -173,10 +175,9 @@ class UnifiedDatabaseClient:
                 raise ConnectionError("SQLite client not configured.")
             return await self.sqlite_client.create(collection, document)
         elif backend == DatabaseBackend.TERMINUSDB:
-            # if not self.terminus_client:
-            #     raise ConnectionError("TerminusDB client not configured.")
-            # return await self.terminus_client.create(collection, document, author, message)
-            raise NotImplementedError("TerminusDB client is not yet integrated.")
+            if not self.terminus_client:
+                raise ConnectionError("TerminusDB client not configured.")
+            return await self._terminus_create(collection, document, author, message)
         else:
             raise ValueError(f"Unsupported backend for create: {backend}")
     
@@ -199,10 +200,9 @@ class UnifiedDatabaseClient:
                 raise ConnectionError("SQLite client not configured.")
             return await self.sqlite_client.read(collection, query, limit, offset)
         elif backend == DatabaseBackend.TERMINUSDB:
-            # if not self.terminus_client:
-            #     raise ConnectionError("TerminusDB client not configured.")
-            # return await self.terminus_client.read(collection, query, limit, offset)
-            raise NotImplementedError("TerminusDB client is not yet integrated.")
+            if not self.terminus_client:
+                raise ConnectionError("TerminusDB client not configured.")
+            return await self._terminus_read(collection, query, limit, offset)
         else:
             raise ValueError(f"Unsupported backend for read: {backend}")
     
@@ -228,10 +228,9 @@ class UnifiedDatabaseClient:
             affected_rows = await self.sqlite_client.update(collection, doc_id, updates)
             return affected_rows > 0
         elif backend == DatabaseBackend.TERMINUSDB:
-            # if not self.terminus_client:
-            #     raise ConnectionError("TerminusDB client not configured.")
-            # return await self.terminus_client.update(collection, doc_id, updates, author, message)
-            raise NotImplementedError("TerminusDB client is not yet integrated.")
+            if not self.terminus_client:
+                raise ConnectionError("TerminusDB client not configured.")
+            return await self._terminus_update(collection, doc_id, updates, author, message)
         else:
             raise ValueError(f"Unsupported backend for update: {backend}")
     
@@ -256,10 +255,9 @@ class UnifiedDatabaseClient:
             affected_rows = await self.sqlite_client.delete(collection, doc_id)
             return affected_rows > 0
         elif backend == DatabaseBackend.TERMINUSDB:
-            # if not self.terminus_client:
-            #     raise ConnectionError("TerminusDB client not configured.")
-            # return await self.terminus_client.delete(collection, doc_id, author, message)
-            raise NotImplementedError("TerminusDB client is not yet integrated.")
+            if not self.terminus_client:
+                raise ConnectionError("TerminusDB client not configured.")
+            return await self._terminus_delete(collection, doc_id, author, message)
         else:
             raise ValueError(f"Unsupported backend for delete: {backend}")
     
@@ -354,6 +352,138 @@ class UnifiedDatabaseClient:
         
         return changes
     
+    # TerminusDB specific operations
+    async def _terminus_create(self, collection: str, document: Dict[str, Any], author: str = "system", message: Optional[str] = None) -> Any:
+        """Create document in TerminusDB using WOQL"""
+        db_name = os.getenv("TERMINUSDB_DB", "oms")
+        
+        # Ensure database exists
+        try:
+            await self.terminus_client.create_database(db_name)
+        except Exception:
+            pass  # Database might already exist
+        
+        # Generate document ID if not provided
+        doc_id = document.get("@id") or document.get("id") or f"{collection}_{self._generate_id()}"
+        
+        # Create WOQL query to insert document
+        woql_query = {
+            "@type": "Triple",
+            "subject": {"@type": "NodeValue", "node": doc_id},
+            "predicate": {"@type": "NodeValue", "node": "rdf:type"},
+            "object": {"@type": "Value", "data": {"@type": "xsd:string", "@value": collection}}
+        }
+        
+        # Add document properties
+        for key, value in document.items():
+            if key not in ["@id", "id"]:
+                property_triple = {
+                    "@type": "Triple",
+                    "subject": {"@type": "NodeValue", "node": doc_id},
+                    "predicate": {"@type": "NodeValue", "node": key},
+                    "object": {"@type": "Value", "data": {"@type": "xsd:string", "@value": str(value)}}
+                }
+                # For complex queries, we'd need to use WOQL's And operator
+        
+        commit_msg = message or f"Create {collection} document"
+        result = await self.terminus_client.query(db_name, woql_query, commit_msg)
+        
+        return {"id": doc_id, "created": True, "result": result}
+    
+    async def _terminus_read(self, collection: str, query: Optional[Dict[str, Any]] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Read documents from TerminusDB using WOQL"""
+        db_name = os.getenv("TERMINUSDB_DB", "oms")
+        
+        # Build WOQL query to find documents of the given collection type
+        woql_query = {
+            "@type": "Select",
+            "variables": ["doc"],
+            "query": {
+                "@type": "Triple",
+                "subject": {"@type": "Variable", "name": "doc"},
+                "predicate": {"@type": "NodeValue", "node": "rdf:type"},
+                "object": {"@type": "Value", "data": {"@type": "xsd:string", "@value": collection}}
+            }
+        }
+        
+        if limit:
+            woql_query["limit"] = limit
+        if offset:
+            woql_query["start"] = offset
+            
+        try:
+            result = await self.terminus_client.query(db_name, woql_query)
+            # Parse WOQL result and convert to list of documents
+            documents = []
+            if "bindings" in result:
+                for binding in result["bindings"]:
+                    documents.append({"id": binding.get("doc", "unknown")})
+            return documents
+        except Exception as e:
+            logger.warning(f"TerminusDB read operation failed: {e}")
+            return []
+    
+    async def _terminus_update(self, collection: str, doc_id: str, updates: Dict[str, Any], author: str = "system", message: Optional[str] = None) -> bool:
+        """Update document in TerminusDB using WOQL"""
+        db_name = os.getenv("TERMINUSDB_DB", "oms")
+        
+        # For updates, we'd typically need to delete old properties and add new ones
+        # This is a simplified implementation
+        woql_queries = []
+        
+        for key, value in updates.items():
+            update_triple = {
+                "@type": "UpdateTriple",
+                "subject": {"@type": "NodeValue", "node": doc_id},
+                "predicate": {"@type": "NodeValue", "node": key},
+                "new_object": {"@type": "Value", "data": {"@type": "xsd:string", "@value": str(value)}}
+            }
+            woql_queries.append(update_triple)
+        
+        # If multiple updates, use And operator
+        if len(woql_queries) == 1:
+            woql_query = woql_queries[0]
+        else:
+            woql_query = {
+                "@type": "And",
+                "and": woql_queries
+            }
+        
+        commit_msg = message or f"Update {collection} document {doc_id}"
+        
+        try:
+            await self.terminus_client.query(db_name, woql_query, commit_msg)
+            return True
+        except Exception as e:
+            logger.error(f"TerminusDB update failed: {e}")
+            return False
+    
+    async def _terminus_delete(self, collection: str, doc_id: str, author: str = "system", message: Optional[str] = None) -> bool:
+        """Delete document from TerminusDB using WOQL"""
+        db_name = os.getenv("TERMINUSDB_DB", "oms")
+        
+        # Delete all triples with this document as subject
+        woql_query = {
+            "@type": "DeleteTriple",
+            "subject": {"@type": "NodeValue", "node": doc_id},
+            "predicate": {"@type": "Variable", "name": "predicate"},
+            "object": {"@type": "Variable", "name": "object"}
+        }
+        
+        commit_msg = message or f"Delete {collection} document {doc_id}"
+        
+        try:
+            await self.terminus_client.query(db_name, woql_query, commit_msg)
+            return True
+        except Exception as e:
+            logger.error(f"TerminusDB delete failed: {e}")
+            return False
+    
+    def _generate_id(self) -> str:
+        """Generate unique ID for documents"""
+        import uuid
+        return str(uuid.uuid4())
+    
     async def close(self):
         """Close connections to all configured backends."""
         async with self._lock:
@@ -367,6 +497,9 @@ class UnifiedDatabaseClient:
             if self.sqlite_client:
                 await self.sqlite_client.close()
 
+            if self.terminus_client:
+                await self.terminus_client.close()
+                
             self._connected = False
             logger.info("Unified database client disconnected")
 

@@ -3,6 +3,8 @@ OMS 공통 예외 클래스들
 비즈니스 로직과 시스템 레벨 예외를 구분하여 정의
 """
 
+from typing import Optional, Dict, Any
+
 class OMSException(Exception):
     """OMS 시스템의 최상위 예외 클래스"""
     pass
@@ -26,7 +28,22 @@ class ConflictError(OMSException):
     - 유효하지 않은 상태 전환
     - 권한 없는 작업 시도
     """
-    pass
+    def __init__(
+        self,
+        message: str,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        expected_commit: Optional[str] = None,
+        actual_commit: Optional[str] = None,
+        merge_hints: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message)
+        self.message = message
+        self.resource_type = resource_type
+        self.resource_id = resource_id
+        self.expected_commit = expected_commit
+        self.actual_commit = actual_commit
+        self.merge_hints = merge_hints
 
 
 class ValidationError(OMSException):

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
-import punq
+# import punq  # Replaced with dependency-injector
 from typing import Optional
 
 from bootstrap.dependencies import init_container
@@ -84,7 +84,7 @@ from api.graphql.main import app as websocket_app
 
 logger = get_logger(__name__)
 
-def create_app(container: Optional[punq.Container] = None) -> FastAPI:
+def create_app(container=None) -> FastAPI:
     """Application factory, creating a new FastAPI application."""
     
     config = get_config()
@@ -109,12 +109,12 @@ def create_app(container: Optional[punq.Container] = None) -> FastAPI:
     
     # Add redis client and circuit breaker to app state for middleware access
     try:
-        from redis import asyncio as aioredis
-        from middleware.circuit_breaker import CircuitBreakerGroup
-        app.state.redis_client = container.resolve(aioredis.Redis)
-        app.state.circuit_breaker_group = container.resolve(CircuitBreakerGroup)
+        app.state.redis_client = container.redis_provider()
+        app.state.circuit_breaker_group = container.circuit_breaker_provider()
+        logger.info("Successfully loaded Redis and Circuit Breaker from container.")
     except Exception as e:
-        logger.warning(f"Could not resolve redis or circuit breaker from container: {e}")
+        logger.critical(f"Could not resolve redis or circuit breaker from container: {e}", exc_info=True)
+        # In a real scenario, we might want to prevent the app from starting.
         app.state.redis_client = None
         app.state.circuit_breaker_group = None
 

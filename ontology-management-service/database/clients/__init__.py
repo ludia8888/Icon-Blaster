@@ -7,7 +7,8 @@ from .unified_http_client import (
     ClientMode,
     HTTPClientConfig
 )
-from .terminus_db import TerminusDBClient
+# Lazy import TerminusDBClient to avoid missing httpx_pool dependency during tests
+# from .terminus_db import TerminusDBClient
 from .redis_ha_client import RedisHAClient
 
 __all__ = [
@@ -19,6 +20,6 @@ __all__ = [
     "ClientMode",
     "HTTPClientConfig",
     # Database Clients
-    "TerminusDBClient",
+    # "TerminusDBClient",
     "RedisHAClient"
 ]

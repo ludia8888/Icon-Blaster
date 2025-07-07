@@ -1,23 +1,25 @@
 """
-Terminus DB 클라이언트 - Connection Pool 기반 프로덕션 안정성 보장
+Terminus DB 클라이언트 - 표준 httpx 클라이언트 기반으로 리팩토링됨
 TerminusDB 내부 LRU 캐싱 활용 최적화 (섹션 8.6.1 참조)
 mTLS 지원으로 보안 강화 (NFR-S2)
 
-Connection Pool을 통한 안정적인 연결 관리와 TerminusDB의 TERMINUSDB_LRU_CACHE_SIZE
-환경변수를 통한 내부 캐싱을 활용하여 높은 성능과 안정성을 달성합니다.
+표준 `httpx.AsyncClient`와 `httpx.Limits`를 사용하여 안정적인 연결 관리를 수행합니다.
 """
 import logging
 import os
 import ssl
 from typing import Any, Dict, List, Optional
+from urllib.parse import urljoin
 
 import httpx
-from opentelemetry import trace
+# from httpx_pool import AsyncConnectionPool, ConnectionConfig # 제거됨
 
-from database.clients.unified_http_client import (
-    create_terminus_client, create_secure_client, HTTPClientConfig, ClientMode, UnifiedHTTPClient
-)
+# from database.clients.unified_http_client import ( # 제거됨
+#     create_terminus_client, create_secure_client, HTTPClientConfig, ClientMode, UnifiedHTTPClient
+# )
 from utils.retry_strategy import with_retry, DB_WRITE_CONFIG, DB_READ_CONFIG, DB_CRITICAL_CONFIG
+from common_logging.setup import get_logger
+# from .base import BaseDatabaseClient, DatabaseError, NotFoundError # 삭제됨
 
 logger = logging.getLogger(__name__)
 
@@ -27,22 +29,23 @@ def trace_method(name):
         return func
     return decorator
 
+# add_span_attributes placeholder
+def add_span_attributes(attrs):
+    pass
+
 
 class TerminusDBClient:
-    """TerminusDB 비동기 클라이언트 - Connection Pool 기반 + 내부 LRU 캐싱 활용"""
+    """TerminusDB 비동기 클라이언트 - 표준 httpx.AsyncClient 기반"""
 
     def __init__(self, endpoint: str = "http://localhost:6363",
                  username: str = "admin",
                  password: str = "changeme-admin-pass",
-                 service_name: str = "schema-service",
-                 use_connection_pool: bool = True):
+                 service_name: str = "schema-service"):
         self.endpoint = endpoint
         self.username = username
         self.password = password
         self.service_name = service_name
-        self.use_connection_pool = use_connection_pool
-        self.client = None
-        self.pool_config = None
+        self._client: Optional[httpx.AsyncClient] = None
 
         # TerminusDB 내부 캐싱 설정
         self.cache_size = int(os.getenv("TERMINUSDB_LRU_CACHE_SIZE", "500000000"))  # 500MB
@@ -50,20 +53,9 @@ class TerminusDBClient:
 
         # mTLS 설정
         self.use_mtls = os.getenv("TERMINUSDB_USE_MTLS", "false").lower() == "true"
+        
+        logger.info(f"TerminusDB client configured - service: {self.service_name}, mTLS: {self.use_mtls}")
 
-        if self.use_connection_pool:
-            self.pool_config = ConnectionConfig(
-                terminus_url=endpoint,
-                max_connections=int(os.getenv("DB_MAX_CONNECTIONS", "20")),
-                min_connections=int(os.getenv("DB_MIN_CONNECTIONS", "5")),
-                max_idle_time=int(os.getenv("DB_MAX_IDLE_TIME", "300")),
-                connection_timeout=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
-                database=os.getenv("DB_NAME", "oms"),
-                service=service_name
-            )
-
-        logger.info(f"TerminusDB client initialized - service: {service_name}, "
-                   f"connection pool: {use_connection_pool}, mTLS: {self.use_mtls}")
 
     async def __aenter__(self):
         await self._initialize_client()
@@ -73,95 +65,68 @@ class TerminusDBClient:
         await self.close()
 
     async def _initialize_client(self):
-        """클라이언트 초기화 - mTLS 지원 (UnifiedHTTPClient 사용)"""
+        """클라이언트 초기화 - mTLS 지원"""
+        if self._client:
+            return
+            
         try:
-            # Connection pool 설정을 UnifiedHTTPClient에 전달
-            connection_pool_config = {}
-            if self.use_connection_pool and self.pool_config:
-                connection_pool_config = {
-                    "max_connections": self.pool_config.max_connections,
-                    "max_keepalive_connections": max(self.pool_config.min_connections, 5),
-                }
+            # Connection pool 설정을 httpx.Limits로 대체
+            limits = httpx.Limits(
+                max_connections=int(os.getenv("DB_MAX_CONNECTIONS", "20")),
+                max_keepalive_connections=int(os.getenv("DB_MIN_CONNECTIONS", "5")),
+                keepalive_expiry=int(os.getenv("DB_MAX_IDLE_TIME", "300")),
+            )
             
             # mTLS 설정 준비
             ssl_context = None
-            cert_path = None
-            key_path = None
-            ca_path = None
-            
             if self.use_mtls:
-                try:
-                    # mTLS 설정 로드 (실제 구현에서는 get_mtls_config 사용)
-                    # config = get_mtls_config(self.service_name)
-                    # cert_path = config.cert_path
-                    # key_path = config.key_path  
-                    # ca_path = config.ca_cert_path
+                cert_path = os.getenv("TERMINUSDB_CERT_PATH")
+                key_path = os.getenv("TERMINUSDB_KEY_PATH")
+                ca_path = os.getenv("TERMINUSDB_CA_PATH")
+                
+                if cert_path and key_path:
+                    ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                    if ca_path:
+                        ssl_context.load_verify_locations(ca_path)
+                    ssl_context.load_cert_chain(cert_path, key_path)
+                    ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
                     
-                    # 임시로 환경변수에서 로드
-                    cert_path = os.getenv("TERMINUSDB_CERT_PATH")
-                    key_path = os.getenv("TERMINUSDB_KEY_PATH")
-                    ca_path = os.getenv("TERMINUSDB_CA_PATH")
-                    
-                    if cert_path and key_path:
-                        # SSL 컨텍스트 생성
-                        ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-                        if ca_path:
-                            ssl_context.load_verify_locations(ca_path)
-                        ssl_context.load_cert_chain(cert_path, key_path)
-                        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
-                        
-                        # HTTPS 엔드포인트로 변경
-                        if self.endpoint.startswith("http://"):
-                            self.endpoint = self.endpoint.replace("http://", "https://")
-                        
-                        logger.info("TerminusDB mTLS configuration prepared")
-                    else:
-                        logger.warning("mTLS certificates not found, falling back to standard TLS")
-                        self.use_mtls = False
-                        
-                except Exception as e:
-                    logger.warning(f"mTLS setup failed, will use fallback: {e}")
-                    # UnifiedHTTPClient의 fallback 기능이 처리함
-            
-            # UnifiedHTTPClient로 클라이언트 생성
-            self.client = create_terminus_client(
-                endpoint=self.endpoint,
-                username=self.username,
-                password=self.password,
-                enable_mtls=self.use_mtls,
-                ssl_context=ssl_context,
-                cert_path=cert_path,
-                key_path=key_path,
-                ca_path=ca_path,
-                connection_pool_config=connection_pool_config,
-                enable_mtls_fallback=True,
-                enable_tracing=True,
+                    if self.endpoint.startswith("http://"):
+                        self.endpoint = self.endpoint.replace("http://", "https://")
+                    logger.info("TerminusDB mTLS configuration prepared")
+                else:
+                    logger.warning("mTLS certificates not found, falling back to standard TLS")
+                    self.use_mtls = False
+
+            self._client = httpx.AsyncClient(
+                base_url=self.endpoint,
+                auth=(self.username, self.password),
+                verify=ssl_context if ssl_context else True,
+                limits=limits,
+                timeout=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
             )
-            
-            logger.info(f"TerminusDB client initialized - mTLS: {self.use_mtls}, Pool: {self.use_connection_pool}")
+            logger.info(f"TerminusDB httpx.AsyncClient initialized - mTLS: {self.use_mtls}")
                 
         except Exception as e:
             logger.error(f"Failed to initialize TerminusDB client: {e}")
             # 최후의 fallback - 기본 클라이언트
-            self.client = create_terminus_client(
-                endpoint=self.endpoint,
-                username=self.username,
-                password=self.password,
-                enable_mtls=False,
-                enable_mtls_fallback=False,
+            self._client = httpx.AsyncClient(
+                base_url=self.endpoint,
+                auth=(self.username, self.password)
             )
             self.use_mtls = False
-            logger.info("TerminusDB client initialized with basic configuration")
+            logger.info("TerminusDB client initialized with basic httpx configuration")
 
     async def close(self):
         """클라이언트 종료"""
-        if self.client:
-            await self.client.close()
+        if self._client:
+            await self._client.aclose()
 
     async def ping(self):
         """TerminusDB 서버 연결 확인"""
+        if not self._client: return False
         try:
-            response = await self.client.get("/api/info")
+            response = await self._client.get("/api/info")
             return response.status_code == 200
         except Exception:
             return False
@@ -170,6 +135,7 @@ class TerminusDBClient:
     @trace_method("terminusdb.create_database")
     async def create_database(self, db_name: str, label: Optional[str] = None):
         """데이터베이스 생성 - 자동 재시도 포함"""
+        if not self._client: raise ConnectionError("Client not initialized")
         add_span_attributes({"db.name": db_name, "db.operation": "create_database"})
         url = f"/api/db/admin/{db_name}"
 
@@ -181,11 +147,7 @@ class TerminusDBClient:
         }
 
         try:
-            # Trace context is automatically injected by UnifiedHTTPClient if enabled
-            response = await self.client.post(
-                url,
-                json=payload
-            )
+            response = await self._client.post(url, json=payload)
             response.raise_for_status()
             logger.info(f"Database {db_name} created successfully")
             return True
@@ -198,16 +160,36 @@ class TerminusDBClient:
     @with_retry("terminusdb_delete_database", config=DB_CRITICAL_CONFIG)
     async def delete_database(self, db_name: str):
         """데이터베이스 삭제 - 중요 작업을 위한 강화된 재시도"""
+        if not self._client: raise ConnectionError("Client not initialized")
         url = f"/api/db/admin/{db_name}"
 
-        response = await self.client.delete(url)
+        response = await self._client.delete(url)
         response.raise_for_status()
         logger.info(f"Database {db_name} deleted successfully")
+
+    @with_retry("terminusdb_query_branch", config=DB_READ_CONFIG)
+    @trace_method("terminusdb.query_branch")
+    async def query_branch(self, db_name: str, branch_name: str, query: str, commit_msg: Optional[str] = None):
+        """특정 브랜치를 대상으로 WOQL 쿼리를 실행합니다."""
+        if not self._client: raise ConnectionError("Client not initialized")
+        add_span_attributes({"db.name": db_name, "db.branch": branch_name, "db.operation": "query"})
+        # URL 형식: /api/woql/{organization}/{db}/{branch}
+        url = f"/api/woql/admin/{db_name}/{branch_name}"
+
+        payload = {
+            "query": query,
+            "commit_info": {"message": commit_msg or f"Query on branch {branch_name}"}
+        }
+
+        response = await self._client.post(url, json=payload)
+        response.raise_for_status()
+        return response.json()
 
     @with_retry("terminusdb_query", config=DB_READ_CONFIG)
     @trace_method("terminusdb.query")
     async def query(self, db_name: str, query: str, commit_msg: Optional[str] = None):
         """WOQL 쿼리 실행 - 읽기 작업 최적화된 재시도"""
+        if not self._client: raise ConnectionError("Client not initialized")
         add_span_attributes({"db.name": db_name, "db.operation": "query"})
         url = f"/api/woql/admin/{db_name}"
 
@@ -216,38 +198,79 @@ class TerminusDBClient:
             "commit_info": {"message": commit_msg or "Query execution"}
         }
 
-        response = await self.client.post(
-            url,
-            json=payload
-        )
+        response = await self._client.post(url, json=payload)
         response.raise_for_status()
         return response.json()
 
+    @with_retry("terminusdb_get_branch_info", config=DB_READ_CONFIG)
+    @trace_method("terminusdb.get_branch_info")
+    async def get_branch_info(self, db_name: str, branch_name: str) -> Optional[Dict[str, Any]]:
+        """특정 브랜치의 정보를 가져옵니다 (head commit 등). 브랜치가 없으면 None을 반환합니다."""
+        if not self._client: raise ConnectionError("Client not initialized")
+        add_span_attributes({"db.name": db_name, "db.branch": branch_name, "db.operation": "get_branch_info"})
+        url = f"/api/branch/admin/{db_name}/{branch_name}"
+
+        try:
+            response = await self._client.get(url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(f"Branch '{branch_name}' not found in db '{db_name}'.")
+                return None
+            raise
+    
+    @with_retry("terminusdb_get_document", config=DB_READ_CONFIG)
+    @trace_method("terminusdb.get_document")
+    async def get_document(self, db_name: str, branch_name: str, document_id: str) -> Optional[Dict[str, Any]]:
+        """특정 브랜치에서 ID로 문서를 가져옵니다. 문서가 없으면 None을 반환합니다."""
+        if not self._client: raise ConnectionError("Client not initialized")
+        add_span_attributes({"db.name": db_name, "db.branch": branch_name, "document.id": document_id})
+        url = f"/api/document/admin/{db_name}/{branch_name}"
+        
+        try:
+            response = await self._client.get(url, params={"id": document_id})
+            response.raise_for_status()
+            # TerminusDB는 문서가 없을 때 200 OK와 빈 객체 {}를 반환할 수 있습니다.
+            result = response.json()
+            if not result:
+                 logger.warning(f"Document '{document_id}' not found or is empty in branch '{branch_name}'.")
+                 return None
+            return result
+        except httpx.HTTPStatusError as e:
+            # 404도 명시적으로 처리
+            if e.response.status_code == 404:
+                logger.warning(f"Document endpoint not found for branch '{branch_name}' or document '{document_id}' does not exist.")
+                return None
+            raise
+
     async def get_databases(self):
         """데이터베이스 목록 조회"""
+        if not self._client: raise ConnectionError("Client not initialized")
         try:
-            # TerminusDB 11.1.0에서는 다른 엔드포인트 사용
-            response = await self.client.get("/api/organizations")
-            if response.status_code == 200:
-                return response.json()
-            else:
-                # 대안 방법: info에서 조직 정보 확인
-                response = await self.client.get("/api/info")
-                return [{"name": "admin", "status": "available"}]
+            response = await self._client.get("/api/info")
+            response.raise_for_status()
+            # 실제 데이터베이스 목록을 반환하는 로직이 필요. 여기서는 info를 기반으로 단순화.
+            info = response.json()
+            if "databases" in info:
+                return [{"name": db, "status": "available"} for db in info["databases"]]
+            return [{"name": "admin", "status": "available"}]
         except Exception as e:
             logger.warning(f"Failed to get databases: {e}")
             return []
 
     async def get_schema(self, db_name: str):
         """스키마 조회"""
+        if not self._client: raise ConnectionError("Client not initialized")
         url = f"/api/schema/admin/{db_name}"
         
-        response = await self.client.get(url)
+        response = await self._client.get(url)
         response.raise_for_status()
         return response.json()
 
     async def update_schema(self, db_name: str, schema: Dict[str, Any], commit_msg: str = "Schema update"):
         """스키마 업데이트"""
+        if not self._client: raise ConnectionError("Client not initialized")
         url = f"/api/schema/admin/{db_name}"
         
         payload = {
@@ -255,9 +278,130 @@ class TerminusDBClient:
             "commit_info": {"message": commit_msg}
         }
         
-        response = await self.client.post(
-            url,
-            json=payload
-        )
+        response = await self._client.post(url, json=payload)
         response.raise_for_status()
+        return response.json()
+
+    @with_retry("terminusdb_create_branch", config=DB_WRITE_CONFIG)
+    @trace_method("terminusdb.create_branch")
+    async def create_branch(self, db_name: str, new_branch_name: str, source_branch: str = "main") -> bool:
+        """새로운 브랜치를 생성합니다. 성공 시 True, 이미 존재하면 False를 반환합니다."""
+        if not self._client: raise ConnectionError("Client not initialized")
+        add_span_attributes({
+            "db.name": db_name,
+            "db.operation": "create_branch",
+            "branch.new": new_branch_name,
+            "branch.source": source_branch
+        })
+        url = f"/api/branch/admin/{db_name}"
+        payload = {"origin": source_branch, "new_branch": new_branch_name}
+
+        try:
+            response = await self._client.post(url, json=payload)
+            response.raise_for_status()
+            logger.info(f"Branch '{new_branch_name}' created from '{source_branch}' in db '{db_name}'.")
+            return True
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 400 and "already exists" in e.response.text:
+                logger.warning(f"Branch '{new_branch_name}' already exists in db '{db_name}'.")
+                return False
+            logger.error(f"Failed to create branch '{new_branch_name}': {e.response.text}")
+            raise
+    
+    @with_retry("terminusdb_insert_document", config=DB_WRITE_CONFIG)
+    @trace_method("terminusdb.insert_document")
+    async def insert_document(self, db_name: str, branch_name: str, document: Dict[str, Any], commit_msg: Optional[str] = None) -> Dict[str, Any]:
+        """특정 브랜치에 문서를 삽입합니다."""
+        if not self._client: raise ConnectionError("Client not initialized")
+        add_span_attributes({
+            "db.name": db_name,
+            "db.branch": branch_name,
+            "db.operation": "insert_document"
+        })
+        url = f"/api/document/admin/{db_name}/{branch_name}"
+        
+        payload = {
+            "commit_info": {"message": commit_msg or f"Inserted document into {branch_name}"},
+            "document": document
+        }
+
+        response = await self._client.post(url, json=payload)
+        response.raise_for_status()
+        logger.info(f"Document inserted into branch '{branch_name}' in db '{db_name}'.")
+        return response.json()
+
+    @with_retry("terminusdb_delete_branch", config=DB_CRITICAL_CONFIG)
+    @trace_method("terminusdb.delete_branch")
+    async def delete_branch(self, db_name: str, branch_name: str) -> bool:
+        """네이티브 브랜치를 삭제합니다. 성공 시 True, 실패 시 예외가 발생합니다."""
+        if not self._client: raise ConnectionError("Client not initialized")
+        add_span_attributes({"db.name": db_name, "db.operation": "delete_branch", "branch.name": branch_name})
+        url = f"/api/branch/admin/{db_name}/{branch_name}"
+
+        try:
+            response = await self._client.delete(url)
+            response.raise_for_status()
+            logger.info(f"Branch '{branch_name}' deleted successfully from db '{db_name}'.")
+            return True
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(f"Branch '{branch_name}' not found for deletion in db '{db_name}'.")
+                return False # 찾을 수 없는 경우도 성공 처리의 일종으로 간주
+            logger.error(f"Failed to delete branch '{branch_name}': {e.response.text}")
+            raise
+
+    @with_retry("terminusdb_delete_document", config=DB_CRITICAL_CONFIG)
+    @trace_method("terminusdb.delete_document")
+    async def delete_document(self, db_name: str, branch_name: str, document_id: str, commit_msg: Optional[str] = None) -> bool:
+        """특정 브랜치에서 문서를 삭제합니다."""
+        if not self._client: raise ConnectionError("Client not initialized")
+        add_span_attributes({
+            "db.name": db_name,
+            "db.branch": branch_name,
+            "db.operation": "delete_document",
+            "document.id": document_id
+        })
+        url = f"/api/document/admin/{db_name}/{branch_name}"
+
+        payload = {
+            "commit_info": {"message": commit_msg or f"Deleted document {document_id}"},
+            "id": document_id
+        }
+
+        try:
+            # 린터가 delete+json 조합을 인식하지 못하는 문제 우회를 위해 request 메서드를 명시적으로 사용
+            response = await self._client.request("DELETE", url, json=payload)
+            response.raise_for_status()
+            logger.info(f"Document '{document_id}' deleted from branch '{branch_name}'.")
+            return True
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(f"Document '{document_id}' not found for deletion in branch '{branch_name}'.")
+                return False
+            logger.error(f"Failed to delete document '{document_id}': {e.response.text}")
+            raise
+
+    @with_retry("terminusdb_update_document", config=DB_WRITE_CONFIG)
+    @trace_method("terminusdb.update_document")
+    async def update_document(self, db_name: str, branch_name: str, document: Dict[str, Any], commit_msg: Optional[str] = None) -> Dict[str, Any]:
+        """특정 브랜치의 문서를 업데이트(덮어쓰기)합니다."""
+        if not self._client: raise ConnectionError("Client not initialized")
+        add_span_attributes({
+            "db.name": db_name,
+            "db.branch": branch_name,
+            "db.operation": "update_document"
+        })
+        # TerminusDB의 문서 업데이트는 삽입과 동일한 엔드포인트를 사용하지만,
+        # 문서에 @id가 포함되어 있으면 해당 문서를 덮어씁니다.
+        url = f"/api/document/admin/{db_name}/{branch_name}"
+        
+        payload = {
+            "commit_info": {"message": commit_msg or f"Updated document {document.get('@id', '')}"},
+            "document": document
+        }
+
+        # 업데이트는 PUT과 유사하게 동작하지만 TerminusDB에서는 POST를 사용합니다.
+        response = await self._client.post(url, json=payload)
+        response.raise_for_status()
+        logger.info(f"Document '{document.get('@id')}' updated in branch '{branch_name}'.")
         return response.json()

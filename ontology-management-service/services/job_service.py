@@ -11,9 +11,12 @@ from models.job import (
     Job, JobStatus, JobType, JobPriority,
     JobUpdate, JobFilter, JobStats, JobProgress, JobMetadata
 )
+from database.clients.unified_database_client import UnifiedDatabaseClient, DatabaseBackend
 from database.clients.terminus_db import TerminusDBClient
+from database.clients.sqlite_client_secure import SQLiteClientSecure
 from bootstrap.config import get_config
 from common_logging.setup import get_logger
+import os
 
 logger = get_logger(__name__)
 
@@ -26,26 +29,39 @@ class JobService:
     
     def __init__(self):
         config = get_config()
-        self.tdb_endpoint = config.database.endpoint
-        self.tdb = TerminusDBClient(self.tdb_endpoint)
+        
+        # Create TerminusDB client
+        terminus_endpoint = os.environ.get("TERMINUSDB_ENDPOINT", "http://localhost:6363")
+        terminus_client = TerminusDBClient(
+            endpoint=terminus_endpoint,
+            username=os.environ.get("TERMINUSDB_USER", "admin"),
+            password=os.environ.get("TERMINUSDB_PASSWORD", "changeme-admin-pass")
+        )
+        
+        # Create SQLite client as fallback
+        sqlite_client = SQLiteClientSecure(config=config.sqlite.model_dump())
+        
+        # Create unified database client
+        self.db_client = UnifiedDatabaseClient(
+            terminus_client=terminus_client,
+            sqlite_client=sqlite_client,
+            default_backend=DatabaseBackend.TERMINUSDB
+        )
+        
         self.db_name = "oms"
         self.jobs_branch = "_jobs"  # Dedicated branch for job tracking
         self._redis_client = None
+        self._initialized = False
     
     async def initialize(self):
-        """Initialize job tracking branch"""
+        """Initialize job tracking and database connection"""
         try:
-            # Create jobs branch if it doesn't exist
-            branches = await self.tdb.list_branches(self.db_name)
-            if self.jobs_branch not in [b.get('name') for b in branches]:
-                await self.tdb.create_branch(
-                    db=self.db_name,
-                    branch_name=self.jobs_branch,
-                    from_branch="main"
-                )
-                logger.info(f"Created jobs branch: {self.jobs_branch}")
+            if not self._initialized:
+                await self.db_client.connect()
+                self._initialized = True
+                logger.info("JobService database client initialized")
         except Exception as e:
-            logger.warning(f"Jobs branch initialization: {e}")
+            logger.warning(f"JobService initialization: {e}")
     
     async def create_job(
         self,
@@ -120,13 +136,18 @@ class JobService:
     
     async def get_job(self, job_id: str) -> Optional[Job]:
         """Get job by ID"""
-        doc = await self.tdb.get_document(
-            job_id,
-            db=self.db_name,
-            branch=self.jobs_branch
-        )
+        await self.initialize()
         
-        return Job(**doc) if doc else None
+        try:
+            docs = await self.db_client.read(
+                collection="jobs",
+                query={"id": job_id},
+                limit=1
+            )
+            return Job(**docs[0]) if docs else None
+        except Exception as e:
+            logger.error(f"Error getting job {job_id}: {e}")
+            return None
     
     async def update_job_status(
         self,
@@ -221,31 +242,34 @@ class JobService:
         offset: int = 0
     ) -> List[Job]:
         """List jobs with optional filters"""
-        # Build query
-        query = {
-            "@type": "Job"
-        }
+        await self.initialize()
         
-        if filters:
-            if filters.status:
-                query["status"] = {"$in": [s.value for s in filters.status]}
-            if filters.type:
-                query["type"] = {"$in": [t.value for t in filters.type]}
-            if filters.created_by:
-                query["created_by"] = filters.created_by
-            if filters.tenant_id:
-                query["tenant_id"] = filters.tenant_id
-        
-        # Get documents
-        docs = await self.tdb.query_documents(
-            query,
-            db=self.db_name,
-            branch=self.jobs_branch,
-            limit=limit,
-            offset=offset
-        )
-        
-        return [Job(**doc) for doc in docs]
+        try:
+            # Build query
+            query = {}
+            
+            if filters:
+                if filters.status:
+                    query["status"] = {"$in": [s.value for s in filters.status]}
+                if filters.type:
+                    query["type"] = {"$in": [t.value for t in filters.type]}
+                if filters.created_by:
+                    query["created_by"] = filters.created_by
+                if filters.tenant_id:
+                    query["tenant_id"] = filters.tenant_id
+            
+            # Get documents
+            docs = await self.db_client.read(
+                collection="jobs",
+                query=query,
+                limit=limit,
+                offset=offset
+            )
+            
+            return [Job(**doc) for doc in docs]
+        except Exception as e:
+            logger.error(f"Error listing jobs: {e}")
+            return []
     
     async def get_job_stats(
         self,
@@ -331,57 +355,64 @@ class JobService:
     
     async def _save_job(self, job: Job):
         """Save job to database"""
-        doc = job.model_dump()
-        doc["@type"] = "Job"
-        doc["@id"] = job.id
+        await self.initialize()
         
-        # Check if exists
-        existing = await self.tdb.get_document(
-            job.id,
-            db=self.db_name,
-            branch=self.jobs_branch
-        )
-        
-        if existing:
-            await self.tdb.update_document(
-                doc,
-                db=self.db_name,
-                branch=self.jobs_branch,
-                message=f"Update job {job.id}"
-            )
-        else:
-            await self.tdb.insert_document(
-                doc,
-                db=self.db_name,
-                branch=self.jobs_branch,
-                message=f"Create job {job.id}"
-            )
+        try:
+            doc = job.model_dump()
+            doc["id"] = job.id  # Ensure ID is set
+            
+            # Check if exists
+            existing = await self.get_job(job.id)
+            
+            if existing:
+                await self.db_client.update(
+                    collection="jobs",
+                    doc_id=job.id,
+                    updates=doc,
+                    message=f"Update job {job.id}"
+                )
+            else:
+                await self.db_client.create(
+                    collection="jobs",
+                    document=doc,
+                    message=f"Create job {job.id}"
+                )
+        except Exception as e:
+            logger.error(f"Error saving job {job.id}: {e}")
+            raise
     
     async def _delete_job(self, job_id: str):
         """Delete job from database"""
-        await self.tdb.delete_document(
-            job_id,
-            db=self.db_name,
-            branch=self.jobs_branch,
-            message=f"Delete job {job_id}"
-        )
+        await self.initialize()
+        
+        try:
+            await self.db_client.delete(
+                collection="jobs",
+                doc_id=job_id,
+                message=f"Delete job {job_id}"
+            )
+        except Exception as e:
+            logger.error(f"Error deleting job {job_id}: {e}")
+            raise
     
     async def _find_job_by_idempotency_key(
         self,
         idempotency_key: str
     ) -> Optional[Job]:
         """Find job by idempotency key"""
-        docs = await self.tdb.query_documents(
-            {
-                "@type": "Job",
-                "idempotency_key": idempotency_key
-            },
-            db=self.db_name,
-            branch=self.jobs_branch,
-            limit=1
-        )
+        await self.initialize()
         
-        return Job(**docs[0]) if docs else None
+        try:
+            docs = await self.db_client.read(
+                collection="jobs",
+                query={"idempotency_key": idempotency_key},
+                limit=1
+            )
+            
+            return Job(**docs[0]) if docs else None
+        except Exception as e:
+            logger.error(f"Error finding job by idempotency key {idempotency_key}: {e}")
+            return None
     
     async def _publish_job_event(self, job: Job, event_type: str):
         """Publish job event to Redis"""

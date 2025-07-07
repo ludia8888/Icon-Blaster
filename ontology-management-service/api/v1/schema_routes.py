@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Annotated
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, Path, Body, Request
 
-from bootstrap.dependencies import get_schema_service
+from bootstrap.dependencies import get_schema_service_from_container
 from core.interfaces import SchemaServiceProtocol
 from middleware.auth_middleware import get_current_user
 from database.dependencies import get_secure_database
@@ -30,7 +30,7 @@ router = APIRouter(
 )
 async def list_object_types(
     branch: str,
-    schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
+    schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service_from_container)],
     current_user: Annotated[UserContext, Depends(get_current_user)],
     request: Request
 ) -> List[Dict[str, Any]]:
@@ -52,12 +52,12 @@ async def list_object_types(
 async def get_object_type(
     branch: str,
     type_name: str,
-    schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
+    schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service_from_container)],
     current_user: Annotated[UserContext, Depends(get_current_user)],
     request: Request
 ) -> Dict[str, Any]:
     """Get a specific object type by name."""
-    schema = await schema_service.get_schema(name=type_name, filters={"branch": branch})
+    schema = await schema_service.get_schema_by_name(name=type_name, branch=branch)
     if not schema:
         raise HTTPException(status_code=404, detail=f"Object type '{type_name}' not found in branch '{branch}'")
     return schema
@@ -69,7 +69,7 @@ async def get_object_type(
 async def create_object_type(
     branch: str,
     object_type: Dict[str, Any],
-    schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service)],
+    schema_service: Annotated[SchemaServiceProtocol, Depends(get_schema_service_from_container)],
     current_user: Annotated[UserContext, Depends(get_current_user)],
     request: Request
 ) -> Dict[str, Any]:
@@ -119,7 +119,12 @@ async def create_object_type(
             detail=str(e)
         )
     except Exception as e:
+        import traceback
+        error_detail = f"Failed to create object type: {str(e)}"
+        tb = traceback.format_exc()
+        print(f"ERROR in create_object_type: {error_detail}")
+        print(f"Traceback:\n{tb}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to create object type: {str(e)}"
+            detail=error_detail
         )

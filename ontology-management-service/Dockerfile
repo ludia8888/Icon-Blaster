@@ -11,16 +11,16 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements
-COPY requirements-minimal.txt requirements-otel.txt ./
+COPY ontology-management-service/requirements-minimal.txt ontology-management-service/requirements-otel.txt ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements-minimal.txt -r requirements-otel.txt
 
 # Copy application code
-COPY . .
+COPY ontology-management-service/ .
 
 # Copy and set up start script before changing user
-COPY start.sh .
+COPY ontology-management-service/start.sh .
 RUN chmod +x start.sh
 
 # Create non-root user
