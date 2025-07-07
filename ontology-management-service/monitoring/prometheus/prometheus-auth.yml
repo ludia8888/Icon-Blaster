@@ -1,0 +1,112 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'oms-auth-unified'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load rules
+rule_files:
+  - "/etc/prometheus/rules/auth_rules.yml"
+  - "/etc/prometheus/rules/user_service_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # OMS Monolith (Auth Proxy Mode)
+  - job_name: 'oms-monolith'
+    static_configs:
+      - targets: ['oms-monolith:8091']
+        labels:
+          service: 'oms-monolith'
+          type: 'api'
+          auth_mode: 'proxy'
+
+  # User Service (Auth Authority)
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:8091']
+        labels:
+          service: 'user-service'
+          type: 'auth'
+          auth_mode: 'authority'
+
+  # Data-Kernel Gateway
+  - job_name: 'data-kernel'
+    static_configs:
+      - targets: ['data-kernel:8080']
+        labels:
+          service: 'data-kernel'
+          type: 'gateway'
+
+  # Infrastructure Services
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+        labels:
+          service: 'postgres'
+          type: 'database'
+          role: 'oms-main'
+
+  - job_name: 'user-db'
+    static_configs:
+      - targets: ['user-db:5432']
+        labels:
+          service: 'postgres'
+          type: 'database'
+          role: 'user-service'
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+        labels:
+          service: 'redis'
+          type: 'cache'
+
+  # Monitoring Services
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          type: 'monitoring'
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+        labels:
+          service: 'grafana'
+          type: 'monitoring'
+
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
+        labels:
+          service: 'jaeger'
+          type: 'tracing'
+
+  # Auth-specific metrics collection
+  - job_name: 'auth-metrics'
+    metrics_path: '/metrics/auth'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['oms-monolith:8091', 'user-service:8091']
+        labels:
+          component: 'auth'
+          unified: 'true'
+
+  # JWT/JWKS monitoring
+  - job_name: 'jwks-health'
+    metrics_path: '/.well-known/jwks.json'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['user-service:8000']
+        labels:
+          component: 'jwks'
+          role: 'key-provider'

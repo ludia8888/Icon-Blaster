@@ -1,0 +1,200 @@
+                                            "http.scheme": "http",
+                                            "http.status_code": 422,
+                                            "http.target": "/api/v1/schema-generation/graphql"
+                                        },
+                                        "start_time_unix_nano": 1751624792413813464,
+                                        "time_unix_nano": 1751624830364406780,
+                                        "count": 1,
+                                        "sum": 124,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 124,
+                                        "max": 124
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "http.server.request.size",
+                            "description": "Measures the size of HTTP request messages (compressed).",
+                            "unit": "By",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "net.host.port": 8000,
+                                            "http.method": "POST",
+                                            "http.server_name": "localhost",
+                                            "http.flavor": "1.0",
+                                            "http.host": "172.20.0.9:8000",
+                                            "http.scheme": "http",
+                                            "http.target": "/api/v1/schema-generation/graphql"
+                                        },
+                                        "start_time_unix_nano": 1751624792453308269,
+                                        "time_unix_nano": 1751624830364406780,
+                                        "count": 3,
+                                        "sum": 90,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            3,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 30,
+                                        "max": 30
+                                    },
+                                    {
+                                        "attributes": {
+                                            "net.host.port": 8000,
+                                            "http.method": "POST",
+                                            "http.server_name": "localhost",
+                                            "http.flavor": "1.0",
+                                            "http.host": "172.20.0.9:8000",
+                                            "http.scheme": "http",
+                                            "http.status_code": 422,
+                                            "http.target": "/api/v1/schema-generation/graphql"
+                                        },
+                                        "start_time_unix_nano": 1751624792453308269,
+                                        "time_unix_nano": 1751624830364406780,
+                                        "count": 1,
+                                        "sum": 12,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 12,
+                                        "max": 12
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        }
+                    ],
+                    "schema_url": "https://opentelemetry.io/schemas/1.11.0"
+                },
+                {
+                    "scope": {
+                        "name": "graphql.monitoring",
+                        "version": "",
+                        "schema_url": ""
+                    },
+                    "metrics": [
+                        {
+                            "name": "graphql.active_queries",
+                            "description": "Number of currently active GraphQL queries",
+                            "unit": "",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {},
+                                        "start_time_unix_nano": 0,
+                                        "time_unix_nano": 1751624830364406780,
+                                        "value": 0
+                                    }
+                                ]
+                            }
+                        }
+                    ],
+                    "schema_url": ""
+                }
+            ],
+            "schema_url": ""
+        }
+    ]
+}
+INFO:     127.0.0.1:42830 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34846 - "GET /health HTTP/1.1" 200 OK

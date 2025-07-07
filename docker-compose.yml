@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for OMS
+  oms-postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: oms_user
+      POSTGRES_PASSWORD: oms_password
+      POSTGRES_DB: oms_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - oms_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oms_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL for User Service
+  user-postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user_service
+      POSTGRES_PASSWORD: user_password
+      POSTGRES_DB: userdb
+    ports:
+      - "5435:5432"
+    volumes:
+      - user_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis (shared)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6389:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # User Service (IAM)
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://user_service:user_password@user-postgres:5432/userdb
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: shared-jwt-secret-for-integration-testing
+      JWT_ISSUER: iam.company
+      JWT_AUDIENCE: oms
+      OMS_SERVICE_SECRET: oms-integration-secret
+      AUDIT_SERVICE_URL: http://audit-service:8002
+      PORT: 8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      user-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./user-service:/app
+    entrypoint: /bin/sh -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 8001 --reload"
+    command: ""
+
+  # Audit Service
+  audit-service:
+    build:
+      context: .
+      dockerfile: audit-service/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://oms_user:oms_password@oms-postgres:5432/oms_db
+    ports:
+      - "8003:8002"
+    depends_on:
+      oms-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./audit-service:/app
+
+  # Ontology Management Service (Monolith)
+  oms-monolith:
+    build:
+      context: .
+      dockerfile: ontology-management-service/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://oms_user:oms_password@oms-postgres:5432/oms_db
+      REDIS_URL: redis://redis:6379
+      JAEGER_AGENT_HOST: jaeger
+      USER_SERVICE_URL: http://user-service:8001
+      AUDIT_SERVICE_URL: http://audit-service:8003
+    ports:
+      - "8000:8000"
+      - "8090:8090" # TerminusDB UI port
+    depends_on:
+      oms-postgres:
+        condition: service_healthy
+      user-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+      user-service:
+        condition: service_started
+    volumes:
+      - ./ontology-management-service:/app
+      - ./packages:/app/packages
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    ports:
+      - "6832:6831/udp" # Use different host port to avoid conflict
+      - "16687:16686"   # Jaeger UI
+      - "14269:14268"   # Jaeger collector
+
+volumes:
+  oms_postgres_data:
+  user_postgres_data:

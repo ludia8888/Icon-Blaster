@@ -1,0 +1,205 @@
+groups:
+  - name: oms_performance
+    interval: 30s
+    rules:
+      # Branch creation performance
+      - alert: BranchCreationSlow
+        expr: histogram_quantile(0.95, oms_branch_creation_duration_milliseconds_bucket) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Branch creation P95 exceeds 100ms"
+          description: "Branch creation P95 latency is {{ $value }}ms (threshold: 100ms)"
+      
+      # Merge operation performance
+      - alert: MergeOperationSlow
+        expr: histogram_quantile(0.95, oms_merge_operation_duration_milliseconds_bucket) > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Merge operation P95 exceeds 200ms"
+          description: "Merge operation P95 latency is {{ $value }}ms (threshold: 200ms)"
+      
+      # Diff generation performance
+      - alert: DiffGenerationSlow
+        expr: histogram_quantile(0.95, oms_diff_generation_duration_milliseconds_bucket) > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Diff generation P95 exceeds 200ms"
+          description: "Diff generation P95 latency is {{ $value }}ms (threshold: 200ms)"
+      
+      # Event processing lag
+      - alert: EventProcessingLag
+        expr: oms_event_lag_milliseconds > 5000
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Event processing lag exceeds 5 seconds"
+          description: "Event processing lag is {{ $value }}ms"
+      
+      # Memory usage
+      - alert: HighMemoryUsage
+        expr: oms_memory_usage_megabytes > 16384  # 16GB
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Memory usage exceeds 16GB"
+          description: "Memory usage is {{ $value }}MB"
+      
+      # CPU usage
+      - alert: HighCPUUsage
+        expr: oms_cpu_usage_percent > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU usage exceeds 80%"
+          description: "CPU usage is {{ $value }}%"
+      
+      # Error rates
+      - alert: HighErrorRate
+        expr: rate(oms_events_failed_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error rate exceeds 1%"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+      
+      # Merge conflicts
+      - alert: HighMergeConflictRate
+        expr: rate(oms_merge_conflicts_total[5m]) / rate(oms_branches_merged_total[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Merge conflict rate exceeds 10%"
+          description: "Merge conflict rate is {{ $value | humanizePercentage }}"
+
+  - name: oms_resources
+    interval: 30s
+    rules:
+      # NATS stream size
+      - alert: NATSStreamLarge
+        expr: oms_nats_stream_size_megabytes > 10240  # 10GB
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "NATS stream size exceeds 10GB"
+          description: "NATS stream size is {{ $value }}MB"
+      
+      # S3 object count
+      - alert: S3ObjectCountHigh
+        expr: oms_s3_objects_count > 1000000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "S3 object count exceeds 1M"
+          description: "S3 has {{ $value }} objects"
+      
+      # Disk I/O
+      - alert: HighDiskIO
+        expr: oms_disk_io_megabytes_per_second > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk I/O exceeds 100MB/s"
+          description: "Disk I/O is {{ $value }}MB/s"
+
+  - name: http_client
+    interval: 30s
+    rules:
+      # HTTP Client error rate
+      - alert: HTTPClientHighErrorRate
+        expr: |
+          (
+            sum(rate(http_client_requests_total{status=~"5.."}[5m])) 
+            / 
+            sum(rate(http_client_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP client error rate exceeds 5%"
+          description: "HTTP client error rate is {{ $value | humanizePercentage }}"
+
+      # Circuit breaker open
+      - alert: HTTPClientCircuitBreakerOpen
+        expr: http_client_circuit_breaker_state == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HTTP client circuit breaker is OPEN"
+          description: "Circuit breaker opened for service {{ $labels.service }} endpoint {{ $labels.endpoint }}"
+
+      # High response time
+      - alert: HTTPClientHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_client_request_duration_seconds_bucket[5m])) by (endpoint, le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP client P95 latency exceeds 5s"
+          description: "P95 latency for {{ $labels.endpoint }} is {{ $value }}s"
+
+      # Connection pool exhaustion
+      - alert: HTTPClientConnectionPoolExhausted
+        expr: |
+          http_client_connection_pool_usage{pool_type="active"} 
+          / 
+          http_client_connection_pool_usage{pool_type="max"} > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP connection pool near exhaustion"
+          description: "Connection pool for {{ $labels.endpoint }} is {{ $value | humanizePercentage }} utilized"
+
+      # High retry rate
+      - alert: HTTPClientHighRetryRate
+        expr: |
+          sum(rate(http_client_retry_attempts_total[5m])) by (endpoint) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP client retry rate"
+          description: "Retry rate for {{ $labels.endpoint }} is {{ $value }} retries/sec"
+
+      # mTLS fallback rate
+      - alert: HTTPClientMTLSFallbackHigh
+        expr: |
+          sum(rate(http_client_fallback_total{fallback_type="mtls"}[5m])) by (endpoint) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High mTLS fallback rate"
+          description: "mTLS fallback rate for {{ $labels.endpoint }} is {{ $value }}/sec, reason: {{ $labels.reason }}"
+
+      # Streaming performance
+      - alert: HTTPClientStreamingSlowTransfer
+        expr: |
+          rate(http_client_stream_bytes_total[5m]) > 0 
+          and 
+          rate(http_client_stream_bytes_total[5m]) < 1048576
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow streaming transfer detected"
+          description: "Streaming rate for {{ $labels.endpoint }} is only {{ $value | humanize }}B/s"

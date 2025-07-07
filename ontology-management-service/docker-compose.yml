@@ -1,0 +1,220 @@
+version: '3.8'
+
+services:
+  # TerminusDB
+  terminusdb:
+    image: terminusdb/terminusdb-server:latest
+    container_name: oms-terminusdb
+    environment:
+      - TERMINUSDB_SERVER_PORT=6363
+      - TERMINUSDB_ADMIN_PASS=changeme-admin-pass
+    ports:
+      - "6363:6363"
+    volumes:
+      - terminus-data:/app/terminusdb/storage
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+  # Data-Kernel Gateway
+  data-kernel:
+    build: 
+      context: ..
+      dockerfile: ./ontology-management-service/data_kernel/Dockerfile
+    container_name: oms-data-kernel
+    environment:
+      - TERMINUSDB_ENDPOINT=http://terminusdb:6363
+      - TERMINUSDB_USER=admin
+      - TERMINUSDB_PASS=changeme-admin-pass
+      - JWT_SECRET=${JWT_SECRET}
+      - USE_IAM_VALIDATION=${USE_IAM_VALIDATION:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - DATA_KERNEL_PORT=8080
+      - DATA_KERNEL_HOST=0.0.0.0
+      - GRPC_PORT=50051
+    ports:
+      - "8080:8080"     # FastAPI REST
+      - "50051:50051"   # gRPC
+    depends_on:
+      - terminusdb
+    networks:
+      - oms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: oms-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - oms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # NATS
+  nats:
+    image: nats:2.10-alpine
+    container_name: oms-nats
+    ports:
+      - "4222:4222"
+      - "6222:6222"
+      - "8222:8222"
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+  # PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: oms-postgres
+    environment:
+      - POSTGRES_USER=oms_user
+      - POSTGRES_PASSWORD=oms_password
+      - POSTGRES_DB=oms_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - oms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oms_user -d oms_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # User Service
+  user-service:
+    build:
+      context: ..
+      dockerfile: ./user-service/Dockerfile
+    container_name: user-service
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user_service:password@postgres:5432/user_service_db
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+    ports:
+      - "8002:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+  # OMS Monolith
+  oms-monolith:
+    build:
+      context: ..
+      dockerfile: ./ontology-management-service/Dockerfile
+    container_name: oms-monolith
+    environment:
+      - TERMINUSDB_ENDPOINT=http://terminusdb:6363
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - DATABASE_URL=postgresql://oms_user:oms_password@postgres:5432/oms_db
+      - USER_SERVICE_URL=http://user-service:8000
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_LOCAL_VALIDATION=true
+      - ENABLE_TELEMETRY=false
+      # Data-Kernel Gateway settings
+      - USE_DATA_KERNEL_GATEWAY=${USE_DATA_KERNEL_GATEWAY:-false}
+      - DATA_KERNEL_GRPC_ENDPOINT=data-kernel:50051
+      # Microservices settings (disabled by default)
+      - USE_EMBEDDING_MS=${USE_EMBEDDING_MS:-false}
+      - EMBEDDING_SERVICE_ENDPOINT=embedding-service:50055
+      - USE_SCHEDULER_MS=${USE_SCHEDULER_MS:-false}
+      - SCHEDULER_SERVICE_ENDPOINT=scheduler-service:50056
+      - USE_EVENT_GATEWAY=${USE_EVENT_GATEWAY:-false}
+      - EVENT_GATEWAY_ENDPOINT=event-gateway:50057
+    ports:
+      - "8000:8000"      # Main API
+      - "8004:8004"      # WebSocket
+      - "8006:8006"      # GraphQL HTTP
+      - "8091:8090"      # Prometheus metrics
+      - "9090:9090"      # Additional monitoring
+    depends_on:
+      - terminusdb
+      - redis
+      - nats
+      - postgres
+      - user-service
+      - data-kernel
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+  # Jaeger (Optional - for distributed tracing)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: oms-jaeger
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+      - "14268:14268"
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+  # Prometheus (Optional - for monitoring)
+  # For full monitoring setup, use monitoring/docker-compose.monitoring.yml
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: oms-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+  # Grafana (Optional - for dashboards)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: oms-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - oms-network
+    restart: unless-stopped
+
+networks:
+  oms-network:
+    driver: bridge
+
+volumes:
+  terminus-data:
+  redis-data:
+  postgres-data:
+  prometheus-data:
+  grafana-data:

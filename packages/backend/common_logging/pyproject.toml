@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "common-logging"
+version = "1.0.0"
+description = "Unified logging utilities for user-service and oms-monolith"
+authors = ["Arrakis Team <team@arrakis.dev>"]
+packages = [{include = "common_logging"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+psutil = {version = "^5.9.0", optional = true}
+
+[tool.poetry.extras]
+performance = ["psutil"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0.0"
+pytest-cov = "^4.0.0"
+black = "^23.0.0"
+ruff = "^0.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

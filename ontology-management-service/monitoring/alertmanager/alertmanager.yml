@@ -1,0 +1,61 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'localhost:25'
+  smtp_from: 'alertmanager@oms.local'
+
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default'
+  
+  routes:
+    # Critical alerts
+    - match:
+        severity: critical
+      receiver: critical
+      continue: true
+    
+    # Service-specific routing
+    - match:
+        service: embedding-service
+      receiver: ml-team
+    
+    - match:
+        service: scheduler-service
+      receiver: platform-team
+    
+    - match:
+        service: event-gateway
+      receiver: platform-team
+
+receivers:
+  - name: 'default'
+    webhook_configs:
+      - url: 'http://oms-monolith:8000/api/v1/alerts/webhook'
+        send_resolved: true
+  
+  - name: 'critical'
+    webhook_configs:
+      - url: 'http://oms-monolith:8000/api/v1/alerts/critical'
+        send_resolved: true
+    email_configs:
+      - to: 'oncall@company.com'
+        headers:
+          Subject: 'CRITICAL: {{ .GroupLabels.alertname }} on {{ .GroupLabels.service }}'
+  
+  - name: 'ml-team'
+    webhook_configs:
+      - url: 'http://oms-monolith:8000/api/v1/alerts/ml-team'
+  
+  - name: 'platform-team'
+    webhook_configs:
+      - url: 'http://oms-monolith:8000/api/v1/alerts/platform-team'
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
