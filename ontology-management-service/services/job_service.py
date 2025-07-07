@@ -331,7 +331,7 @@ class JobService:
     
     async def _save_job(self, job: Job):
         """Save job to database"""
-        doc = job.dict()
+        doc = job.model_dump()
         doc["@type"] = "Job"
         doc["@id"] = job.id
         

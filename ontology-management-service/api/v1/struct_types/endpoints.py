@@ -112,7 +112,7 @@ async def create_struct_type(
                 )
             )
         
-        fields.append(StructFieldDefinition(**field_data.dict()))
+        fields.append(StructFieldDefinition(**field_data.model_dump()))
     
     # Create struct type
     struct_type = StructType(
@@ -238,7 +238,7 @@ async def update_struct_type(
                         "Please flatten the structure or use separate properties."
                     )
                 )
-            fields.append(StructFieldDefinition(**field_data.dict()))
+            fields.append(StructFieldDefinition(**field_data.model_dump()))
         struct_type.fields = fields
     
     # Update other fields
@@ -252,7 +252,7 @@ async def update_struct_type(
     struct_type.modified_by = current_user
     
     # Re-validate and compute
-    struct_type = struct_type.model_validate(struct_type.dict())
+    struct_type = struct_type.model_validate(struct_type.model_dump())
     
     # Re-register to update
     struct_type_registry.register(struct_type)

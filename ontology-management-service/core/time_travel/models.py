@@ -4,7 +4,7 @@ Models for temporal queries and point-in-time data access
 """
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 
@@ -27,7 +27,8 @@ class TemporalReference(BaseModel):
     commit_hash: Optional[str] = Field(None, description="Specific commit hash")
     relative_time: Optional[str] = Field(None, description="Relative time like '-1h', '-7d'")
     
-    @validator('relative_time')
+    @field_validator('relative_time')
+    @classmethod
     def validate_relative_time(cls, v):
         if v:
             # Validate format like -1h, -7d, -30m
@@ -80,7 +81,8 @@ class TemporalQuery(BaseModel):
     include_deleted: bool = Field(False, description="Include deleted resources")
     include_metadata: bool = Field(True, description="Include version metadata")
     
-    @validator('point_in_time')
+    @field_validator('point_in_time')
+    @classmethod
     def validate_point_in_time(cls, v, values):
         operator = values.get('operator')
         if operator in [TemporalOperator.AS_OF, TemporalOperator.BEFORE, TemporalOperator.AFTER]:
@@ -88,7 +90,8 @@ class TemporalQuery(BaseModel):
                 raise ValueError(f"point_in_time required for {operator} operator")
         return v
     
-    @validator('start_time')
+    @field_validator('start_time')
+    @classmethod
     def validate_start_time(cls, v, values):
         operator = values.get('operator')
         if operator in [TemporalOperator.BETWEEN, TemporalOperator.FROM_TO]:

@@ -55,7 +55,7 @@ class JobProgressManager:
                 "type": "initial_status",
                 "job_id": job_id,
                 "status": job.status,
-                "progress": job.progress.dict() if job.progress else None,
+                "progress": job.progress.model_dump() if job.progress else None,
                 "result": job.result
             }))
     
@@ -204,7 +204,7 @@ async def job_progress_sse(
                 "data": json.dumps({
                     "job_id": job_id,
                     "status": job.status,
-                    "progress": job.progress.dict() if job.progress else None
+                    "progress": job.progress.model_dump() if job.progress else None
                 })
             }
             

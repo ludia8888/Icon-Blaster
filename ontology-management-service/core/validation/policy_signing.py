@@ -8,7 +8,7 @@ import secrets
 from datetime import datetime, timezone
 from typing import Dict, Optional, Any, Tuple
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 
 # Use common_security for cryptographic operations

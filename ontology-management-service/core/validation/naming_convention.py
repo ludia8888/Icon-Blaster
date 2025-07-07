@@ -6,7 +6,7 @@ import re
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 import logging
 
 logger = logging.getLogger(__name__)

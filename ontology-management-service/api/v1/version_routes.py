@@ -114,7 +114,7 @@ async def get_specific_version(
         )
     
     return {
-        "version_info": resource_version.current_version.dict(),
+        "version_info": resource_version.current_version.model_dump(),
         "content_hash": resource_version.content_hash,
         "content_size": resource_version.content_size
     }
@@ -148,7 +148,7 @@ async def get_resource_delta(
         resource_type, resource_id, branch, delta_request
     )
     
-    return delta_response.dict()
+    return delta_response.model_dump()
 
 
 @router.post("/sync", dependencies=[Depends(require_scope([IAMScope.BRANCHES_READ]))])
@@ -351,7 +351,7 @@ async def detect_conflicts(
     return {
         "has_conflict": has_conflict,
         "conflict_type": "version_divergence" if has_conflict else "no_conflict",
-        "source_version": source_version.current_version.dict(),
-        "target_version": target_version.current_version.dict(),
+        "source_version": source_version.current_version.model_dump(),
+        "target_version": target_version.current_version.model_dump(),
         "can_auto_merge": False  # Would need actual content comparison
     }

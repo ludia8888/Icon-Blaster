@@ -218,7 +218,7 @@ async def get_consumer_state(
     
     return {
         "consumer_id": consumer_id,
-        "state": state.model_dump() if hasattr(state, 'model_dump') else state.dict(),
+        "state": state.model_dump() if hasattr(state, 'model_dump') else state.model_dump(),
         "state_hash": consumer.consumer._consumer_state.state_commit_hash[:12],
         "state_version": consumer.consumer._consumer_state.state_version
     }

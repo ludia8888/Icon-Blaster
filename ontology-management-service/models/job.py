@@ -5,7 +5,7 @@ Handles background job tracking for merge operations and other long-running task
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import uuid
 
 
@@ -62,6 +62,13 @@ class JobProgress(BaseModel):
 
 class Job(BaseModel):
     """Job model for tracking asynchronous operations"""
+    model_config = ConfigDict(
+        use_enum_values=True,
+        json_encoders={
+            datetime: lambda v: v.isoformat() if v else None
+        }
+    )
+    
     id: str = Field(default_factory=lambda: f"job_{uuid.uuid4()}")
     type: JobType
     status: JobStatus = JobStatus.QUEUED
@@ -90,12 +97,6 @@ class Job(BaseModel):
     
     # Idempotency
     idempotency_key: Optional[str] = None
-    
-    class Config:
-        use_enum_values = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat() if v else None
-        }
     
     def is_terminal(self) -> bool:
         """Check if job is in terminal state"""

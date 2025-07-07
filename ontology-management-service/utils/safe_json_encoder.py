@@ -116,7 +116,7 @@ def safe_dict_conversion(obj: Any, _seen: Optional[Set[int]] = None, max_depth: 
     if hasattr(obj, 'dict'):
         # Fallback to dict() for Pydantic v1
         try:
-            return safe_dict_conversion(obj.dict(), _seen, max_depth - 1)
+            return safe_dict_conversion(obj.model_dump(), _seen, max_depth - 1)
         except Exception:
             pass
     

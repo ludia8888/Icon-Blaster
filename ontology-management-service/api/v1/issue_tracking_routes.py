@@ -253,7 +253,7 @@ async def link_change_to_issues(
     return {
         "success": True,
         "message": "Change linked to issues successfully",
-        "link": link.dict(),
+        "link": link.model_dump(),
         "primary_issue": link.primary_issue.get_display_name(),
         "related_issues": [ref.get_display_name() for ref in link.related_issues]
     }

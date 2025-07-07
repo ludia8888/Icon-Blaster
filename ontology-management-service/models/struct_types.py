@@ -8,7 +8,7 @@ IMPORTANT: Per Foundry constraints, nested structs are NOT supported.
 """
 
 from typing import Dict, Any, Optional, List, Union
-from pydantic import BaseModel, Field, validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 from enum import Enum
 from datetime import datetime
 
@@ -26,7 +26,8 @@ class StructFieldDefinition(BaseModel):
     default_value: Optional[Any] = Field(None, description="Default value if not provided")
     validation_rules: Optional[Dict[str, Any]] = Field(None, description="Additional validation")
     
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def validate_field_name(cls, v: str) -> str:
         """Ensure field name follows naming conventions"""
         if not v:

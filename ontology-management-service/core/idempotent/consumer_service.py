@@ -585,7 +585,7 @@ class IdempotentConsumer(Generic[T]):
             return state.model_dump(mode='json')
         elif hasattr(state, 'dict'):
             # Pydantic v1
-            data = state.dict()
+            data = state.model_dump()
             # Convert datetime objects
             return json.loads(json.dumps(data, default=str))
         elif hasattr(state, '__dict__'):

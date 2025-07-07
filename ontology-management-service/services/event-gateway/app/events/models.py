@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Callable
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from cloudevents.http import CloudEvent
 
 

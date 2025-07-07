@@ -406,7 +406,7 @@ class ResilientVersionService:
             # Cache the new version
             await self._set_cache(
                 cache_key,
-                result.dict() if hasattr(result, 'dict') else result
+                result.model_dump() if hasattr(result, 'dict') else result
             )
             
             return result
@@ -456,7 +456,7 @@ class ResilientVersionService:
                 if result and use_cache:
                     await self._set_cache(
                         cache_key,
-                        result.dict() if hasattr(result, 'dict') else result
+                        result.model_dump() if hasattr(result, 'dict') else result
                     )
                 
                 return result
@@ -528,7 +528,7 @@ class ResilientVersionService:
             if result:
                 await self._set_cache(
                     cache_key,
-                    result.dict() if hasattr(result, 'dict') else result,
+                    result.model_dump() if hasattr(result, 'dict') else result,
                     ttl=60  # 1 minute for deltas
                 )
             

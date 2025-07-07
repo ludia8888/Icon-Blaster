@@ -6,7 +6,7 @@ Provides domain-specific constraints and validation for data types.
 """
 
 from typing import Dict, Any, Optional, List, Pattern, Union
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, ConfigDict
 from enum import Enum
 import re
 from datetime import datetime

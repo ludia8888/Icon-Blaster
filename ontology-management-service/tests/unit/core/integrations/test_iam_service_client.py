@@ -341,7 +341,7 @@ class MockIAMServiceClient:
         request = MockTokenValidationRequest(token, bool(required_scopes), required_scopes)
         
         try:
-            result = await self._make_request("POST", "/api/v1/auth/validate", data=request.dict())
+            result = await self._make_request("POST", "/api/v1/auth/validate", data=request.model_dump())
             
             # Handle malformed responses
             if not isinstance(result, dict) or 'valid' not in result:
@@ -371,7 +371,7 @@ class MockIAMServiceClient:
         request = MockUserInfoRequest(user_id, username, email, include_permissions)
         
         try:
-            result = await self._make_request("POST", "/api/v1/users/info", data=request.dict(), use_service_auth=True)
+            result = await self._make_request("POST", "/api/v1/users/info", data=request.model_dump(), use_service_auth=True)
             return MockUserInfoResponse(**result)
         except Exception as e:
             if "404" in str(e):
@@ -382,7 +382,7 @@ class MockIAMServiceClient:
         request = MockScopeCheckRequest(user_id, required_scopes, check_mode)
         
         try:
-            result = await self._make_request("POST", "/api/v1/auth/check-scopes", data=request.dict(), use_service_auth=True)
+            result = await self._make_request("POST", "/api/v1/auth/check-scopes", data=request.model_dump(), use_service_auth=True)
             return MockScopeCheckResponse(**result)
         except Exception:
             return MockScopeCheckResponse(authorized=False, missing_scopes=required_scopes)
@@ -397,7 +397,7 @@ class MockIAMServiceClient:
             [MockIAMScope.SERVICE_ACCOUNT, MockIAMScope.ONTOLOGIES_READ, MockIAMScope.SCHEMAS_READ]
         )
         
-        result = await self._make_request("POST", "/api/v1/auth/service", data=request.dict())
+        result = await self._make_request("POST", "/api/v1/auth/service", data=request.model_dump())
         return MockServiceAuthResponse(**result)
     
     async def refresh_token(self, refresh_token):

@@ -41,11 +41,8 @@ class SchemaRepository:
             List[Dict[str, Any]]: 조회된 ObjectType 문서 목록
         """
         try:
-            # TODO: Refactor this method to work with the UnifiedDatabaseClient interface.
-            # This is temporarily commented out to resolve build errors.
-            # documents = await self.db.read(collection="ObjectType", query={"branch": branch})
-            logger.warning("list_all_object_types is currently mocked and returns an empty list.")
-            return []
+            documents = await self.db.read(collection="ObjectType", query={"branch": branch})
+            return documents
         except Exception as e:
             logger.error(f"Error listing all object types from branch '{branch}': {e}")
             raise

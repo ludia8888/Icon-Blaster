@@ -93,8 +93,8 @@ async def _async_generate_job_stats(task: MaintenanceTask):
     recent_stats = await task.job_service.get_job_stats(recent_filter)
     
     result = {
-        "overall": stats.dict(),
-        "last_24h": recent_stats.dict(),
+        "overall": stats.model_dump(),
+        "last_24h": recent_stats.model_dump(),
         "timestamp": datetime.utcnow().isoformat()
     }
     

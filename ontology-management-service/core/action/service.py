@@ -165,7 +165,7 @@ class ActionService:
     def register_action_type(self, action_type: Any) -> str:
         """Legacy 호환성: create_action_type 사용 권장"""
         if hasattr(action_type, 'dict'):
-            return asyncio.run(self.create_action_type(action_type.dict()))
+            return asyncio.run(self.create_action_type(action_type.model_dump()))
         return asyncio.run(self.create_action_type(action_type))
 
     def execute_sync(self, *args, **kwargs) -> Any:

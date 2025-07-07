@@ -326,7 +326,7 @@ class IAMServiceClientWithFallback:
                 
                 response = await self._client.post(
                     "/api/v1/auth/validate",
-                    json=request.dict()
+                    json=request.model_dump()
                 )
                 
                 if response.status_code == 200:

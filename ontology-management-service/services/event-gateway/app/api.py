@@ -261,7 +261,7 @@ async def websocket_events(
         async for event in service.stream_events(subscription_id):
             await websocket.send_json({
                 "event": event.cloud_event,
-                "metadata": event.metadata.dict()
+                "metadata": event.metadata.model_dump()
             })
             
             # Update metrics

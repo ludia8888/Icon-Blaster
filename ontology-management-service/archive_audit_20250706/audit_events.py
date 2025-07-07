@@ -5,7 +5,7 @@ Defines CloudEvents for audit logging following Foundry-style architecture
 from enum import Enum
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 
 from models.domain import BaseModel as DomainBaseModel

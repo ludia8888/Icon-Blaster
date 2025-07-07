@@ -264,7 +264,7 @@ async def get_link_metadata(
     return {
         "object_type_id": object_type_id,
         "object_type_name": obj_type.name,
-        "link_fields": [field.dict() for field in link_fields],
+        "link_fields": [field.model_dump() for field in link_fields],
         "total_fields": len(link_fields)
     }
 

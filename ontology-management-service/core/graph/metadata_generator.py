@@ -324,14 +324,14 @@ class GraphMetadataGenerator:
         """
         if service_name == "ObjectStorageService":
             return {
-                "indexes": [idx.dict() for idx in self.index_metadata.values()],
+                "indexes": [idx.model_dump() for idx in self.index_metadata.values()],
                 "version": "1.0",
                 "generated_at": datetime.utcnow().isoformat()
             }
         
         elif service_name == "ObjectSetService":
             return {
-                "traversal_rules": [rule.dict() for rule in self.traversal_rules.values()],
+                "traversal_rules": [rule.model_dump() for rule in self.traversal_rules.values()],
                 "index_hints": {
                     idx.link_type_id: idx.index_id 
                     for idx in self.index_metadata.values()
@@ -342,8 +342,8 @@ class GraphMetadataGenerator:
         
         elif service_name == "ActionService":
             return {
-                "permission_rules": [rule.dict() for rule in self.permission_rules.values()],
-                "state_rules": [rule.dict() for rule in self.state_rules.values()],
+                "permission_rules": [rule.model_dump() for rule in self.permission_rules.values()],
+                "state_rules": [rule.model_dump() for rule in self.state_rules.values()],
                 "version": "1.0",
                 "generated_at": datetime.utcnow().isoformat()
             }
@@ -351,7 +351,7 @@ class GraphMetadataGenerator:
         elif service_name == "VertexUI":
             return {
                 "graph_schema": self._generate_graph_schema(),
-                "traversal_rules": [rule.dict() for rule in self.traversal_rules.values()],
+                "traversal_rules": [rule.model_dump() for rule in self.traversal_rules.values()],
                 "version": "1.0",
                 "generated_at": datetime.utcnow().isoformat()
             }

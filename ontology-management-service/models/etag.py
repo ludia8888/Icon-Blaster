@@ -4,7 +4,7 @@ For efficient delta responses and caching
 """
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import hashlib
 import json
 

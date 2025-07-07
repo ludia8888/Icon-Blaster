@@ -143,7 +143,7 @@ class AuthenticationManager:
                 await self.redis_client.setex(
                     f"auth:token:{token}",
                     self._session_ttl,
-                    json.dumps(user.dict())
+                    json.dumps(user.model_dump())
                 )
             
             return user

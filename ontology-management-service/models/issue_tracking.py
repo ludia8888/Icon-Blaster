@@ -5,7 +5,7 @@ Links all changes to issue IDs for complete traceability
 from enum import Enum
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import re
 
 from models.domain import BaseModel as DomainBaseModel
@@ -63,7 +63,8 @@ class IssueReference(BaseModel):
     title: Optional[str] = Field(None, description="Issue title")
     assignee: Optional[str] = Field(None, description="Issue assignee")
     
-    @validator('issue_id')
+    @field_validator('issue_id')
+    @classmethod
     def validate_issue_id(cls, v, values):
         """Validate issue ID format based on provider"""
         if 'provider' not in values:

@@ -173,7 +173,7 @@ class IAMServiceClient:
             result = await self._make_request(
                 "POST",
                 "/api/v1/auth/validate",
-                data=request.dict()
+                data=request.model_dump()
             )
             
             response = TokenValidationResponse(**result)
@@ -236,7 +236,7 @@ class IAMServiceClient:
             result = await self._make_request(
                 "POST",
                 "/api/v1/users/info",
-                data=request.dict(),
+                data=request.model_dump(),
                 use_service_auth=True
             )
             return UserInfoResponse(**result)
@@ -270,7 +270,7 @@ class IAMServiceClient:
             result = await self._make_request(
                 "POST",
                 "/api/v1/auth/check-scopes",
-                data=request.dict(),
+                data=request.model_dump(),
                 use_service_auth=True
             )
             return ScopeCheckResponse(**result)
@@ -305,7 +305,7 @@ class IAMServiceClient:
             result = await self._make_request(
                 "POST",
                 "/api/v1/auth/service",
-                data=request.dict()
+                data=request.model_dump()
             )
             return ServiceAuthResponse(**result)
         except Exception as e:

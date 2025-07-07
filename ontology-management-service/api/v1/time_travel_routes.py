@@ -111,7 +111,7 @@ async def query_as_of(
     result = await service.query_as_of(resource_query)
     
     return {
-        "resources": [r.dict() for r in result.resources],
+        "resources": [r.model_dump() for r in result.resources],
         "total_count": result.total_count,
         "has_more": result.has_more,
         "execution_time_ms": result.execution_time_ms,
@@ -172,7 +172,7 @@ async def query_between(
     result = await service.query_between(resource_query)
     
     return {
-        "resources": [r.dict() for r in result.resources],
+        "resources": [r.model_dump() for r in result.resources],
         "total_count": result.total_count,
         "has_more": result.has_more,
         "execution_time_ms": result.execution_time_ms,
@@ -215,7 +215,7 @@ async def get_all_versions(
         "resource_type": resource_type,
         "resource_id": resource_id,
         "branch": branch,
-        "versions": [r.dict() for r in result.resources],
+        "versions": [r.model_dump() for r in result.resources],
         "total_versions": result.total_count,
         "has_more": result.has_more,
         "execution_time_ms": result.execution_time_ms
@@ -268,7 +268,7 @@ async def compare_states(
     # Format differences for API response
     differences = {}
     for resource_type, diffs in result.differences.items():
-        differences[resource_type] = [d.dict() for d in diffs]
+        differences[resource_type] = [d.model_dump() for d in diffs]
     
     return {
         "time1": result.time1_resolved.isoformat(),
@@ -299,7 +299,7 @@ async def get_resource_timeline(
         resource_type, resource_id, branch
     )
     
-    return timeline.dict()
+    return timeline.model_dump()
 
 
 @router.post("/snapshot", dependencies=[Depends(require_scope([IAMScope.BRANCHES_WRITE]))])
@@ -322,7 +322,7 @@ async def create_snapshot(
         include_data=include_data
     )
     
-    return snapshot.dict()
+    return snapshot.model_dump()
 
 
 @router.get("/resource-at-time", dependencies=[Depends(require_scope([IAMScope.BRANCHES_READ]))])
@@ -375,7 +375,7 @@ async def get_resource_at_time(
             detail=f"Resource {resource_type}/{resource_id} not found at specified time"
         )
     
-    return result.resources[0].dict()
+    return result.resources[0].model_dump()
 
 
 @router.get("/health")

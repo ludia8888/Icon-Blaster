@@ -6,7 +6,7 @@ OMS 핵심 책임: 스키마 변경 이벤트 발행을 위한 모델
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class ResourceType(str, Enum):

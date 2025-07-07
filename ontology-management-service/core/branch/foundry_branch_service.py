@@ -77,7 +77,7 @@ class FoundryBranchService:
                 
                 # Store in database
                 await self._store_branch_info(branch_info)
-                return branch_info.dict()
+                return branch_info.model_dump()
             
             result = await self.lock_manager.occ.atomic_update_with_conflict_detection(
                 resource_type="branch",
@@ -129,7 +129,7 @@ class FoundryBranchService:
                 branch_info.indexing_completed_at = datetime.now(timezone.utc)
             
             await self._store_branch_info(branch_info)
-            return branch_info.dict()
+            return branch_info.model_dump()
         
         # Use optimistic concurrency with retry
         return await self.lock_manager.update_with_retry(

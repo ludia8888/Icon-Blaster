@@ -79,7 +79,7 @@ class TestObjectType:
             description="Test user type"
         )
         
-        data = obj_type.dict()
+        data = obj_type.model_dump()
         assert data["id"] == "obj-1"
         assert data["type_id"] == "User"
         assert data["domain"] == "test"

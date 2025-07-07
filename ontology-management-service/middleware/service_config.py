@@ -622,7 +622,7 @@ class EnterpriseConfigManager:
                 for key, cv in self._global_config.items()
             },
             "services": {
-                name: config.dict()
+                name: config.model_dump()
                 for name, config in self._service_configs.items()
             }
         }

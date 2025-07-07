@@ -436,7 +436,7 @@ type {object_type.name}Edge {{
             "generated_at": datetime.utcnow().isoformat(),
             "version": "1.0",
             "link_fields": {
-                type_id: [field.dict() for field in fields]
+                type_id: [field.model_dump() for field in fields]
                 for type_id, fields in self.link_fields.items()
             },
             "generator": "OMS GraphQL Schema Generator"
