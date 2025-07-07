@@ -225,20 +225,37 @@ class ValidationService:
 
         # 병렬 실행을 위한 태스크 생성
         tasks = []
-        for rule in self.rules:
+        rules_map = {}
+        for i, rule in enumerate(self.rules):
             task = self._execute_single_rule(rule, context)
             tasks.append(task)
+            rules_map[i] = rule.rule_id
 
-        # 모든 규칙 병렬 실행
-        results = await asyncio.gather(*tasks, return_exceptions=False)
+        # 모든 규칙 병렬 실행, 개별 규칙의 예외가 전체를 중단시키지 않도록 설정
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # 결과 수집
-        for result in results:
-            if result:
-                changes, warns, exec_result = result
-                breaking_changes.extend(changes)
-                warnings.extend(warns)
-                rule_results.append(exec_result)
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                # gather에서 직접 잡은 예외 처리
+                rule_id = rules_map.get(i, "unknown")
+                logger.error(f"An unexpected error occurred in rule {rule_id}: {result}")
+                error_result = RuleExecutionResult(
+                    rule_id=rule_id,
+                    executed=False,
+                    error=str(result),
+                    execution_time_ms=0, # 실행 시간을 알 수 없음
+                    breaking_changes_found=0,
+                    warnings_found=0
+                )
+                rule_results.append(error_result)
+            else:
+                # 정상 결과(튜플 또는 None) 처리
+                if result:
+                    changes, warns, exec_result = result
+                    breaking_changes.extend(changes)
+                    warnings.extend(warns)
+                    rule_results.append(exec_result)
 
         return breaking_changes, warnings, rule_results
 

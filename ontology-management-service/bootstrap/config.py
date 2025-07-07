@@ -27,8 +27,8 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
         with open(self.yaml_file_path, 'r') as f:
             return yaml.safe_load(f) or {}
 
-class DatabaseConfig(BaseSettings):
-    """Database configuration"""
+class TerminusDBConfig(BaseSettings):
+    """TerminusDB configuration"""
     endpoint: str = Field(default="http://localhost:6363", validation_alias="TERMINUSDB_ENDPOINT")
     team: str = Field(default="admin", validation_alias="TERMINUSDB_TEAM")
     db: str = Field(default="oms_db", validation_alias="TERMINUSDB_DB") 
@@ -36,6 +36,23 @@ class DatabaseConfig(BaseSettings):
     key: str = Field(default="root", validation_alias="TERMINUSDB_KEY")
     
     model_config = SettingsConfigDict(env_prefix="TERMINUSDB_")
+
+class PostgresConfig(BaseSettings):
+    """PostgreSQL configuration"""
+    host: str = Field(default="localhost", validation_alias="POSTGRES_HOST")
+    port: int = Field(default=5432, validation_alias="POSTGRES_PORT")
+    user: str = Field(default="postgres", validation_alias="POSTGRES_USER")
+    password: str = Field(default="", validation_alias="POSTGRES_PASSWORD")
+    database: str = Field(default="oms_db", validation_alias="POSTGRES_DB")
+
+    model_config = SettingsConfigDict(env_prefix="POSTGRES_")
+
+class SQLiteConfig(BaseSettings):
+    """SQLite configuration"""
+    db_name: str = Field(default="oms_fallback.db", validation_alias="SQLITE_DB_NAME")
+    db_dir: str = Field(default="data", validation_alias="SQLITE_DB_DIR")
+
+    model_config = SettingsConfigDict(env_prefix="SQLITE_")
 
 class EventConfig(BaseSettings):
     """Event system configuration"""
@@ -92,12 +109,15 @@ class RedisConfig(BaseSettings):
 
 class AppConfig(BaseSettings):
     """Application configuration"""
-    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    terminusdb: Optional[TerminusDBConfig] = Field(default_factory=TerminusDBConfig)
+    postgres: Optional[PostgresConfig] = Field(default_factory=PostgresConfig)
+    sqlite: Optional[SQLiteConfig] = Field(default_factory=SQLiteConfig)
+    
     event: EventConfig = Field(default_factory=EventConfig)
     service: ServiceConfig = Field(default_factory=ServiceConfig)
     user_service: UserServiceConfig = Field(default_factory=UserServiceConfig)
     lock: LockConfig = Field(default_factory=LockConfig)
-    redis: RedisConfig = Field(default_factory=RedisConfig)
+    redis: Optional[RedisConfig] = Field(default_factory=RedisConfig)
     scope_mapping: Dict[str, Any] = Field(default_factory=dict)
     
     def __init__(self, **values: Any):

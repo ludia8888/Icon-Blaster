@@ -13,7 +13,7 @@ from cachetools import TTLCache
 
 import redis.asyncio as redis
 from database.clients.terminus_db import TerminusDBClient
-from config.redis_config import get_redis_client
+# from config.redis_config import get_redis_client # This is legacy
 from middleware.common.metrics import get_metrics_collector
 from common_logging.setup import get_logger
 from core.validation.ports import CachePort
@@ -164,15 +164,11 @@ class SmartCache(CachePort):
         """Ensure Redis client is available."""
         if not self._redis_initialized:
             if self.redis_client is None:
-                try:
-                    self.redis_client = await get_redis_client()
-                    self._redis_initialized = True
-                    logger.info("SmartCache: Redis client initialized")
-                except Exception as e:
-                    logger.warning(f"SmartCache: Failed to initialize Redis client: {e}")
-                    self.redis_client = None
-            else:
-                self._redis_initialized = True
+                # The expectation is that the redis_client is injected during initialization.
+                # This method no longer attempts to create a client on its own.
+                logger.warning("SmartCache: Redis client was not provided during initialization. Distributed cache is disabled.")
+            
+            self._redis_initialized = True
     
     def _generate_key(self, key: str) -> str:
         """Generate namespaced cache key."""

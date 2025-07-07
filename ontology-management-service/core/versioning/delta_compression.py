@@ -8,6 +8,7 @@ import zlib
 import base64
 from dataclasses import dataclass
 from enum import Enum
+from collections import defaultdict
 
 from models.etag import create_json_patch
 from common_logging.setup import get_logger

@@ -14,7 +14,7 @@ from models.branch_state import (
     BranchState, BranchLock, BranchStateInfo, 
     LockType, LockScope
 )
-from core.iam.dependencies import require_scope, require_any_scope
+from core.iam.dependencies import require_scope
 from core.iam.iam_integration import IAMScope
 from common_logging.setup import get_logger
 
@@ -181,8 +181,7 @@ async def get_lock_status(
     return lock
 
 
-@router.post("/acquire")
-@require_any_scope(IAMScope.BRANCHES_WRITE, IAMScope.SYSTEM_ADMIN)
+@router.post("/acquire", dependencies=[Depends(require_scope([IAMScope.BRANCHES_WRITE, IAMScope.SYSTEM_ADMIN]))])
 async def acquire_lock(
     request: LockRequest,
     req: Request,
@@ -306,8 +305,7 @@ async def force_unlock_branch(
 
 # Service Integration Endpoints (for Funnel Service, etc.)
 
-@router.post("/indexing/{branch_name}/start")
-@require_any_scope(IAMScope.BRANCHES_WRITE, IAMScope.SERVICE_ACCOUNT)
+@router.post("/indexing/{branch_name}/start", dependencies=[Depends(require_scope([IAMScope.BRANCHES_WRITE, IAMScope.SERVICE_ACCOUNT]))])
 async def start_indexing(
     branch_name: str,
     request: StartIndexingRequest,
@@ -383,8 +381,7 @@ async def start_indexing(
         )
 
 
-@router.post("/indexing/{branch_name}/complete")
-@require_any_scope(IAMScope.BRANCHES_WRITE, IAMScope.SERVICE_ACCOUNT)
+@router.post("/indexing/{branch_name}/complete", dependencies=[Depends(require_scope([IAMScope.BRANCHES_WRITE, IAMScope.SERVICE_ACCOUNT]))])
 async def complete_indexing(
     branch_name: str,
     request: CompleteIndexingRequest,
@@ -455,8 +452,7 @@ async def complete_indexing(
 
 # Utility Endpoints
 
-@router.post("/cleanup-expired")
-, dependencies=[Depends(require_scope([IAMScope.SYSTEM_ADMIN]))]
+@router.post("/cleanup-expired", dependencies=[Depends(require_scope([IAMScope.SYSTEM_ADMIN]))])
 async def cleanup_expired_locks(
     req: Request,
     user: UserContext = Depends(get_current_user),
@@ -476,8 +472,7 @@ async def cleanup_expired_locks(
 
 # Dashboard/Monitoring Endpoints
 
-@router.get("/dashboard")
-, dependencies=[Depends(require_scope([IAMScope.BRANCHES_READ]))]
+@router.get("/dashboard", dependencies=[Depends(require_scope([IAMScope.BRANCHES_READ]))])
 async def get_dashboard_data(
     req: Request,
     user: UserContext = Depends(get_current_user),
@@ -508,8 +503,7 @@ async def get_dashboard_data(
 
 # TTL & Heartbeat Endpoints (Priority 4 Feature)
 
-@router.post("/locks/{lock_id}/heartbeat")
-, dependencies=[Depends(require_scope([IAMScope.BRANCHES_WRITE]))]
+@router.post("/locks/{lock_id}/heartbeat", dependencies=[Depends(require_scope([IAMScope.BRANCHES_WRITE]))])
 async def send_lock_heartbeat(
     lock_id: str,
     request: HeartbeatRequest,
@@ -558,8 +552,7 @@ async def send_lock_heartbeat(
         )
 
 
-@router.get("/locks/{lock_id}/health")
-, dependencies=[Depends(require_scope([IAMScope.BRANCHES_READ]))]
+@router.get("/locks/{lock_id}/health", dependencies=[Depends(require_scope([IAMScope.BRANCHES_READ]))])
 async def get_lock_health(
     lock_id: str,
     req: Request,
@@ -578,8 +571,7 @@ async def get_lock_health(
     return LockHealthResponse(**health_info)
 
 
-@router.post("/locks/{lock_id}/extend-ttl")
-, dependencies=[Depends(require_scope([IAMScope.BRANCHES_WRITE]))]
+@router.post("/locks/{lock_id}/extend-ttl", dependencies=[Depends(require_scope([IAMScope.BRANCHES_WRITE]))])
 async def extend_lock_ttl(
     lock_id: str,
     request: ExtendTTLRequest,
@@ -631,8 +623,7 @@ async def extend_lock_ttl(
         )
 
 
-@router.post("/cleanup-heartbeat-expired")
-, dependencies=[Depends(require_scope([IAMScope.SYSTEM_ADMIN]))]
+@router.post("/cleanup-heartbeat-expired", dependencies=[Depends(require_scope([IAMScope.SYSTEM_ADMIN]))])
 async def cleanup_heartbeat_expired_locks(
     req: Request,
     user: UserContext = Depends(get_current_user),
@@ -650,8 +641,7 @@ async def cleanup_heartbeat_expired_locks(
     return {"message": "Heartbeat expired locks cleanup completed"}
 
 
-@router.get("/locks/health-summary")
-, dependencies=[Depends(require_scope([IAMScope.BRANCHES_READ]))]
+@router.get("/locks/health-summary", dependencies=[Depends(require_scope([IAMScope.BRANCHES_READ]))])
 async def get_locks_health_summary(
     req: Request,
     user: UserContext = Depends(get_current_user),

@@ -53,6 +53,7 @@ from starlette.types import ASGIApp
 import redis.asyncio as redis
 import json
 import httpx
+import inspect
 
 from core.auth import UserContext
 from bootstrap.config import get_config
@@ -76,7 +77,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self.user_service_url = config.user_service.url
         self.client = httpx.AsyncClient(timeout=5.0)
         self.public_paths = [
-            "/health", "/metrics", "/docs", "/openapi.json", "/redoc"
+            "/health", "/metrics", "/docs", "/openapi.json", "/redoc",
+            "/api/v1/health", "/api/v1/health/live", "/api/v1/health/ready"
         ]
         self.cache_ttl = 300
     
@@ -94,7 +96,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
         token = authorization.split(" ")[1]
 
         try:
-            redis_client = request.app.state.redis_client
+            redis_provider = request.app.state.redis_client
+            if inspect.iscoroutine(redis_provider):
+                redis_client = await redis_provider
+            else:
+                redis_client = redis_provider
+                
             user = await self._get_cached_user(token, redis_client)
 
             if not user:

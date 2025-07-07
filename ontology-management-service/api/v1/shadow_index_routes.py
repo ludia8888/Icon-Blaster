@@ -13,7 +13,7 @@ from core.shadow_index.manager import get_shadow_manager, ShadowIndexConflictErr
 from models.shadow_index import (
     ShadowIndexInfo, ShadowIndexState, IndexType, SwitchRequest, SwitchResult
 )
-from core.iam.dependencies import require_scope, require_any_scope
+from core.iam.dependencies import require_scope
 from core.iam.iam_integration import IAMScope
 from common_logging.setup import get_logger
 
@@ -91,8 +91,7 @@ class ShadowIndexListResponse(BaseModel):
 
 # Shadow Index Management Endpoints
 
-@router.post("/start")
-@require_any_scope(IAMScope.SYSTEM_ADMIN, IAMScope.SERVICE_ACCOUNT)
+@router.post("/start", dependencies=[Depends(require_scope([IAMScope.SYSTEM_ADMIN, IAMScope.SERVICE_ACCOUNT]))])
 async def start_shadow_build(
     request: StartShadowBuildRequest,
     background_tasks: BackgroundTasks,
@@ -140,8 +139,7 @@ async def start_shadow_build(
         )
 
 
-@router.post("/{shadow_index_id}/progress")
-@require_scope(IAMScope.SERVICE_ACCOUNT)
+@router.post("/{shadow_index_id}/progress", dependencies=[Depends(require_scope([IAMScope.SERVICE_ACCOUNT]))])
 async def update_build_progress(
     shadow_index_id: str,
     request: UpdateProgressRequest,
@@ -172,8 +170,7 @@ async def update_build_progress(
     }
 
 
-@router.post("/{shadow_index_id}/complete")
-@require_scope(IAMScope.SERVICE_ACCOUNT)
+@router.post("/{shadow_index_id}/complete", dependencies=[Depends(require_scope([IAMScope.SERVICE_ACCOUNT]))])
 async def complete_shadow_build(
     shadow_index_id: str,
     request: CompleteBuildRequest,
@@ -208,8 +205,7 @@ async def complete_shadow_build(
     }
 
 
-@router.post("/{shadow_index_id}/switch")
-@require_any_scope(IAMScope.SYSTEM_ADMIN, IAMScope.SERVICE_ACCOUNT)
+@router.post("/{shadow_index_id}/switch", dependencies=[Depends(require_scope([IAMScope.SYSTEM_ADMIN, IAMScope.SERVICE_ACCOUNT]))])
 async def request_atomic_switch(
     shadow_index_id: str,
     request: SwitchRequest,
@@ -256,8 +252,7 @@ async def request_atomic_switch(
         )
 
 
-@router.get("/{shadow_index_id}/status")
-@require_scope(IAMScope.SYSTEM_ADMIN)
+@router.get("/{shadow_index_id}/status", dependencies=[Depends(require_scope([IAMScope.SYSTEM_ADMIN]))])
 async def get_shadow_status(
     shadow_index_id: str,
     req: Request,
@@ -304,8 +299,7 @@ async def get_shadow_status(
     )
 
 
-@router.get("/list")
-@require_scope(IAMScope.SYSTEM_ADMIN)
+@router.get("/list", dependencies=[Depends(require_scope([IAMScope.SYSTEM_ADMIN]))])
 async def list_shadow_indexes(
     req: Request,
     branch_name: Optional[str] = None,
@@ -367,8 +361,7 @@ async def list_shadow_indexes(
     )
 
 
-@router.delete("/{shadow_index_id}")
-@require_scope(IAMScope.SYSTEM_ADMIN)
+@router.delete("/{shadow_index_id}", dependencies=[Depends(require_scope([IAMScope.SYSTEM_ADMIN]))])
 async def cancel_shadow_build(
     shadow_index_id: str,
     req: Request,
@@ -401,8 +394,7 @@ async def cancel_shadow_build(
 
 # Monitoring and Dashboard Endpoints
 
-@router.get("/dashboard")
-@require_scope(IAMScope.SYSTEM_ADMIN)
+@router.get("/dashboard", dependencies=[Depends(require_scope([IAMScope.SYSTEM_ADMIN]))])
 async def get_shadow_dashboard(
     req: Request,
     user: UserContext = Depends(get_current_user),

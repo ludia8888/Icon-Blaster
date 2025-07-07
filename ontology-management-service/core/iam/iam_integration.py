@@ -240,7 +240,9 @@ class IAMIntegration:
     def check_any_scope(self, user_context: UserContext, required_scopes: List[str]) -> bool:
         """Check if user has any of the required scopes"""
         user_scopes = set(user_context.metadata.get("scopes", []))
-        return bool(user_scopes.intersection(required_scopes))
+        # Convert enum values to strings if needed
+        required_scope_values = [s.value if hasattr(s, 'value') else s for s in required_scopes]
+        return bool(user_scopes.intersection(required_scope_values))
     
     def check_all_scopes(self, user_context: UserContext, required_scopes: List[str]) -> bool:
         """Check if user has all required scopes"""

@@ -26,6 +26,7 @@ class TerminusContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         try:
             # 1) Set trace ID from OpenTelemetry
+            trace_id = ""
             span = trace.get_current_span()
             if span and span.is_recording():
                 span_ctx = span.get_span_context()

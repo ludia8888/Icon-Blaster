@@ -4,14 +4,48 @@ Implements circuit breaker pattern, caching, and monitoring for the version serv
 """
 import asyncio
 import time
-from typing import Optional, Dict, Any, Tuple, Callable
+from typing import Optional, Dict, Any, Tuple, Callable, TypeVar, Coroutine
 from datetime import datetime, timedelta
 from functools import wraps
 import json
 import hashlib
 from contextlib import asynccontextmanager
 
-import pybreaker
+try:
+    import pybreaker  # type: ignore
+except ImportError:  # pragma: no cover
+    # ------------------------------------------------------------------
+    # pybreaker 가 설치되지 않은 개발/테스트 환경에서도 코드가 동작하도록
+    # 최소한의 대체 구현을 제공합니다. 실제 CircuitBreaker 로직은 생략하고
+    # 메서드 호출 시 기본 동작만 수행하도록 합니다.
+    # ------------------------------------------------------------------
+    class _NoOpListener:  # pylint: disable=too-few-public-methods
+        def __getattr__(self, name):  # noqa: D401
+            return lambda *args, **kwargs: None
+
+
+    class _NoOpCircuitBreaker:  # pylint: disable=too-few-public-methods
+        def __init__(self, *args, **kwargs):
+            self.listeners = kwargs.get("listeners", [])
+
+        def call(self, func, *args, **kwargs):  # noqa: D401
+            return func(*args, **kwargs)
+
+        def __call__(self, func):  # noqa: D401
+            async def wrapper(*args, **kwargs):
+                return await func(*args, **kwargs)
+
+            return wrapper
+
+    pybreaker = type(
+        "pybreaker_stub",
+        (),
+        {
+            "CircuitBreaker": _NoOpCircuitBreaker,
+            "CircuitBreakerListener": _NoOpListener,
+        },
+    )
+
 from redis.asyncio import Redis
 from prometheus_client import Counter, Histogram, Gauge, Summary
 import structlog
@@ -67,6 +101,22 @@ cache_memory_usage_bytes = Gauge(
     'version_service_cache_memory_bytes',
     'Estimated memory usage of version service cache'
 )
+
+T = TypeVar("T")
+
+
+def circuit_breaker(func: Callable[..., Coroutine[Any, Any, T]]) -> Callable[..., Coroutine[Any, Any, T]]:  # type: ignore
+    """No-op circuit breaker decorator (fallback).
+
+    실제 회로 차단 로직은 `ResilientVersionService` 내부에서 pybreaker 인스턴스를
+    사용해 구현된다. 여기서는 데코레이터 정의 시점에 pybreaker 가 없더라도
+    모듈 임포트가 실패하지 않도록 단순 pass-through 역할만 수행한다.
+    """
+
+    async def wrapper(*args, **kwargs):  # type: ignore[override]
+        return await func(*args, **kwargs)
+
+    return wrapper
 
 
 class CircuitBreakerConfig:

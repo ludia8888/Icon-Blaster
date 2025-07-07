@@ -7,7 +7,8 @@ from .constants import (
     get_default_branch,
     format_branch,
     parse_branch,
-    is_readonly_branch
+    is_readonly_branch,
+    format_author,
 )
 from .context import (
     get_author,
@@ -20,7 +21,8 @@ from .context import (
     build_commit_message,
     OverrideBranch,
     OverrideAuthor,
-    get_terminus_context
+    get_terminus_context,
+    set_request_context
 )
 
 __all__ = [
@@ -31,6 +33,7 @@ __all__ = [
     "format_branch",
     "parse_branch",
     "is_readonly_branch",
+    "format_author",
     # Context functions
     "get_author",
     "set_author", 
@@ -42,5 +45,6 @@ __all__ = [
     "build_commit_message",
     "OverrideBranch",
     "OverrideAuthor",
-    "get_terminus_context"
+    "get_terminus_context",
+    "set_request_context"
 ]

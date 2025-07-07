@@ -5,7 +5,8 @@ and resilience patterns.
 """
 from typing import Callable, Optional, Dict, Any
 from fastapi import Request, Response, status
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseCall
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 from starlette.responses import JSONResponse
 import json
 import hashlib
@@ -96,7 +97,14 @@ class ETagMiddleware(BaseHTTPMiddleware):
         """Process request with ETag handling"""
         # Initialize version service if needed (lazy initialization)
         if not self.version_service:
-            self.version_service = await get_resilient_version_service()
+            # Get redis client from app state
+            redis_client = getattr(request.app.state, 'redis_client', None)
+            if redis_client:
+                self.version_service = await get_resilient_version_service(redis_client)
+            else:
+                # Skip ETag functionality if redis is not available
+                logger.warning("Redis client not available, skipping ETag functionality")
+                return await call_next(request)
 
         # Check if the endpoint for this request has ETag enabled via decorator
         etag_info = self._get_etag_info_from_request(request)

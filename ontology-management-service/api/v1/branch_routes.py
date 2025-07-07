@@ -10,18 +10,18 @@ from core.iam.dependencies import require_scope
 from core.iam.iam_integration import IAMScope
 from middleware.etag_middleware import enable_etag
 from bootstrap.dependencies import get_branch_service, get_job_service
-from core.interfaces import BranchServiceProtocol # Assuming this is correct
 from monitoring.async_merge_metrics import track_api_performance, metrics_collector
 from middleware.auth_middleware import get_current_user
 
 # Import models (adjust paths as needed)
 try:
     from models.branch import Branch
-    from models.branch import BranchService  
 except ImportError:
     # Fallback for missing models
     Branch = Dict[str, Any]
-    BranchService = Any
+
+# Import BranchService
+from core.branch.service import BranchService
 
 router = APIRouter(prefix="/branches", tags=["Branch Management"])
 
@@ -64,8 +64,8 @@ async def get_branch(
 async def get_branch_by_id(
     branch_id: str,
     req: Request,
-    branch_service: BranchService = Depends(get_branch_service),
     current_user: Annotated[UserContext, Depends(get_current_user)],
+    branch_service: BranchService = Depends(get_branch_service)
 ) -> Dict[str, Any]:
     """Get details of a specific branch."""
     branch = await branch_service.get_branch(branch_id)
@@ -84,8 +84,8 @@ async def get_branch_by_id(
 async def list_proposals(
     branch_id: str,
     req: Request,
-    branch_service: BranchService = Depends(get_branch_service),
     current_user: Annotated[UserContext, Depends(get_current_user)],
+    branch_service: BranchService = Depends(get_branch_service)
 ) -> List[Dict[str, Any]]:
     """List all proposals for a specific branch."""
     return await branch_service.list_proposals(branch_name=branch_id)
@@ -100,8 +100,8 @@ async def get_proposal(
     branch_id: str,
     proposal_id: str,
     req: Request,
-    branch_service: BranchService = Depends(get_branch_service),
     current_user: Annotated[UserContext, Depends(get_current_user)],
+    branch_service: BranchService = Depends(get_branch_service)
 ) -> Dict[str, Any]:
     """Get details of a specific proposal."""
     proposal = await branch_service.get_proposal(proposal_id=proposal_id)
@@ -286,16 +286,16 @@ async def merge_proposal_sync(
     proposal_id: str,
     merge_request: Dict[str, Any],
     req: Request,
-    branch_service: BranchService = Depends(get_branch_service),
     current_user: Annotated[UserContext, Depends(get_current_user)],
+    branch_service: BranchService = Depends(get_branch_service)
 ) -> Dict[str, Any]:
     """
-    DEPRECATED: Synchronous merge operation
-    Use /merge endpoint instead for better performance and reliability
+    (DEPRECATED) Synchronously merge a proposal.
+    This is kept for backward compatibility and simple test cases.
     """
     import warnings
     warnings.warn(
-        "Synchronous merge is deprecated. Use /merge endpoint for async processing.",
+        "Synchronous merge is deprecated. Use POST /merge for async processing.",
         DeprecationWarning,
         stacklevel=2
     )
@@ -325,5 +325,4 @@ async def merge_proposal_sync(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Merge failed: {str(e)}"
         )
-         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Proposal {proposal_id} not found in branch {branch_id}")
     return proposal 

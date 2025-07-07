@@ -1,7 +1,7 @@
 """
 Foundry-style Branch Service with optimistic concurrency
 """
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 

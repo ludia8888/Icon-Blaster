@@ -15,11 +15,45 @@ from opentelemetry.sdk.metrics.export import (
     PeriodicExportingMetricReader,
     ConsoleMetricExporter
 )
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.redis import RedisInstrumentor
-from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+# --- Optional instrumentation imports (graceful degradation) ---
+# 각 모듈이 개발 환경에 설치되어 있지 않더라도 애플리케이션 구동이 멈추지 않도록,
+# try/except 블록으로 감싸서 ImportError 발생 시 대체 플래그를 설정합니다.
+
+try:
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor  # type: ignore
+    HAS_FASTAPI_INSTRUMENTATION = True
+except ImportError:  # pragma: no cover
+    FastAPIInstrumentor = None  # type: ignore
+    HAS_FASTAPI_INSTRUMENTATION = False
+
+try:
+    from opentelemetry.instrumentation.redis import RedisInstrumentor  # type: ignore
+    HAS_REDIS_INSTRUMENTATION = True
+except ImportError:  # pragma: no cover
+    RedisInstrumentor = None  # type: ignore
+    HAS_REDIS_INSTRUMENTATION = False
+
+try:
+    from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor  # type: ignore
+    HAS_ASYNCIO_INSTRUMENTATION = True
+except ImportError:  # pragma: no cover
+    AsyncioInstrumentor = None  # type: ignore
+    HAS_ASYNCIO_INSTRUMENTATION = False
+
+try:
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor  # type: ignore
+    HAS_REQUESTS_INSTRUMENTATION = True
+except ImportError:  # pragma: no cover
+    RequestsInstrumentor = None  # type: ignore
+    HAS_REQUESTS_INSTRUMENTATION = False
+
+try:
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor  # type: ignore
+    HAS_HTTPX_INSTRUMENTATION = True
+except ImportError:  # pragma: no cover
+    HTTPXClientInstrumentor = None  # type: ignore
+    HAS_HTTPX_INSTRUMENTATION = False
+
 # Optional instrumentations - import only if available
 try:
     from opentelemetry.instrumentation.aiohttp import AioHTTPClientInstrumentor
@@ -132,12 +166,22 @@ class OpenTelemetryManager:
     def _initialize_instrumentations(self):
         """Initialize all auto-instrumentations"""
         try:
-            # Core instrumentations
-            AsyncioInstrumentor().instrument()
-            RequestsInstrumentor().instrument()
-            
-            # HTTP client instrumentations
-            HTTPXClientInstrumentor().instrument()
+            # -------------------- Core instrumentations --------------------
+            if HAS_ASYNCIO_INSTRUMENTATION:
+                AsyncioInstrumentor().instrument()
+            else:
+                logger.warning("asyncio instrumentation not available")
+
+            if HAS_REQUESTS_INSTRUMENTATION:
+                RequestsInstrumentor().instrument()
+            else:
+                logger.warning("requests instrumentation not available")
+
+            # ------------------ HTTP client instrumentations ------------------
+            if HAS_HTTPX_INSTRUMENTATION:
+                HTTPXClientInstrumentor().instrument()
+            else:
+                logger.warning("httpx instrumentation not available")
             
             if HAS_AIOHTTP_INSTRUMENTATION:
                 AioHTTPClientInstrumentor().instrument()
@@ -156,7 +200,10 @@ class OpenTelemetryManager:
                 logger.warning("sqlalchemy instrumentation not available")
             
             # Cache instrumentation
-            RedisInstrumentor().instrument()
+            if HAS_REDIS_INSTRUMENTATION:
+                RedisInstrumentor().instrument()
+            else:
+                logger.warning("redis instrumentation not available")
             
             # Task queue instrumentation
             if os.getenv("CELERY_ENABLED", "false").lower() == "true" and HAS_CELERY_INSTRUMENTATION:
@@ -174,12 +221,15 @@ class OpenTelemetryManager:
             logger.error("OpenTelemetry not initialized before FastAPI instrumentation")
             return
             
-        FastAPIInstrumentor.instrument_app(
-            app,
-            tracer_provider=self.tracer_provider,
-            excluded_urls=os.getenv("OTEL_PYTHON_EXCLUDED_URLS", "/health,/metrics")
-        )
-        logger.info("FastAPI instrumentation complete")
+        if HAS_FASTAPI_INSTRUMENTATION:
+            FastAPIInstrumentor.instrument_app(
+                app,
+                tracer_provider=self.tracer_provider,
+                excluded_urls=os.getenv("OTEL_PYTHON_EXCLUDED_URLS", "/health,/metrics")
+            )
+            logger.info("FastAPI instrumentation complete")
+        else:
+            logger.warning("FastAPI instrumentation module not available – skipping FastAPI instrumentation")
         
     def shutdown(self):
         """Shutdown OpenTelemetry providers"""

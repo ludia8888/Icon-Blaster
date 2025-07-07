@@ -261,7 +261,7 @@ def temporal_query_with_circuit_breaker(query_type: str):
     def decorator(func: Callable) -> Callable:
         # Apply both decorators
         func = track_temporal_query(query_type)(func)
-        func = unified_circuit_breaker("temporal_query")(func)
+        func = circuit_breaker("temporal_query")(func)
         return func
     
     return decorator
