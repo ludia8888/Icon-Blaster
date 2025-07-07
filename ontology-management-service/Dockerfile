@@ -10,11 +10,15 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
+# Copy packages directory first
+COPY packages/ /app/packages/
+
 # Copy requirements
-COPY ontology-management-service/requirements-minimal.txt ontology-management-service/requirements-otel.txt ./
+COPY ontology-management-service/requirements.txt ./
+COPY ontology-management-service/requirements-otel.txt ./
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements-minimal.txt -r requirements-otel.txt
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-otel.txt
 
 # Copy application code
 COPY ontology-management-service/ .

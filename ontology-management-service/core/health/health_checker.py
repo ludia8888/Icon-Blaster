@@ -64,7 +64,7 @@ class HealthChecker:
                  critical_services: Optional[List[str]] = None):
         # Use environment variables for Docker compatibility
         import os
-        self.db_url = db_url or os.getenv("DATABASE_URL", "postgresql://oms_user:oms_password@postgres:5432/oms_db")
+        self.db_url = db_url or os.getenv("DATABASE_URL")
         self.terminusdb_url = os.getenv("TERMINUSDB_URL", "http://terminusdb:6363")
         self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://redis:6379")
         self.critical_services = critical_services or ["database", "terminusdb", "redis"]

@@ -3,6 +3,7 @@ name = "oms-monolith"
 version = "3.0.0"
 description = "Ontology Management System - Ultimate Monolith"
 authors = ["OMS Team"]
+packages = [{ include = "*" }]
 
 [tool.poetry.dependencies]
 python = ">=3.10"
@@ -162,24 +163,4 @@ markers = [
     "unit: marks tests as unit tests",
     "benchmark: marks tests as performance benchmarks",
 ]
-
-[project]
-name = "ontology-management-service"
-version = "0.1.0"
-description = "The core Ontology Management Service (OMS)"
-readme = "README.md"
-requires-python = ">=3.10"
-# Dependencies will be read from requirements.txt
-# For now, we are just setting up the package structure.
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-]
-
-[tool.setuptools.packages.find]
-where = ["."]
-exclude = ["tests*", "venv*", "docs*", "scripts*"]
-
-[tool.setuptools]
-py-modules = []
 
