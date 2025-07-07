@@ -84,15 +84,31 @@ from api.graphql.main import app as websocket_app
 
 logger = get_logger(__name__)
 
+# Enable debug logging for troubleshooting
+import os
+if os.getenv("DEBUG", "").lower() in ["true", "1", "yes"]:
+    import logging
+    logging.getLogger().setLevel(logging.DEBUG)
+    logger.debug("Debug logging enabled")
+
 def create_app(container=None) -> FastAPI:
     """Application factory, creating a new FastAPI application."""
     
+    logger.info("Creating FastAPI application...")
     config = get_config()
+    logger.debug(f"Configuration loaded: environment={config.service.environment}, debug={config.service.debug}")
 
     if container is None:
-        container = init_container(config)
+        logger.debug("Initializing dependency injection container...")
+        try:
+            container = init_container(config)
+            logger.info("DI container initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize DI container: {type(e).__name__}: {str(e)}")
+            raise
 
     api_prefix = "/api/v1"
+    logger.debug(f"API prefix: {api_prefix}")
 
     # Create the FastAPI application
     app = FastAPI(
@@ -144,7 +160,7 @@ def create_app(container=None) -> FastAPI:
     for router_module in v1_routers:
         app.include_router(router_module.router, prefix=api_prefix)
 
-    app.include_router(auth_proxy_routes.router)
+    app.include_router(auth_proxy_routes.router, prefix=api_prefix)
     
     app.mount("/graphql", modular_graphql_app, name="graphql")
     app.mount("/graphql-ws", websocket_app, name="graphql_ws")

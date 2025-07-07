@@ -7,14 +7,25 @@ from typing import Annotated
 
 from core.health import get_health_checker, HealthStatus
 from middleware.auth_middleware import get_current_user
+from common_logging.setup import get_logger
 
+logger = get_logger(__name__)
 router = APIRouter(tags=["Health"])
 
 @router.get("/health")
 async def health_check():
     """Real system health check - no lies, only verified facts"""
-    health_checker = get_health_checker()
-    result = await health_checker.get_health(detailed=False)
+    logger.debug("Health check endpoint called")
+    
+    try:
+        health_checker = get_health_checker()
+        logger.debug("Health checker instance obtained")
+        
+        result = await health_checker.get_health(detailed=False)
+        logger.info(f"Health check result: {result}")
+    except Exception as e:
+        logger.exception("Error during health check")
+        raise
     
     # Return appropriate HTTP status based on health
     if result["status"] == HealthStatus.UNHEALTHY.value:

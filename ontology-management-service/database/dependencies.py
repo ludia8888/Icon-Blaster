@@ -5,7 +5,7 @@ Provides secure database access with user context propagation
 from typing import Optional
 from fastapi import Depends, Request
 
-from database.clients.unified_database_client import get_unified_database_client
+from bootstrap.providers.unified_provider import get_unified_db_client
 from database.clients.secure_database_adapter import SecureDatabaseAdapter
 from core.auth import UserContext
 from middleware.auth_middleware import get_current_user
@@ -19,7 +19,7 @@ async def get_database_client():
     Get basic database client (for system operations)
     Use this only for operations that don't require user context
     """
-    return await get_unified_database_client()
+    return await get_unified_db_client()
 
 
 async def get_secure_database(
@@ -41,7 +41,7 @@ async def get_secure_database(
     Returns:
         An instance of SecureDatabaseAdapter.
     """
-    base_client = await get_unified_database_client()
+    base_client = await get_unified_db_client()
     secure_adapter = SecureDatabaseAdapter(base_client)
     logger.debug(f"Created secure database adapter for request by user: {user.username}")
     return secure_adapter
@@ -68,7 +68,7 @@ async def get_secure_database_optional(
     if not user:
         user = getattr(request.state, "user", None)
     
-    base_client = await get_unified_database_client()
+    base_client = await get_unified_db_client()
     
     if user:
         # Return secure adapter with user context

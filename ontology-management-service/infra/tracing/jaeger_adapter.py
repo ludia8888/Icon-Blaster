@@ -4,7 +4,12 @@ Integrates with OpenTelemetry and existing SIEM infrastructure.
 """
 import os
 import functools
-from typing import Dict, Any, Optional, Callable, TypeVar, ParamSpec
+from typing import Dict, Any, Optional, Callable, TypeVar
+try:
+    from typing import ParamSpec
+except ImportError:
+    # Python 3.9 compatibility
+    from typing_extensions import ParamSpec
 from contextlib import asynccontextmanager
 import asyncio
 

@@ -47,7 +47,6 @@ from .sqlite_client_secure import SQLiteClientSecure
 from .terminus_db import TerminusDBClient
 
 from common_logging.setup import get_logger
-from core.validation.ports import TerminusPort
 
 # Type aliases for the client classes
 PostgresClient = PostgresClientSecure
@@ -506,8 +505,34 @@ class UnifiedDatabaseClient:
 
 async def get_unified_database_client() -> UnifiedDatabaseClient:
     """
-    Factory function for UnifiedDatabaseClient (to be implemented in DI provider)
+    Factory function for UnifiedDatabaseClient
+    
+    This is a temporary implementation that creates a basic client.
+    In production, this should be replaced with proper DI container integration.
     """
-    # This function will be moved/implemented in a dependency injection provider
-    # where it will have access to AppConfig to initialize the individual clients.
-    raise NotImplementedError("This factory should be implemented in the DI container.")
+    import os
+    from bootstrap.config import get_config
+    
+    config = get_config()
+    
+    # Create TerminusDB client
+    terminus_endpoint = os.environ.get("TERMINUSDB_ENDPOINT", "http://localhost:6363")
+    terminus_client = TerminusDBClient(
+        endpoint=terminus_endpoint,
+        username=os.environ.get("TERMINUSDB_USER", "admin"),
+        password=os.environ.get("TERMINUSDB_PASSWORD", "changeme-admin-pass")
+    )
+    
+    # Create SQLite client as fallback
+    sqlite_client = SQLiteClientSecure(config=config.sqlite.model_dump())
+    
+    # Create unified database client
+    db_client = UnifiedDatabaseClient(
+        terminus_client=terminus_client,
+        postgres_client=None,  # Skip PostgreSQL for now
+        sqlite_client=sqlite_client,
+        default_backend=DatabaseBackend.TERMINUSDB
+    )
+    
+    await db_client.connect()
+    return db_client

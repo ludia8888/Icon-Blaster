@@ -72,16 +72,45 @@ class UserServiceClient:
                 await asyncio.sleep(1)
     
     async def login(self, username: str, password: str, mfa_code: Optional[str] = None) -> Dict[str, Any]:
-        """사용자 로그인"""
-        data = {
+        """사용자 로그인 - 2단계 인증 처리"""
+        # Step 1: Username/password authentication
+        step1_data = {
             "username": username,
             "password": password
         }
         
-        if mfa_code:
-            data["mfa_code"] = mfa_code
+        try:
+            step1_response = await self._request("POST", "/auth/login", json=step1_data)
             
-        return await self._request("POST", "/auth/login", data=data)
+            # Check if this is a challenge response
+            if step1_response.get("step") == "mfa_required" or step1_response.get("challenge_token"):
+                challenge_token = step1_response.get("challenge_token")
+                
+                # Step 2: Complete authentication with challenge token
+                step2_data = {
+                    "challenge_token": challenge_token,
+                    "mfa_code": mfa_code  # Can be None for non-MFA users
+                }
+                
+                step2_response = await self._request("POST", "/auth/login/complete", json=step2_data)
+                return step2_response
+            
+            # If no challenge required, return the response (legacy flow)
+            return step1_response
+            
+        except httpx.HTTPStatusError as e:
+            # If step 1 fails, it might be using legacy endpoint
+            if e.response.status_code == 404:
+                # Try legacy endpoint
+                legacy_data = {
+                    "username": username,
+                    "password": password
+                }
+                if mfa_code:
+                    legacy_data["mfa_code"] = mfa_code
+                    
+                return await self._request("POST", "/auth/login/legacy", json=legacy_data)
+            raise
     
     async def register(self, username: str, email: str, password: str, full_name: Optional[str] = None) -> Dict[str, Any]:
         """사용자 회원가입"""

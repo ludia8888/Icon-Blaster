@@ -57,7 +57,7 @@ async def login(
     
     - OAuth2PasswordRequestForm 지원
     - MFA 코드 선택적 입력
-    - User Service로 요청 전달
+    - User Service로 요청 전달 (2단계 인증 자동 처리)
     """
     client = get_user_service_client()
     
@@ -86,6 +86,56 @@ async def login(
         record_audit_service_request(
             method="POST",
             endpoint="/auth/login",
+            status="error",
+            duration=0.1
+        )
+        
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+@router.post("/auth/login/json")
+async def login_json(
+    request: Request,
+    login_data: LoginRequest
+):
+    """
+    사용자 로그인 (JSON 방식)
+    
+    - JSON 요청 지원
+    - MFA 코드 선택적 입력
+    - User Service로 요청 전달 (2단계 인증 자동 처리)
+    """
+    client = get_user_service_client()
+    
+    try:
+        async with client:
+            result = await client.login(
+                username=login_data.username,
+                password=login_data.password,
+                mfa_code=login_data.mfa_code
+            )
+            
+            # 메트릭 기록
+            record_audit_service_request(
+                method="POST",
+                endpoint="/auth/login/json",
+                status="success",
+                duration=0.1
+            )
+            
+            return result
+            
+    except Exception as e:
+        logger.error(f"Login proxy failed: {e}")
+        
+        # 메트릭 기록
+        record_audit_service_request(
+            method="POST",
+            endpoint="/auth/login/json",
             status="error",
             duration=0.1
         )

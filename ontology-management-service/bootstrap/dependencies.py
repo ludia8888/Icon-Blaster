@@ -12,11 +12,12 @@ from bootstrap.providers.database import (
 )
 from bootstrap.providers.redis_provider import RedisProvider
 from bootstrap.providers.circuit_breaker import CircuitBreakerProvider
-from database.clients.postgres_client import PostgresClient
-from database.clients.sqlite_client import SQLiteClient
+# from database.clients.postgres_client import PostgresClient  # Removed - doesn't exist
+# from database.clients.sqlite_client import SQLiteClient  # Removed - doesn't exist
 from database.clients.postgres_client_secure import PostgresClientSecure
 from database.clients.sqlite_client_secure import SQLiteClientSecure
-from database.clients.unified_database_client import UnifiedDatabaseClient, get_unified_database_client
+from database.clients.unified_database_client import UnifiedDatabaseClient
+from bootstrap.providers.unified_provider import get_unified_db_client
 from redis import asyncio as aioredis
 from middleware.circuit_breaker import CircuitBreakerGroup
 from core.branch.service import BranchService
@@ -29,6 +30,9 @@ from bootstrap.config import get_config
 # from shared.event_gateway import IEventGateway  # TODO: implement when needed
 # from core.versioning.version_service import IVersionService, VersionService, ResilientVersionService  # TODO: implement when needed
 from shared.database.sqlite_connector import SQLiteConnector
+from common_logging.setup import get_logger
+
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # BranchService Dependency
@@ -40,7 +44,8 @@ _branch_provider_cache: dict[str, Any] = {}
 
 async def get_branch_service(request: Request) -> BranchService:  # pragma: no cover
     """FastAPI dependency: BranchService 를 비동기 제공"""
-
+    logger.debug("Creating BranchService instance...")
+    
     # For now, create a simple BranchService directly
     from database.clients.unified_database_client import UnifiedDatabaseClient, DatabaseBackend
     from database.clients.sqlite_client_secure import SQLiteClientSecure
@@ -100,7 +105,7 @@ class Container(containers.DeclarativeContainer):
     )
 
     db_client_provider = providers.Resource(
-        get_unified_database_client,
+        get_unified_db_client,
     )
 
     event_gateway_provider = providers.Factory(
@@ -165,7 +170,7 @@ def get_circuit_breaker_group(request: Request) -> CircuitBreakerGroup:
 
 async def get_schema_service(
     request: Request,
-    db_client: UnifiedDatabaseClient = Depends(get_unified_database_client),
+    db_client: UnifiedDatabaseClient = Depends(get_unified_db_client),
     branch_service: BranchService = Depends(get_branch_service)
 ) -> SchemaService:
     """

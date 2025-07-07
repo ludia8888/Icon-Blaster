@@ -20,7 +20,7 @@ COPY ontology-management-service/requirements-otel.txt ./
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt -r requirements-otel.txt
 
-# Copy application code
+# Copy application code (rebuilt 2025-01-07)
 COPY ontology-management-service/ .
 
 # Copy and set up start script before changing user

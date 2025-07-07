@@ -73,7 +73,8 @@
       "Bash(poetry run pytest:*)",
       "Bash(createdb:*)",
       "Bash(cloc:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(env)"
     ],
     "deny": []
   }

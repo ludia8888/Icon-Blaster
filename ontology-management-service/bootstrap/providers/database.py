@@ -3,8 +3,8 @@ import punq
 from typing import Optional
 
 from bootstrap.config import AppConfig
-from database.clients.postgres_client import PostgresClient
-from database.clients.sqlite_client import SQLiteClient
+# from database.clients.postgres_client import PostgresClient  # This doesn't exist
+# from database.clients.sqlite_client import SQLiteClient  # This doesn't exist
 from database.clients.postgres_client_secure import PostgresClientSecure
 from database.clients.sqlite_client_secure import SQLiteClientSecure
 from database.clients.unified_database_client import UnifiedDatabaseClient
@@ -12,15 +12,15 @@ from database.clients.unified_database_client import UnifiedDatabaseClient
 from .base import SingletonProvider
 
 
-class PostgresClientProvider(SingletonProvider[PostgresClient]):
+class PostgresClientProvider(SingletonProvider[PostgresClientSecure]):
     """Provider for PostgresClient instances."""
 
     def __init__(self, container: punq.Container):
         super().__init__()
         self._container = container
-        self._instance: Optional[PostgresClient] = None
+        self._instance: Optional[PostgresClientSecure] = None
 
-    async def _create(self) -> PostgresClient:
+    async def _create(self) -> PostgresClientSecure:
         config = self._container.resolve(AppConfig)
         if not config.postgres:
             raise ValueError("PostgreSQL configuration is missing.")
@@ -38,17 +38,17 @@ class PostgresClientProvider(SingletonProvider[PostgresClient]):
             await client.close()
 
 
-class SQLiteClientProvider(SingletonProvider[SQLiteClient]):
+class SQLiteClientProvider(SingletonProvider[SQLiteClientSecure]):
     """Provides a singleton instance of the SQLiteClient."""
     def __init__(self, container: punq.Container):
         super().__init__()
         self._container = container
 
-    async def _create(self) -> SQLiteClient:
+    async def _create(self) -> SQLiteClientSecure:
         config = self._container.resolve(AppConfig)
         if not config.sqlite:
             raise ValueError("SQLite configuration is missing.")
-        client = SQLiteClient(config.sqlite.model_dump())
+        client = SQLiteClientSecure(config.sqlite.model_dump())
         await client.connect()
         return client
 
@@ -70,14 +70,14 @@ class UnifiedDatabaseProvider(SingletonProvider[UnifiedDatabaseClient]):
         self._container = container
 
     async def _create(self) -> UnifiedDatabaseClient:
-        postgres_client: Optional[PostgresClient] = None
-        sqlite_client: Optional[SQLiteClient] = None
+        postgres_client: Optional[PostgresClientSecure] = None
+        sqlite_client: Optional[SQLiteClientSecure] = None
 
-        if self._container.is_registered(PostgresClient):
-            postgres_client = self._container.resolve(PostgresClient)
+        if self._container.is_registered(PostgresClientSecure):
+            postgres_client = self._container.resolve(PostgresClientSecure)
 
-        if self._container.is_registered(SQLiteClient):
-            sqlite_client = self._container.resolve(SQLiteClient)
+        if self._container.is_registered(SQLiteClientSecure):
+            sqlite_client = self._container.resolve(SQLiteClientSecure)
         
         # ... TerminusDB client can be resolved here in the future
         

@@ -171,7 +171,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         """Validates the JWT by calling the user-service."""
         headers = {"Authorization": f"Bearer {token}"}
         try:
-            res = await self.client.get(f"{self.user_service_url}/users/me", headers=headers)
+            res = await self.client.get(f"{self.user_service_url}/auth/account/userinfo", headers=headers)
             res.raise_for_status()
             data = res.json()
             return {
