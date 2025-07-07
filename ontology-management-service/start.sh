@@ -23,8 +23,8 @@ echo "Starting Ontology Management Service..."
 # Ensure Python dependencies are installed and project is installed in editable mode
 # This is the key to solving all import path issues reliably.
 echo "1. Installing dependencies and setting up the project..."
-pip install --quiet -r requirements.txt
-pip install --quiet -e .
+pip install -r requirements.txt
+pip install -e .
 
 # --- Start Main API Server ---
 echo "2. Starting main FastAPI server..."

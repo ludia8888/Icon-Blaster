@@ -5,7 +5,7 @@ description = "Ontology Management System - Ultimate Monolith"
 authors = ["OMS Team"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.10"
 fastapi = "^0.104.0"
 uvicorn = {extras = ["standard"], version = "^0.24.0"}
 redis = "^5.0.0"
