@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # TerminusDB
+  terminusdb:
+    image: terminusdb/terminusdb:v11.1.14
+    container_name: spice_terminusdb
+    environment:
+      - TERMINUSDB_ADMIN_PASS=admin123
+      - TERMINUSDB_SERVER_NAME=SpiceTerminusDB
+      - TERMINUSDB_AUTOLOGIN=false
+    ports:
+      - "6363:6363"
+    volumes:
+      - terminusdb_data:/app/terminusdb/storage
+    networks:
+      - spice_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6363/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # OMS (Ontology Management Service)
+  oms:
+    build:
+      context: ./ontology-management-service
+      dockerfile: Dockerfile
+    container_name: spice_oms
+    environment:
+      - TERMINUS_SERVER_URL=http://terminusdb:6363
+      - TERMINUS_USER=admin
+      - TERMINUS_ACCOUNT=admin
+      - TERMINUS_KEY=admin123
+      - LOG_LEVEL=INFO
+    ports:
+      - "8000:8000"
+    depends_on:
+      terminusdb:
+        condition: service_healthy
+    networks:
+      - spice_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ./shared:/app/shared
+
+  # BFF (Backend for Frontend)
+  bff:
+    build:
+      context: ./backend-for-frontend
+      dockerfile: Dockerfile
+    container_name: spice_bff
+    environment:
+      - OMS_BASE_URL=http://oms:8000
+      - LOG_LEVEL=INFO
+    ports:
+      - "8002:8002"
+    depends_on:
+      oms:
+        condition: service_healthy
+    networks:
+      - spice_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ./shared:/app/shared
+      - bff_data:/app/data
+
+volumes:
+  terminusdb_data:
+  bff_data:
+
+networks:
+  spice_network:
+    driver: bridge
