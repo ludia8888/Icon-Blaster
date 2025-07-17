@@ -16,7 +16,10 @@ from services.core.interfaces import (
     IConnectionManager,
     IDatabaseService
 )
-from domain.exceptions import (
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'shared'))
+from exceptions import (
     QueryExecutionError,
     DomainException
 )
@@ -405,8 +408,9 @@ class TerminusQueryService(IQueryService):
                 
                 return [binding.get('Class') for binding in result.get('bindings', [])]
                 
-        except Exception:
-            return []
+        except Exception as e:
+            logger.error(f"Failed to get all classes from database '{db_name}': {e}")
+            raise QueryError(f"Unable to retrieve classes from database: {str(e)}")
     
     def _deduplicate_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """

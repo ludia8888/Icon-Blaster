@@ -14,14 +14,19 @@ from services.core.interfaces import (
     IDatabaseService, 
     IOntologyValidator
 )
-from domain.exceptions import (
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'shared'))
+from exceptions import (
     OntologyNotFoundError,
     DuplicateOntologyError,
     OntologyValidationError,
     DomainException
 )
-from domain.entities.ontology import Ontology
-from domain.value_objects.multilingual_text import MultiLingualText
+# Fix import path for ontology entity
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from entities.ontology import Ontology
+from value_objects.multilingual_text import MultiLingualText
 
 logger = logging.getLogger(__name__)
 
@@ -394,5 +399,7 @@ class TerminusOntologyRepository(IOntologyRepository):
         try:
             ontologies = self.list(db_name)
             return {ont["id"] for ont in ontologies}
-        except Exception:
-            return set()
+        except Exception as e:
+            logger.error(f"Failed to get all class IDs from database '{db_name}': {e}")
+            # ID 목록 조회 실패는 빈 set 반환보다는 예외를 던져야 함
+            raise RepositoryError(f"Unable to retrieve class IDs: {str(e)}")

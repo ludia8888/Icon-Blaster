@@ -9,7 +9,10 @@ from typing import Dict, List, Optional, Any
 from functools import lru_cache
 
 from services.core.interfaces import IBranchService, IConnectionManager, IDatabaseService
-from domain.exceptions import (
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'shared'))
+from exceptions import (
     BranchNotFoundError,
     BranchAlreadyExistsError,
     ProtectedBranchError,
@@ -380,8 +383,9 @@ class TerminusBranchService(IBranchService):
                         if log:
                             details['last_commit'] = log[0].get('id')
                             details['last_modified'] = log[0].get('timestamp')
-                except Exception:
-                    pass
+                except Exception as log_error:
+                    logger.warning(f"Unable to retrieve commit history for branch '{branch_name}': {log_error}")
+                    # 커밋 히스토리 조회 실패는 critical하지 않으므로 계속 진행
                 
                 return details
                 

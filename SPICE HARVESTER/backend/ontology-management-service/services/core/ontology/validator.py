@@ -9,8 +9,12 @@ import logging
 from typing import Dict, List, Optional, Any, Set
 
 from services.core.interfaces import IOntologyValidator
-from domain.entities.ontology import Ontology
-from domain.value_objects.multilingual_text import MultiLingualText
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from entities.ontology import Ontology
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'shared'))
+from value_objects.multilingual_text import MultiLingualText
 
 logger = logging.getLogger(__name__)
 
@@ -278,28 +282,44 @@ class TerminusOntologyValidator(IOntologyValidator):
         return errors
     
     def _validate_data_types(self, data: Dict[str, Any]) -> List[str]:
-        """데이터 타입 검증"""
+        """데이터 타입 검증 - 통합 구현 (router와 validator 중복 제거)"""
         errors = []
         
-        # 지원하는 기본 타입들
+        # 지원하는 기본 타입들 - 더 포괄적인 타입 지원
         supported_types = {
             'string', 'str', 'text',
             'integer', 'int', 'number',
             'float', 'double', 'decimal',
             'boolean', 'bool',
             'date', 'datetime', 'timestamp',
-            'uri', 'url', 'iri'
+            'uri', 'url', 'iri',
+            'xsd:string', 'xsd:integer', 'xsd:float', 'xsd:double', 'xsd:decimal',
+            'xsd:boolean', 'xsd:date', 'xsd:datetime', 'xsd:anyURI'
         }
         
-        properties = data.get('properties', [])
-        if isinstance(properties, list):
+        # properties가 dict 형태인 경우 (OMS 형식)
+        properties = data.get('properties', {})
+        if isinstance(properties, dict):
+            for prop_name, prop_type in properties.items():
+                if prop_type and isinstance(prop_type, str):
+                    # 콜론을 포함한 타입 (invalid:type 같은) 거부
+                    if ':' in prop_type and not any(prop_type.startswith(prefix) for prefix in ['xsd:', 'rdfs:', 'owl:']):
+                        errors.append(f"Property '{prop_name}' has invalid type format: {prop_type}")
+                    elif prop_type not in supported_types and not prop_type.startswith(('http://', 'https://')):
+                        errors.append(f"Property '{prop_name}' has unsupported type: {prop_type}")
+        
+        # properties가 list 형태인 경우 (BFF 형식)
+        elif isinstance(properties, list):
             for prop in properties:
                 if isinstance(prop, dict):
+                    prop_name = prop.get('name')
                     prop_type = prop.get('type')
-                    if prop_type and prop_type not in supported_types:
-                        # 커스텀 타입인지 확인 (다른 온톨로지 참조)
-                        if not (prop_type.startswith(('http://', 'https://')) or ':' in prop_type):
-                            errors.append(f"Property '{prop.get('name')}' has unsupported type: {prop_type}")
+                    if prop_type and isinstance(prop_type, str):
+                        # 콜론을 포함한 타입 (invalid:type 같은) 거부
+                        if ':' in prop_type and not any(prop_type.startswith(prefix) for prefix in ['xsd:', 'rdfs:', 'owl:']):
+                            errors.append(f"Property '{prop_name}' has invalid type format: {prop_type}")
+                        elif prop_type not in supported_types and not prop_type.startswith(('http://', 'https://')):
+                            errors.append(f"Property '{prop_name}' has unsupported type: {prop_type}")
         
         return errors
     

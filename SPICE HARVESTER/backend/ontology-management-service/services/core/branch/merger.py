@@ -9,7 +9,10 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 from services.core.interfaces import IBranchMerger, IBranchService, IConnectionManager
-from domain.exceptions import (
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'shared'))
+from exceptions import (
     BranchNotFoundError,
     BranchMergeConflictError,
     ProtectedBranchError,
@@ -1411,7 +1414,7 @@ class TerminusBranchMerger(IBranchMerger):
         Raises:
             DomainException: 모든 방법이 실패한 경우
         """
-        from domain.exceptions import DomainException
+        # domain.exceptions already imported at the top
         
         # 1. 표준 commit(message, author=author) 시도
         try:

@@ -10,9 +10,14 @@ from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
 
 from services.core.interfaces import ILabelMapperService, IOntologyRepository
-from domain.exceptions import LabelNotFoundError, DomainException
-from domain.value_objects.multilingual_text import MultiLingualText
-from domain.entities.label_mapping import LabelMapping
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'shared'))
+from exceptions import LabelNotFoundError, DomainException
+from value_objects.multilingual_text import MultiLingualText
+# Fix import path for label mapping entity
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from entities.label_mapping import LabelMapping
 
 logger = logging.getLogger(__name__)
 
@@ -115,18 +120,60 @@ class TerminusLabelMapperService(ILabelMapperService):
             레이블 매핑 엔티티 리스트
         """
         try:
-            # TODO: 실제 구현에서는 ontology_repository에 쿼리 메서드 추가 필요
-            # 현재는 기본 구현으로 대체
-            mappings = []
-            
-            # 예시: 모든 LabelMapping 타입 문서 조회 후 필터링
-            # 실제로는 더 효율적인 쿼리가 필요
-            
-            return mappings
+            # 실제 구현: TerminusDB에서 레이블 매핑 쿼리
+            with self.connection_manager.get_connection(db_name) as client:
+                # WOQL 쿼리로 LabelMapping 문서 조회
+                from terminusdb_client import WOQLQuery
+                
+                query = WOQLQuery()
+                
+                # 기본 필터 조건 설정
+                conditions = []
+                
+                # resource_type 필터
+                if filters.get('resource_type'):
+                    conditions.append(
+                        query.triple("v:Mapping", "resource_type", filters['resource_type'])
+                    )
+                
+                # resource_id 필터
+                if filters.get('resource_id'):
+                    conditions.append(
+                        query.triple("v:Mapping", "resource_id", filters['resource_id'])
+                    )
+                
+                # language 필터
+                if filters.get('language'):
+                    conditions.append(
+                        query.triple("v:Mapping", "language", filters['language'])
+                    )
+                
+                # 쿼리 구성
+                final_query = query.select("v:Mapping").triple("v:Mapping", "rdf:type", "LabelMapping")
+                
+                if conditions:
+                    for condition in conditions:
+                        final_query = final_query.woql_and(condition)
+                
+                # 쿼리 실행
+                result = client.query(final_query)
+                
+                # 결과를 LabelMapping 엔티티로 변환
+                mappings = []
+                for binding in result.get('bindings', []):
+                    mapping_id = binding.get('Mapping')
+                    if mapping_id:
+                        # 전체 문서 조회
+                        doc = client.get_document(mapping_id)
+                        if doc:
+                            mappings.append(LabelMapping(**doc))
+                
+                return mappings
             
         except Exception as e:
-            logger.error(f"Failed to query label mappings: {e}")
-            return []
+            logger.error(f"Failed to query label mappings from database '{db_name}': {e}")
+            # 쿼리 실패는 예외를 던져야 함
+            raise ServiceError(f"Unable to query label mappings: {str(e)}")
     
     def register_class(self, db_name: str, class_id: str, 
                       label: Any, description: Optional[Any] = None) -> None:

@@ -9,7 +9,10 @@ from typing import Dict, List, Optional, Any
 from copy import deepcopy
 
 from services.core.interfaces import IQueryTransformer, ILabelMapperService
-from domain.exceptions import QueryExecutionError
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'shared'))
+from exceptions import QueryExecutionError
 
 logger = logging.getLogger(__name__)
 
