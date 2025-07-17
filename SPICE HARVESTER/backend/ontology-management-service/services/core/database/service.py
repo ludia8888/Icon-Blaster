@@ -9,7 +9,10 @@ from typing import Dict, List, Optional, Any
 from functools import lru_cache
 
 from services.core.interfaces import IDatabaseService, IConnectionManager
-from domain.exceptions import (
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'shared'))
+from exceptions import (
     DatabaseNotFoundError,
     DatabaseAlreadyExistsError,
     DomainException
@@ -165,7 +168,10 @@ class TerminusDatabaseService(IDatabaseService):
             with self.connection_manager.get_connection() as client:
                 databases = client.list_databases()
                 return any(db.get('name') == db_name for db in databases)
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to check database existence for '{db_name}': {e}")
+            # 데이터베이스 존재 확인 실패는 안전을 위해 존재하지 않는 것으로 처리
+            # 하지만 오류는 반드시 로깅
             return False
     
     def database_exists(self, db_name: str) -> bool:

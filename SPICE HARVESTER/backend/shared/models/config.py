@@ -5,10 +5,16 @@
 
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
+import sys
+import os
+
+# 공통 직렬화 유틸리티 import
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'utils'))
+from serialization import SerializableMixin
 
 
 @dataclass
-class ConnectionConfig:
+class ConnectionConfig(SerializableMixin):
     """데이터베이스 연결 설정 - 모든 서비스 공통"""
     
     server_url: str = "http://localhost:6363"
@@ -26,20 +32,7 @@ class ConnectionConfig:
     retry_attempts: int = 3
     retry_delay: float = 1.0
     
-    def to_dict(self) -> Dict[str, Any]:
-        """딕셔너리 변환"""
-        return {
-            "server_url": self.server_url,
-            "user": self.user,
-            "account": self.account,
-            "key": self.key,
-            "timeout": self.timeout,
-            "use_pool": self.use_pool,
-            "pool_size": self.pool_size,
-            "pool_timeout": self.pool_timeout,
-            "retry_attempts": self.retry_attempts,
-            "retry_delay": self.retry_delay
-        }
+    # to_dict() method는 SerializableMixin에서 자동 제공됨
     
     def to_terminus_format(self) -> Dict[str, Any]:
         """TerminusDB 클라이언트 형식으로 변환"""

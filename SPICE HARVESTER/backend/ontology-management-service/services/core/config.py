@@ -12,10 +12,11 @@ import os
 # shared import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'shared'))
 from models.config import ConnectionConfig
+from utils.serialization import SerializableMixin
 
 
 @dataclass
-class CacheConfig:
+class CacheConfig(SerializableMixin):
     """캐시 설정"""
     
     enabled: bool = True
@@ -23,18 +24,11 @@ class CacheConfig:
     max_size: int = 1000
     eviction_policy: str = "lru"  # lru, lfu, fifo
     
-    def to_dict(self) -> Dict[str, Any]:
-        """딕셔너리 변환"""
-        return {
-            "enabled": self.enabled,
-            "ttl": self.ttl,
-            "max_size": self.max_size,
-            "eviction_policy": self.eviction_policy
-        }
+    # to_dict() method는 SerializableMixin에서 자동 제공됨
 
 
 @dataclass
-class LoggingConfig:
+class LoggingConfig(SerializableMixin):
     """로깅 설정"""
     
     level: str = "INFO"
@@ -43,19 +37,11 @@ class LoggingConfig:
     max_bytes: int = 10485760  # 10MB
     backup_count: int = 5
     
-    def to_dict(self) -> Dict[str, Any]:
-        """딕셔너리 변환"""
-        return {
-            "level": self.level,
-            "format": self.format,
-            "file": self.file,
-            "max_bytes": self.max_bytes,
-            "backup_count": self.backup_count
-        }
+    # to_dict() method는 SerializableMixin에서 자동 제공됨
 
 
 @dataclass
-class SecurityConfig:
+class SecurityConfig(SerializableMixin):
     """보안 설정"""
     
     enable_auth: bool = True
@@ -65,20 +51,11 @@ class SecurityConfig:
     allowed_origins: list = field(default_factory=lambda: ["*"])
     max_request_size: int = 10485760  # 10MB
     
-    def to_dict(self) -> Dict[str, Any]:
-        """딕셔너리 변환"""
-        return {
-            "enable_auth": self.enable_auth,
-            "enable_rbac": self.enable_rbac,
-            "enable_audit": self.enable_audit,
-            "encrypt_data": self.encrypt_data,
-            "allowed_origins": self.allowed_origins,
-            "max_request_size": self.max_request_size
-        }
+    # to_dict() method는 SerializableMixin에서 자동 제공됨
 
 
 @dataclass
-class ServiceConfig:
+class ServiceConfig(SerializableMixin):
     """전체 서비스 설정"""
     
     app_name: str = "Ontology BFF"
@@ -93,25 +70,11 @@ class ServiceConfig:
     security: SecurityConfig = field(default_factory=SecurityConfig)
     
     # 추가 설정
-    label_mapper_db: str = "label_mappings.db"
+    label_mapper_db: str = "../data/label_mappings.db"
     default_language: str = "ko"
     supported_languages: list = field(default_factory=lambda: ["ko", "en", "ja", "zh"])
     
-    def to_dict(self) -> Dict[str, Any]:
-        """딕셔너리 변환"""
-        return {
-            "app_name": self.app_name,
-            "version": self.version,
-            "environment": self.environment,
-            "debug": self.debug,
-            "connection": self.connection.to_dict(),
-            "cache": self.cache.to_dict(),
-            "logging": self.logging.to_dict(),
-            "security": self.security.to_dict(),
-            "label_mapper_db": self.label_mapper_db,
-            "default_language": self.default_language,
-            "supported_languages": self.supported_languages
-        }
+    # to_dict() method는 SerializableMixin에서 자동 제공됨 (중첩 오브젝트 지원)
     
     @classmethod
     def from_env(cls) -> 'ServiceConfig':

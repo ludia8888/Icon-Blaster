@@ -3,7 +3,8 @@
 SOLID 원칙에 따라 작은 단위로 분리된 인터페이스들
 """
 
-from .connection import IConnectionManager, IConnectionPool, ConnectionConfig
+from .connection import IConnectionManager, IConnectionPool
+from ..config import ConnectionConfig
 from .database import IDatabaseService
 from .ontology import IOntologyRepository, IOntologyValidator, IOntologyMerger
 from .branch import IBranchService, IBranchMerger

@@ -3,13 +3,18 @@
 온톨로지 데이터 쿼리를 담당
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query as QueryParam
+from fastapi import APIRouter, Depends, HTTPException, status, Query as QueryParam, Request
 from typing import Dict, List, Optional, Any
 import logging
+import sys
+import os
+
+# Add shared path for common utilities
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+from utils.language import get_accept_language
 
 from models.ontology import QueryInput, QueryResponse
-from services.terminus import TerminusService
-from utils.label_mapper import LabelMapper
+from dependencies import TerminusService, LabelMapper
 from dependencies import get_terminus_service, get_label_mapper
 
 logger = logging.getLogger(__name__)
@@ -24,7 +29,7 @@ router = APIRouter(
 async def execute_query(
     db_name: str,
     query: QueryInput,
-    lang: str = QueryParam("ko", description="언어 코드"),
+    request: Request,
     mapper: LabelMapper = Depends(get_label_mapper),
     terminus: TerminusService = Depends(get_terminus_service)
 ):
@@ -48,6 +53,8 @@ async def execute_query(
     }
     ```
     """
+    lang = get_accept_language(request)
+    
     try:
         # 쿼리 입력을 딕셔너리로 변환
         query_dict = query.dict(exclude_unset=True)

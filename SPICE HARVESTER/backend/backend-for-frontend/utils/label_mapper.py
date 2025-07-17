@@ -24,7 +24,7 @@ class LabelMapper:
     SQLite를 사용하여 매핑 정보를 영속적으로 저장합니다.
     """
     
-    def __init__(self, db_path: str = "data/label_mappings.db"):
+    def __init__(self, db_path: str = "../data/label_mappings.db"):
         """
         초기화
         
@@ -51,8 +51,8 @@ class LabelMapper:
                 return
                 
             async with self._get_connection() as conn:
-            # 클래스 매핑 테이블
-            await conn.execute("""
+                # 클래스 매핑 테이블
+                await conn.execute("""
                 CREATE TABLE IF NOT EXISTS class_mappings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     db_name TEXT NOT NULL,
@@ -64,44 +64,44 @@ class LabelMapper:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(db_name, class_id, label_lang)
                 )
-            """)
-            
-            # 속성 매핑 테이블
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS property_mappings (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    db_name TEXT NOT NULL,
-                    class_id TEXT NOT NULL,
-                    property_id TEXT NOT NULL,
-                    label TEXT NOT NULL,
-                    label_lang TEXT DEFAULT 'ko',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(db_name, class_id, property_id, label_lang)
-                )
-            """)
-            
-            # 관계 매핑 테이블
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS relationship_mappings (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    db_name TEXT NOT NULL,
-                    predicate TEXT NOT NULL,
-                    label TEXT NOT NULL,
-                    label_lang TEXT DEFAULT 'ko',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(db_name, predicate, label_lang)
-                )
-            """)
-            
-            # 인덱스 생성
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_class_label ON class_mappings(db_name, label)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_property_label ON property_mappings(db_name, class_id, label)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_relationship_label ON relationship_mappings(db_name, label)")
-            
-            await conn.commit()
-            self._init_flag = True
+                """)
+                
+                # 속성 매핑 테이블
+                await conn.execute("""
+                    CREATE TABLE IF NOT EXISTS property_mappings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        db_name TEXT NOT NULL,
+                        class_id TEXT NOT NULL,
+                        property_id TEXT NOT NULL,
+                        label TEXT NOT NULL,
+                        label_lang TEXT DEFAULT 'ko',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(db_name, class_id, property_id, label_lang)
+                    )
+                """)
+                
+                # 관계 매핑 테이블
+                await conn.execute("""
+                    CREATE TABLE IF NOT EXISTS relationship_mappings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        db_name TEXT NOT NULL,
+                        predicate TEXT NOT NULL,
+                        label TEXT NOT NULL,
+                        label_lang TEXT DEFAULT 'ko',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(db_name, predicate, label_lang)
+                    )
+                """)
+                
+                # 인덱스 생성
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_class_label ON class_mappings(db_name, label)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_property_label ON property_mappings(db_name, class_id, label)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_relationship_label ON relationship_mappings(db_name, label)")
+                
+                await conn.commit()
+                self._init_flag = True
     
     @asynccontextmanager
     async def _get_connection(self):

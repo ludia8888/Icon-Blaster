@@ -7,7 +7,10 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Any
 from datetime import datetime
 
-from domain.value_objects.multilingual_text import MultiLingualText
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+from value_objects.multilingual_text import MultiLingualText
 
 
 @dataclass

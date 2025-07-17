@@ -6,8 +6,8 @@ services:
     image: terminusdb/terminusdb:v11.1.14
     container_name: spice_terminusdb
     environment:
-      - TERMINUSDB_ADMIN_PASS=admin123
-      - TERMINUSDB_SERVER_NAME=SpiceTerminusDB
+      - TERMINUSDB_ADMIN_PASS=${TERMINUSDB_ADMIN_PASS:-admin123}
+      - TERMINUSDB_SERVER_NAME=${TERMINUSDB_SERVER_NAME:-SpiceTerminusDB}
       - TERMINUSDB_AUTOLOGIN=false
     ports:
       - "6363:6363"
@@ -28,11 +28,11 @@ services:
       dockerfile: Dockerfile
     container_name: spice_oms
     environment:
-      - TERMINUS_SERVER_URL=http://terminusdb:6363
-      - TERMINUS_USER=admin
-      - TERMINUS_ACCOUNT=admin
-      - TERMINUS_KEY=admin123
-      - LOG_LEVEL=INFO
+      - TERMINUS_SERVER_URL=${TERMINUS_SERVER_URL:-http://terminusdb:6363}
+      - TERMINUS_USER=${TERMINUS_USER:-admin}
+      - TERMINUS_ACCOUNT=${TERMINUS_ACCOUNT:-admin}
+      - TERMINUS_KEY=${TERMINUS_KEY:-admin123}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     ports:
       - "8000:8000"
     depends_on:
@@ -55,8 +55,8 @@ services:
       dockerfile: Dockerfile
     container_name: spice_bff
     environment:
-      - OMS_BASE_URL=http://oms:8000
-      - LOG_LEVEL=INFO
+      - OMS_BASE_URL=${OMS_BASE_URL:-http://oms:8000}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     ports:
       - "8002:8002"
     depends_on:

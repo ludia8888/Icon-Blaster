@@ -7,6 +7,17 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel
 import logging
+import sys
+import os
+
+# Add shared security module to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+from security.input_sanitizer import (
+    validate_db_name, 
+    validate_branch_name, 
+    sanitize_input,
+    SecurityViolationError
+)
 
 from services.async_terminus import AsyncTerminusService
 from dependencies import get_terminus_service
@@ -14,7 +25,7 @@ from dependencies import get_terminus_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/database/{db_name}",
+    prefix="/branch/{db_name}",
     tags=["Branch Management"]
 )
 
@@ -47,7 +58,7 @@ class CheckoutRequest(BaseModel):
         }
 
 
-@router.get("/branches")
+@router.get("/list")
 async def list_branches(
     db_name: str,
     terminus: AsyncTerminusService = Depends(get_terminus_service)
@@ -58,8 +69,11 @@ async def list_branches(
     데이터베이스의 모든 브랜치 목록을 조회합니다.
     """
     try:
-        branches = terminus.list_branches(db_name)
-        current_branch = terminus.get_current_branch(db_name)
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        
+        branches = await terminus.list_branches(db_name)
+        current_branch = await terminus.get_current_branch(db_name)
         
         # 브랜치 정보 구성
         branch_info = []
@@ -78,6 +92,12 @@ async def list_branches(
             "total": len(branch_info)
         }
         
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in list_branches: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
     except Exception as e:
         logger.error(f"Failed to list branches: {e}")
         raise HTTPException(
@@ -86,7 +106,7 @@ async def list_branches(
         )
 
 
-@router.post("/branch")
+@router.post("/create")
 async def create_branch(
     db_name: str,
     request: BranchCreateRequest,
@@ -98,34 +118,47 @@ async def create_branch(
     현재 브랜치 또는 지정된 브랜치에서 새 브랜치를 생성합니다.
     """
     try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        
+        # 요청 데이터 정화
+        sanitized_data = sanitize_input(request.dict())
+        
         # 브랜치 이름 유효성 검증
-        if not request.branch_name:
+        branch_name = sanitized_data.get("branch_name")
+        if not branch_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="브랜치 이름은 필수입니다"
             )
         
-        # 예약된 이름 확인
-        reserved_names = ['HEAD', 'main', 'master']
-        if request.branch_name in reserved_names:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"'{request.branch_name}'은(는) 예약된 브랜치 이름입니다"
-            )
+        # 브랜치 이름 보안 검증
+        branch_name = validate_branch_name(branch_name)
+        
+        # from_branch 검증
+        from_branch = sanitized_data.get("from_branch")
+        if from_branch:
+            from_branch = validate_branch_name(from_branch)
         
         # 브랜치 생성
-        terminus.create_branch(
+        await terminus.create_branch(
             db_name, 
-            request.branch_name,
-            from_branch=request.from_branch
+            branch_name,
+            from_branch=from_branch
         )
         
         return {
-            "message": f"브랜치 '{request.branch_name}'이(가) 생성되었습니다",
-            "branch": request.branch_name,
-            "from_branch": request.from_branch or terminus.get_current_branch(db_name)
+            "message": f"브랜치 '{branch_name}'이(가) 생성되었습니다",
+            "branch": branch_name,
+            "from_branch": from_branch or await terminus.get_current_branch(db_name)
         }
         
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in create_branch: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -134,7 +167,7 @@ async def create_branch(
         if "already exists" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"브랜치 '{request.branch_name}'이(가) 이미 존재합니다"
+                detail=f"브랜치가 이미 존재합니다"
             )
         
         raise HTTPException(
@@ -156,6 +189,10 @@ async def delete_branch(
     지정된 브랜치를 삭제합니다.
     """
     try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        branch_name = validate_branch_name(branch_name)
+        
         # 보호된 브랜치 확인
         protected_branches = ['main', 'master', 'production']
         if branch_name in protected_branches and not force:
@@ -165,7 +202,7 @@ async def delete_branch(
             )
         
         # 현재 브랜치 확인
-        current_branch = terminus.get_current_branch(db_name)
+        current_branch = await terminus.get_current_branch(db_name)
         if branch_name == current_branch:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -173,13 +210,19 @@ async def delete_branch(
             )
         
         # 브랜치 삭제
-        terminus.delete_branch(db_name, branch_name)
+        await terminus.delete_branch(db_name, branch_name)
         
         return {
             "message": f"브랜치 '{branch_name}'이(가) 삭제되었습니다",
             "branch": branch_name
         }
         
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in delete_branch: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -209,26 +252,63 @@ async def checkout(
     지정된 브랜치나 커밋으로 체크아웃합니다.
     """
     try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        
+        # 요청 데이터 정화
+        sanitized_data = sanitize_input(request.dict())
+        
+        target = sanitized_data["target"]
+        target_type = sanitized_data.get("target_type", "branch")
+        
+        # 타겟 타입 검증
+        allowed_types = ["branch", "commit"]
+        if target_type not in allowed_types:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"잘못된 타겟 타입입니다. 허용된 값: {allowed_types}"
+            )
+        
+        # 브랜치인 경우 이름 검증
+        if target_type == "branch":
+            target = validate_branch_name(target)
+        else:
+            # 커밋 ID인 경우 기본 정화
+            target = sanitize_input(target)
+            if len(target) > 100:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="커밋 ID가 너무 깁니다"
+                )
+        
         # 체크아웃 실행
-        terminus.checkout(db_name, request.target, request.target_type)
+        await terminus.checkout(db_name, target, target_type)
         
         # 현재 브랜치 확인
-        current_branch = terminus.get_current_branch(db_name)
+        current_branch = await terminus.get_current_branch(db_name)
         
         return {
-            "message": f"{request.target_type} '{request.target}'(으)로 체크아웃했습니다",
-            "target": request.target,
-            "target_type": request.target_type,
+            "message": f"{target_type} '{target}'(으)로 체크아웃했습니다",
+            "target": target,
+            "target_type": target_type,
             "current_branch": current_branch
         }
         
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in checkout: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to checkout: {e}")
         
         if "not found" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"{request.target_type} '{request.target}'을(를) 찾을 수 없습니다"
+                detail="브랜치 또는 커밋을 찾을 수 없습니다"
             )
         
         raise HTTPException(
@@ -249,8 +329,12 @@ async def get_branch_info(
     특정 브랜치의 상세 정보를 조회합니다.
     """
     try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        branch_name = validate_branch_name(branch_name)
+        
         # 브랜치 존재 확인
-        branches = terminus.list_branches(db_name)
+        branches = await terminus.list_branches(db_name)
         if branch_name not in branches:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -258,7 +342,7 @@ async def get_branch_info(
             )
         
         # 현재 브랜치 확인
-        current_branch = terminus.get_current_branch(db_name)
+        current_branch = await terminus.get_current_branch(db_name)
         
         # 브랜치 정보 구성
         info = {
@@ -271,6 +355,12 @@ async def get_branch_info(
         
         return info
         
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in get_branch_info: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
     except HTTPException:
         raise
     except Exception as e:

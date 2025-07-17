@@ -1,0 +1,150 @@
+{
+  "summary": {
+    "total": 20,
+    "passed": 14,
+    "failed": 6,
+    "success_rate": "70.0%"
+  },
+  "details": [
+    {
+      "test": "BFF Health Check",
+      "passed": true,
+      "details": "Status: healthy",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.268603"
+    },
+    {
+      "test": "OMS Health Check",
+      "passed": true,
+      "details": "Status: healthy",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.281312"
+    },
+    {
+      "test": "Create Database",
+      "passed": true,
+      "details": "Database: unknown",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.282903"
+    },
+    {
+      "test": "Duplicate Database Prevention",
+      "passed": false,
+      "details": "Status: 200",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.283992"
+    },
+    {
+      "test": "Invalid Database Name Validation",
+      "passed": true,
+      "details": "Status: 400",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.284552"
+    },
+    {
+      "test": "Create Ontology Class",
+      "passed": true,
+      "details": "Class: unknown",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.285836"
+    },
+    {
+      "test": "Retrieve Class with Spanish Labels",
+      "passed": false,
+      "details": "Label: {}",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.286905"
+    },
+    {
+      "test": "Create Relationship Class",
+      "passed": true,
+      "details": "WorksFor relationship created",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.289246"
+    },
+    {
+      "test": "Missing Required Field Validation",
+      "passed": true,
+      "details": "Status: 400",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.289778"
+    },
+    {
+      "test": "Invalid Property Type Validation",
+      "passed": false,
+      "details": "Status: 200",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.290773"
+    },
+    {
+      "test": "Non-existent Database Handling",
+      "passed": false,
+      "details": "Status: 200",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.291930"
+    },
+    {
+      "test": "Malformed JSON Handling",
+      "passed": false,
+      "details": "Status: 422",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.292415"
+    },
+    {
+      "test": "Create Branch",
+      "passed": true,
+      "details": "Branch: unknown",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.293550"
+    },
+    {
+      "test": "List Branches",
+      "passed": false,
+      "details": "Branches: []",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.294502"
+    },
+    {
+      "test": "Get Version History",
+      "passed": true,
+      "details": "Versions: 0",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.295515"
+    },
+    {
+      "test": "List All Classes",
+      "passed": true,
+      "details": "Classes found: 0",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.296398"
+    },
+    {
+      "test": "Query with Filters",
+      "passed": true,
+      "details": "Filtered query successful",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.297350"
+    },
+    {
+      "test": "Large Payload Handling",
+      "passed": true,
+      "details": "Elapsed: 0.00s, Properties: 100",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.298505"
+    },
+    {
+      "test": "Concurrent Request Handling",
+      "passed": true,
+      "details": "Success rate: 100.0%, Elapsed: 0.02s",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.315835"
+    },
+    {
+      "test": "Delete Test Database",
+      "passed": true,
+      "details": "Database test_prod_1752700568_db cleaned up",
+      "error": "",
+      "timestamp": "2025-07-17T06:16:08.317565"
+    }
+  ]
+}

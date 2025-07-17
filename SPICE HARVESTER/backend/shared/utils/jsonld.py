@@ -261,9 +261,41 @@ class JSONToJSONLDConverter:
         Returns:
             WOQL 쿼리를 위한 내부 ID 기반 딕셔너리
         """
-        # 이 메서드는 label_mapper와 함께 사용되어야 하므로
-        # 실제 구현은 label_mapper에서 처리
-        return query_dict
+        # 기본적인 WOQL 쿼리 구조로 변환
+        woql_query = {
+            "@type": "woql:And",
+            "woql:query_list": []
+        }
+        
+        # 클래스 타입 필터
+        if "class" in query_dict:
+            woql_query["woql:query_list"].append({
+                "@type": "woql:Triple",
+                "woql:subject": {"@type": "woql:Variable", "woql:variable_name": "v:Subject"},
+                "woql:predicate": "rdf:type",
+                "woql:object": query_dict["class"]
+            })
+        
+        # 속성 필터
+        if "properties" in query_dict:
+            for prop_name, prop_value in query_dict["properties"].items():
+                woql_query["woql:query_list"].append({
+                    "@type": "woql:Triple",
+                    "woql:subject": {"@type": "woql:Variable", "woql:variable_name": "v:Subject"},
+                    "woql:predicate": prop_name,
+                    "woql:object": self._convert_value_to_literal(prop_value, "xsd:string")
+                })
+        
+        # 쿼리가 비어있으면 모든 문서 조회
+        if not woql_query["woql:query_list"]:
+            woql_query = {
+                "@type": "woql:Triple",
+                "woql:subject": {"@type": "woql:Variable", "woql:variable_name": "v:Subject"},
+                "woql:predicate": {"@type": "woql:Variable", "woql:variable_name": "v:Predicate"},
+                "woql:object": {"@type": "woql:Variable", "woql:variable_name": "v:Object"}
+            }
+        
+        return woql_query
     
     def extract_from_jsonld(self, jsonld_data: Dict[str, Any]) -> Dict[str, Any]:
         """

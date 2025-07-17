@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 import json
 import logging
 
-from utils.label_mapper import LabelMapper
+from dependencies import LabelMapper
 from dependencies import get_label_mapper
 
 logger = logging.getLogger(__name__)

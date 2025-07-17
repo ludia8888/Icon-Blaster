@@ -6,6 +6,9 @@ BFF (Backend for Frontend) Service
 from fastapi import FastAPI, HTTPException, status, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+import json
 from typing import Dict, List, Optional, Any
 import logging
 from contextlib import asynccontextmanager
@@ -16,12 +19,25 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'shared'))
 from models.ontology import (
     OntologyCreateRequest,
+    OntologyCreateRequestBFF,
     OntologyUpdateRequest,
     OntologyResponse,
     QueryRequest,
     QueryResponse
 )
 from models.common import BaseResponse
+
+# 보안 모듈 import
+from security.input_sanitizer import (
+    validate_db_name, 
+    validate_class_id, 
+    validate_branch_name,
+    sanitize_input,
+    SecurityViolationError
+)
+
+# 공통 유틸리티 import
+from utils.language import get_accept_language
 
 # BFF 서비스 import
 from services.oms_client import OMSClient
@@ -30,7 +46,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'utils'))
 from label_mapper import LabelMapper
 
 # 의존성 import
-from dependencies import get_terminus_service, get_jsonld_converter, get_label_mapper, set_oms_client
+from dependencies import get_terminus_service, get_jsonld_converter, get_label_mapper, set_oms_client, get_oms_client, set_label_mapper
 # OMS 클라이언트 래퍼 import
 from dependencies import TerminusService
 
@@ -55,11 +71,12 @@ async def lifespan(app: FastAPI):
     logger.info("BFF 서비스 초기화 중...")
     
     # 서비스 초기화
-    oms_client = OMSClient("http://localhost:8001")
+    oms_client = OMSClient("http://localhost:8000")
     label_mapper = LabelMapper()
     
-    # dependencies에 OMS 클라이언트 설정
+    # dependencies에 서비스 설정
     set_oms_client(oms_client)
+    set_label_mapper(label_mapper)
     
     try:
         # OMS 서비스 연결 테스트
@@ -99,34 +116,52 @@ app.add_middleware(
 
 
 # 의존성 주입
-def get_oms_client() -> OMSClient:
-    """OMS 클라이언트 의존성"""
-    if not oms_client:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OMS 클라이언트가 초기화되지 않았습니다"
-        )
-    return oms_client
 
 
-def get_label_mapper() -> LabelMapper:
-    """Label Mapper 의존성"""
-    if not label_mapper:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Label Mapper가 초기화되지 않았습니다"
-        )
-    return label_mapper
-
-
-def get_accept_language(request: Request) -> str:
-    """요청 헤더에서 언어 추출"""
-    accept_language = request.headers.get("Accept-Language", "ko")
-    # 첫 번째 언어만 추출 (간단한 구현)
-    return accept_language.split(",")[0].split("-")[0]
 
 
 # 에러 핸들러
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """FastAPI validation error를 400으로 변환"""
+    logger.warning(f"Validation error: {exc}")
+    
+    # JSON parsing 오류인지 확인
+    body_errors = [error for error in exc.errors() if error.get('type') == 'json_invalid']
+    if body_errors:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "status": "error", 
+                "message": "잘못된 JSON 형식입니다",
+                "detail": "Invalid JSON format"
+            }
+        )
+    
+    # 기타 validation 오류는 400으로 변환
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "status": "error",
+            "message": "입력 데이터 검증 실패",
+            "detail": str(exc)
+        }
+    )
+
+@app.exception_handler(json.JSONDecodeError)
+async def json_decode_error_handler(request: Request, exc: json.JSONDecodeError):
+    """JSON decode 오류를 400으로 처리"""
+    logger.warning(f"JSON decode error: {exc}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "status": "error",
+            "message": "잘못된 JSON 형식입니다",
+            "detail": f"JSON parsing failed: {str(exc)}"
+        }
+    )
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"예상치 못한 오류 발생: {exc}")
@@ -137,91 +172,19 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # API 엔드포인트
-@app.get("/")
-async def root():
-    """루트 엔드포인트"""
-    return {
-        "message": "BFF (Backend for Frontend) Service",
-        "version": "1.0.0",
-        "description": "사용자 친화적인 레이블 기반 온톨로지 관리 서비스",
-        "features": [
-            "사용자 친화적 레이블 기반 API",
-            "다국어 레이블 지원",
-            "레이블 기반 쿼리",
-            "OMS 서비스 연동"
-        ]
-    }
+# Note: Root and health endpoints moved to health router
 
 
-@app.get("/health")
-async def health_check(
-    oms: OMSClient = Depends(get_oms_client)
-):
-    """헬스 체크"""
-    try:
-        is_oms_connected = await oms.check_health()
-        
-        return {
-            "status": "healthy" if is_oms_connected else "unhealthy",
-            "service": "BFF",
-            "oms_connected": is_oms_connected,
-            "version": "1.0.0"
-        }
-    except Exception as e:
-        logger.error(f"헬스 체크 실패: {e}")
-        return {
-            "status": "unhealthy",
-            "service": "BFF",
-            "oms_connected": False,
-            "error": str(e)
-        }
+# Note: Database endpoints moved to database router
 
 
-@app.get("/databases")
-async def list_databases(
-    terminus: TerminusService = Depends(get_terminus_service)
-):
-    """데이터베이스 목록 조회"""
-    try:
-        databases = await terminus.list_databases()
-        return {
-            "databases": databases,
-            "count": len(databases)
-        }
-    except Exception as e:
-        logger.error(f"Failed to list databases: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-
-@app.post("/database/{db_name}")
-async def create_database(
-    db_name: str,
-    description: Optional[str] = None,
-    terminus: TerminusService = Depends(get_terminus_service)
-):
-    """데이터베이스 생성"""
-    try:
-        result = await terminus.create_database(db_name, description)
-        return {
-            "status": "success",
-            "message": f"데이터베이스 '{db_name}'가 생성되었습니다",
-            "data": result
-        }
-    except Exception as e:
-        logger.error(f"Failed to create database: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+# Note: Database creation moved to database router (POST /api/v1/databases)
 
 
 @app.post("/database/{db_name}/ontology", response_model=OntologyResponse)
 async def create_ontology(
     db_name: str,
-    ontology_data: OntologyCreateRequest,
+    ontology_data: OntologyCreateRequestBFF,
     request: Request,
     oms: OMSClient = Depends(get_oms_client),
     mapper: LabelMapper = Depends(get_label_mapper)
@@ -230,49 +193,120 @@ async def create_ontology(
     lang = get_accept_language(request)
     
     try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        
+        # 온톨로지 데이터 정화
+        sanitized_data = sanitize_input(ontology_data.dict())
+        
+        # 레이블로부터 ID 생성 (한글/영문 처리)
+        import re
+        # label이 MultiLingualText인지 문자열인지 확인
+        label = sanitized_data.get('label')
+        if isinstance(label, dict):
+            # MultiLingualText인 경우
+            label_text = label.get('en') or label.get('ko') or "UnnamedClass"
+        elif isinstance(label, str):
+            label_text = label
+        else:
+            label_text = "UnnamedClass"
+        
+        # 고급 ID 생성 알고리즘 - CamelCase 보존 (개선된 버전)
+        class_id = re.sub(r'[^\w\s]', '', label_text)
+        
+        # CamelCase 감지 함수
+        def is_camel_case(text: str) -> bool:
+            if not text or len(text) < 2:
+                return False
+            has_upper = any(c.isupper() for c in text)
+            has_lower = any(c.islower() for c in text)
+            return has_upper and has_lower
+        
+        # 숫자 접두사 처리 (먼저 확인)
+        numeric_prefix = ""
+        if class_id and class_id[0].isdigit():
+            numeric_prefix = "Class"
+        
+        if ' ' in class_id:
+            # 공백으로 분리된 단어들을 CamelCase로 변환
+            words = class_id.split()
+            class_id = ''.join(word.capitalize() for word in words)
+        else:
+            # 공백이 없는 경우: CamelCase 보존
+            if is_camel_case(class_id):
+                # 기존 CamelCase/camelCase 보존
+                class_id = class_id
+            elif class_id and class_id[0].isupper():
+                # 이미 대문자로 시작 (TESTCLASS 등) - 보존
+                class_id = class_id
+            else:
+                # 단순 소문자 단어 - capitalize
+                class_id = class_id.capitalize()
+        
+        # 숫자 접두사 적용
+        if numeric_prefix:
+            class_id = numeric_prefix + class_id
+        
+        if not class_id:
+            class_id = "UnnamedClass"
+        
+        # 생성된 ID를 데이터에 추가
+        sanitized_data['id'] = class_id
+        
+        # 클래스 ID 검증
+        sanitized_data['id'] = validate_class_id(sanitized_data['id'])
+        
         # Label 매핑 등록
         await mapper.register_class(
             db_name=db_name,
-            class_id=ontology_data.id,
-            label=ontology_data.label,
-            description=ontology_data.description
+            class_id=sanitized_data.get('id'),
+            label=sanitized_data.get('label'),
+            description=sanitized_data.get('description')
         )
         
-        # 속성 매핑 등록
-        for prop in ontology_data.properties:
+        # 속성 매핑 등록 (정화된 데이터 사용)
+        for prop in sanitized_data.get('properties', []):
+            prop_sanitized = sanitize_input(prop) if isinstance(prop, dict) else prop
             await mapper.register_property(
                 db_name=db_name,
-                class_id=ontology_data.id,
-                property_id=prop.name,
-                label=prop.label
+                class_id=sanitized_data.get('id'),
+                property_id=prop_sanitized.get('name') if isinstance(prop_sanitized, dict) else getattr(prop_sanitized, 'name', None),
+                label=prop_sanitized.get('label') if isinstance(prop_sanitized, dict) else getattr(prop_sanitized, 'label', None)
             )
         
-        # 관계 매핑 등록
-        for rel in ontology_data.relationships:
+        # 관계 매핑 등록 (정화된 데이터 사용)
+        for rel in sanitized_data.get('relationships', []):
+            rel_sanitized = sanitize_input(rel) if isinstance(rel, dict) else rel
             await mapper.register_relationship(
                 db_name=db_name,
-                predicate=rel.predicate,
-                label=rel.label
+                predicate=rel_sanitized.get('predicate') if isinstance(rel_sanitized, dict) else getattr(rel_sanitized, 'predicate', None),
+                label=rel_sanitized.get('label') if isinstance(rel_sanitized, dict) else getattr(rel_sanitized, 'label', None)
             )
         
-        # OMS를 통해 온톨로지 생성
-        result = await oms.create_ontology(db_name, ontology_data)
+        # OMS를 통해 온톨로지 생성 (생성된 ID를 포함한 정화된 데이터 사용)
+        result = await oms.create_ontology(db_name, sanitized_data)
         
         # 응답 생성
-        label_text = ontology_data.label
-        if hasattr(label_text, 'get'):
-            label_text = label_text.get(lang, fallback_chain=['ko', 'en'])
+        label_text = sanitized_data.get('label', '')
+        if isinstance(label_text, dict):
+            # Multilingual label - get by language with fallback
+            label_text = label_text.get(lang) or label_text.get('ko') or label_text.get('en') or ''
         
         # OMS 응답에서 필요한 정보 추출
-        created_class_id = result.get("data", {}).get("class_id", ontology_data.id)
+        # OMS는 data에 class ID 리스트를 반환함
+        oms_data = result.get("data", [])
+        if isinstance(oms_data, list) and len(oms_data) > 0:
+            created_class_id = oms_data[0]
+        else:
+            created_class_id = sanitized_data.get('id')
         
         response_data = {
             "id": created_class_id,
             "label": label_text,
-            "description": ontology_data.description,
-            "properties": ontology_data.properties,
-            "relationships": ontology_data.relationships,
-            "created_at": result.get("data", {}).get("created_at"),
+            "description": sanitized_data.get('description'),
+            "properties": sanitized_data.get('properties'),
+            "relationships": sanitized_data.get('relationships'),
+            "created_at": None,  # OMS doesn't return created_at in response
             "oms_result": result  # 디버깅을 위해 OMS 원본 결과도 포함
         }
         
@@ -282,12 +316,25 @@ async def create_ontology(
             data=response_data
         )
         
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in create_ontology: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to create ontology: {e}")
-        raise
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"온톨로지 생성 중 오류 발생: {str(e)}"
+        )
 
 
-@app.get("/database/{db_name}/ontology/{class_label}", response_model=OntologyResponse)
+@app.get("/database/{db_name}/ontology/{class_label}")
 async def get_ontology(
     db_name: str,
     class_label: str,
@@ -332,9 +379,16 @@ async def get_ontology(
             data=display_result
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to get ontology: {e}")
-        raise
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"온톨로지 조회 중 오류 발생: {str(e)}"
+        )
 
 
 @app.put("/database/{db_name}/ontology/{class_label}")
@@ -600,8 +654,9 @@ async def list_branches(
 ):
     """브랜치 목록 조회"""
     try:
-        # TODO: OMS 브랜치 API 구현 필요
-        branches = []
+        # 실제 OMS API 호출
+        response = await oms.list_branches(db_name)
+        branches = response.get("data", {}).get("branches", [])
         return {
             "branches": branches,
             "count": len(branches)
@@ -956,6 +1011,16 @@ async def rollback(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+
+# 라우터 등록
+from routers import database, ontology, query, mapping, health
+
+app.include_router(database.router, prefix="/api/v1", tags=["database"])
+app.include_router(ontology.router, prefix="/api/v1", tags=["ontology"])
+app.include_router(query.router, prefix="/api/v1", tags=["query"])
+app.include_router(mapping.router, prefix="/api/v1", tags=["mapping"])
+app.include_router(health.router, prefix="/api/v1", tags=["health"])
 
 
 if __name__ == "__main__":

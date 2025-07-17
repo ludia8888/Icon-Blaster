@@ -6,6 +6,9 @@ OMS (Ontology Management Service) 메인 애플리케이션
 from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+import json
 from typing import Dict, List, Optional, Any
 import logging
 from contextlib import asynccontextmanager
@@ -92,6 +95,47 @@ app.add_middleware(
 
 
 # 에러 핸들러
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """FastAPI validation error를 400으로 변환"""
+    logger.warning(f"Validation error: {exc}")
+    
+    # JSON parsing 오류인지 확인
+    body_errors = [error for error in exc.errors() if error.get('type') == 'json_invalid']
+    if body_errors:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "status": "error", 
+                "message": "잘못된 JSON 형식입니다",
+                "detail": "Invalid JSON format"
+            }
+        )
+    
+    # 기타 validation 오류는 400으로 변환
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "status": "error",
+            "message": "입력 데이터 검증 실패",
+            "detail": str(exc)
+        }
+    )
+
+@app.exception_handler(json.JSONDecodeError)
+async def json_decode_error_handler(request: Request, exc: json.JSONDecodeError):
+    """JSON decode 오류를 400으로 처리"""
+    logger.warning(f"JSON decode error: {exc}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "status": "error",
+            "message": "잘못된 JSON 형식입니다",
+            "detail": f"JSON parsing failed: {str(exc)}"
+        }
+    )
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"예상치 못한 오류 발생: {exc}")

@@ -33,9 +33,44 @@ logger = logging.getLogger(__name__)
 try:
     from utils.retry import terminus_retry, query_retry
 except ImportError:
-    # 재시도 기능 없이 실행 (fallback)
-    terminus_retry = lambda f: f
-    query_retry = lambda f: f
+    # 실제 동작하는 fallback 재시도 구현
+    import functools
+    import time
+    import logging
+    
+    fallback_logger = logging.getLogger(__name__ + ".retry_fallback")
+    
+    def terminus_retry(func):
+        """프로덕션용 fallback 재시도 데코레이터"""
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            max_retries = 3
+            delay = 1.0
+            last_exception = None
+            
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    if attempt < max_retries - 1:
+                        fallback_logger.warning(
+                            f"Retry {attempt + 1}/{max_retries} for {func.__name__}: {e}"
+                        )
+                        time.sleep(delay * (2 ** attempt))
+                        continue
+                    fallback_logger.error(
+                        f"All retries failed for {func.__name__}: {e}"
+                    )
+                    raise
+            
+            raise last_exception
+        return wrapper
+    
+    # query_retry는 terminus_retry와 동일
+    query_retry = terminus_retry
+    
+    fallback_logger.warning("Using fallback retry implementation - utils.retry module not found")
 
 
 @dataclass
@@ -56,19 +91,13 @@ class ConnectionInfo:
         )
     
     
-class OntologyNotFoundError(Exception):
-    """온톨로지를 찾을 수 없을 때 발생하는 예외"""
-    pass
-
-
-class DuplicateOntologyError(Exception):
-    """중복된 온톨로지 ID일 때 발생하는 예외"""
-    pass
-
-
-class ValidationError(Exception):
-    """유효성 검증 실패시 발생하는 예외"""
-    pass
+# Import 실제 예외 클래스들 from shared/exceptions
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+from exceptions.ontology import (
+    OntologyNotFoundError,
+    DuplicateOntologyError,
+    OntologyValidationError as ValidationError
+)
 
 
 # 포트 인터페이스 (헥사고날 아키텍처)
@@ -188,7 +217,10 @@ class TerminusService(OntologyPort):
         """연결 상태 확인"""
         try:
             return self._connection_manager.test_connection()
-        except Exception:
+        except Exception as e:
+            logger.error(f"Connection check failed: {e}")
+            # 연결 실패는 명확히 False를 반환하되, 로그를 남김
+            # 이는 health check 등에서 사용되므로 예외를 던지지 않음
             return False
     
     @lru_cache(maxsize=32)
@@ -292,9 +324,15 @@ class TerminusService(OntologyPort):
         except Exception as e:
             # 예외 타입 매핑 (하위 호환성)
             if "already exists" in str(e):
-                raise DuplicateOntologyError(str(e))
+                raise DuplicateOntologyError(
+                    ontology_id=jsonld_data.get("@id", "unknown"),
+                    db_name=db_name
+                )
             elif "validation" in str(e).lower():
-                raise ValidationError(str(e))
+                raise ValidationError(
+                    errors=[str(e)],
+                    ontology_id=jsonld_data.get("@id", "unknown")
+                )
             else:
                 raise DatabaseError(f"온톨로지 생성 실패: {e}")
     
@@ -323,12 +361,18 @@ class TerminusService(OntologyPort):
                     "relationships": result.relationships
                 }
             elif raise_if_missing:
-                raise OntologyNotFoundError(f"온톨로지를 찾을 수 없습니다: {class_id}")
+                raise OntologyNotFoundError(
+                    ontology_id=class_id,
+                    db_name=db_name
+                )
             return None
             
         except Exception as e:
             if "not found" in str(e).lower() and raise_if_missing:
-                raise OntologyNotFoundError(str(e))
+                raise OntologyNotFoundError(
+                    ontology_id=class_id,
+                    db_name=db_name
+                )
             elif raise_if_missing:
                 raise DatabaseError(f"온톨로지 조회 실패: {e}")
             return None
@@ -368,9 +412,15 @@ class TerminusService(OntologyPort):
             
         except Exception as e:
             if "not found" in str(e).lower():
-                raise OntologyNotFoundError(str(e))
+                raise OntologyNotFoundError(
+                    ontology_id=class_id,
+                    db_name=db_name
+                )
             elif "validation" in str(e).lower():
-                raise ValidationError(str(e))
+                raise ValidationError(
+                    errors=[str(e)],
+                    ontology_id=class_id
+                )
             else:
                 raise DatabaseError(f"온톨로지 업데이트 실패: {e}")
     
@@ -421,7 +471,10 @@ class TerminusService(OntologyPort):
             
         except Exception as e:
             if "not found" in str(e).lower():
-                raise OntologyNotFoundError(str(e))
+                raise OntologyNotFoundError(
+                    ontology_id=class_id,
+                    db_name=db_name
+                )
             else:
                 raise DatabaseError(f"온톨로지 삭제 실패: {e}")
     
@@ -800,8 +853,15 @@ class TerminusService(OntologyPort):
             # BranchService에서 충돌 검사
             conflicts = self._branch_service.check_conflicts(db_name, source, target)
             return conflicts if conflicts else []
-        except Exception:
-            return []
+        except Exception as e:
+            logger.error(f"Failed to check conflicts between '{source}' and '{target}' in database '{db_name}': {e}")
+            # 충돌 검사 실패는 안전을 위해 충돌이 있다고 가정하고 오류 정보 반환
+            return [{
+                "type": "error",
+                "message": f"Unable to check conflicts: {str(e)}",
+                "source": source,
+                "target": target
+            }]
     
     def rollback(self, db_name: str, target_commit: str,
                 create_branch: bool = True, branch_name: Optional[str] = None) -> Dict[str, Any]:

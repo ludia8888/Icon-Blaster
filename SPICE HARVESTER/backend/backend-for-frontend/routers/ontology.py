@@ -3,23 +3,25 @@
 온톨로지 생성, 조회, 수정, 삭제를 담당
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from typing import Dict, List, Optional, Any
 import logging
+import sys
+import os
+
+# Add shared path for common utilities
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+from utils.language import get_accept_language
 
 from models.ontology import (
-    OntologyCreateInput,
+    OntologyCreateRequestBFF,
     OntologyUpdateInput,
     OntologyResponse
 )
-from services.terminus import (
-    TerminusService,
-    OntologyNotFoundError,
-    DuplicateOntologyError,
-    ValidationError as TerminusValidationError
-)
-from utils.jsonld import JSONToJSONLDConverter
-from utils.label_mapper import LabelMapper
+from dependencies import TerminusService
+from fastapi import HTTPException
+from dependencies import JSONToJSONLDConverter
+from dependencies import LabelMapper
 from dependencies import get_terminus_service, get_jsonld_converter, get_label_mapper
 
 logger = logging.getLogger(__name__)
@@ -33,7 +35,7 @@ router = APIRouter(
 @router.post("/ontology", response_model=OntologyResponse)
 async def create_ontology(
     db_name: str,
-    ontology: OntologyCreateInput,
+    ontology: OntologyCreateRequestBFF,
     mapper: LabelMapper = Depends(get_label_mapper),
     terminus: TerminusService = Depends(get_terminus_service),
     jsonld_conv: JSONToJSONLDConverter = Depends(get_jsonld_converter)
@@ -49,7 +51,23 @@ async def create_ontology(
         ontology_dict = ontology.dict(exclude_unset=True)
         
         # 레이블로부터 ID 생성 (한글/영문 처리)
-        class_id = jsonld_conv.generate_id_from_label(ontology.label.ko or ontology.label.en)
+        import re
+        # label이 MultiLingualText인지 문자열인지 확인
+        if isinstance(ontology.label, dict):
+            # MultiLingualText인 경우
+            label = ontology.label.get('en') or ontology.label.get('ko') or "UnnamedClass"
+        elif isinstance(ontology.label, str):
+            label = ontology.label
+        else:
+            # MultiLingualText 객체인 경우
+            label = getattr(ontology.label, 'en', None) or getattr(ontology.label, 'ko', None) or "UnnamedClass"
+        
+        # 한글/특수문자를 영문으로 변환하고 공백을 CamelCase로
+        class_id = re.sub(r'[^\w\s]', '', label)
+        class_id = ''.join(word.capitalize() for word in class_id.split())
+        # 첫 글자가 숫자인 경우 'Class' 접두사 추가
+        if class_id and class_id[0].isdigit():
+            class_id = 'Class' + class_id
         ontology_dict["id"] = class_id
         
         # 온톨로지 생성
@@ -79,12 +97,12 @@ async def create_ontology(
             }
         )
         
-    except DuplicateOntologyError as e:
+    except HTTPException as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"온톨로지 ID '{e.ontology_id}'가 이미 존재합니다"
         )
-    except TerminusValidationError as e:
+    except HTTPException as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"유효성 검증 실패: {e.message}"
@@ -101,7 +119,7 @@ async def create_ontology(
 async def get_ontology(
     db_name: str,
     class_label: str,
-    lang: str = Query("ko", description="언어 코드"),
+    request: Request,
     mapper: LabelMapper = Depends(get_label_mapper),
     terminus: TerminusService = Depends(get_terminus_service)
 ):
@@ -110,6 +128,8 @@ async def get_ontology(
     
     레이블 또는 ID로 온톨로지를 조회합니다.
     """
+    lang = get_accept_language(request)
+    
     try:
         # 레이블로 ID 조회 시도
         class_id = await mapper.get_class_id(db_name, class_label, lang)
@@ -134,7 +154,7 @@ async def get_ontology(
         
     except HTTPException:
         raise
-    except OntologyNotFoundError as e:
+    except HTTPException as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"온톨로지 '{e.ontology_id}'을(를) 찾을 수 없습니다"
@@ -152,7 +172,7 @@ async def update_ontology(
     db_name: str,
     class_label: str,
     ontology: OntologyUpdateInput,
-    lang: str = Query("ko", description="언어 코드"),
+    request: Request,
     mapper: LabelMapper = Depends(get_label_mapper),
     terminus: TerminusService = Depends(get_terminus_service)
 ):
@@ -161,6 +181,8 @@ async def update_ontology(
     
     기존 온톨로지를 수정합니다.
     """
+    lang = get_accept_language(request)
+    
     try:
         # 레이블로 ID 조회
         class_id = await mapper.get_class_id(db_name, class_label, lang)
@@ -183,12 +205,12 @@ async def update_ontology(
             "updated_fields": list(update_data.keys())
         }
         
-    except OntologyNotFoundError as e:
+    except HTTPException as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"온톨로지 '{e.ontology_id}'을(를) 찾을 수 없습니다"
         )
-    except TerminusValidationError as e:
+    except HTTPException as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"유효성 검증 실패: {e.message}"
@@ -205,7 +227,7 @@ async def update_ontology(
 async def delete_ontology(
     db_name: str,
     class_label: str,
-    lang: str = Query("ko", description="언어 코드"),
+    request: Request,
     mapper: LabelMapper = Depends(get_label_mapper),
     terminus: TerminusService = Depends(get_terminus_service)
 ):
@@ -215,6 +237,8 @@ async def delete_ontology(
     온톨로지를 삭제합니다.
     주의: 이 작업은 되돌릴 수 없습니다!
     """
+    lang = get_accept_language(request)
+    
     try:
         # 레이블로 ID 조회
         class_id = await mapper.get_class_id(db_name, class_label, lang)
@@ -232,7 +256,7 @@ async def delete_ontology(
             "id": class_id
         }
         
-    except OntologyNotFoundError as e:
+    except HTTPException as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"온톨로지 '{e.ontology_id}'을(를) 찾을 수 없습니다"
@@ -248,10 +272,10 @@ async def delete_ontology(
 @router.get("/ontologies")
 async def list_ontologies(
     db_name: str,
+    request: Request,
     class_type: str = Query("sys:Class", description="클래스 타입"),
     limit: Optional[int] = Query(None, description="결과 개수 제한"),
     offset: int = Query(0, description="오프셋"),
-    lang: str = Query("ko", description="언어 코드"),
     mapper: LabelMapper = Depends(get_label_mapper),
     terminus: TerminusService = Depends(get_terminus_service)
 ):
@@ -260,6 +284,8 @@ async def list_ontologies(
     
     데이터베이스의 모든 온톨로지를 조회합니다.
     """
+    lang = get_accept_language(request)
+    
     try:
         # 온톨로지 목록 조회
         ontologies = terminus.list_ontologies(
@@ -291,8 +317,8 @@ async def list_ontologies(
 async def get_ontology_schema(
     db_name: str,
     class_id: str,
+    request: Request,
     format: str = Query("json", description="스키마 형식 (json, jsonld, owl)"),
-    lang: str = Query("ko", description="언어 코드"),
     mapper: LabelMapper = Depends(get_label_mapper),
     terminus: TerminusService = Depends(get_terminus_service),
     jsonld_conv: JSONToJSONLDConverter = Depends(get_jsonld_converter)
@@ -302,6 +328,8 @@ async def get_ontology_schema(
     
     온톨로지의 스키마를 다양한 형식으로 조회합니다.
     """
+    lang = get_accept_language(request)
+    
     try:
         # 레이블로 ID 조회
         actual_id = await mapper.get_class_id(db_name, class_id, lang)

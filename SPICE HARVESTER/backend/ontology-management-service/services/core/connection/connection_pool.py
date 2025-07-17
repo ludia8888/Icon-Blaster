@@ -13,7 +13,10 @@ import time
 from terminusdb_client import WOQLClient
 
 from services.core.config import ConnectionConfig
-from domain.exceptions import ConnectionPoolError, DomainException
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'shared'))
+from exceptions.base import DomainException, ConnectionPoolError
 
 logger = logging.getLogger(__name__)
 
@@ -171,9 +174,15 @@ class TerminusConnectionPool:
                 # 죽은 연결은 폐기
                 self._close_connection(connection)
                 self._stats['created'] -= 1
-        except:
+        except queue.Full:
             # 풀이 가득 찬 경우 연결 닫기
+            logger.warning(f"Connection pool for {db_name} is full, closing connection")
             self._close_connection(connection)
+            self._stats['created'] -= 1
+        except Exception as e:
+            logger.error(f"Unexpected error returning connection to pool: {e}")
+            self._close_connection(connection)
+            self._stats['created'] -= 1
     
     def _create_connection(self, db_name: str, branch: Optional[str] = None) -> Any:
         """

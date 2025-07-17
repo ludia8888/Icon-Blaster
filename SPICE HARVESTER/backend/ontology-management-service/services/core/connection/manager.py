@@ -10,7 +10,10 @@ from contextlib import contextmanager
 from terminusdb_client import WOQLClient
 
 from services.core.interfaces import IConnectionManager, ConnectionConfig
-from domain.exceptions import ConnectionError
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'shared'))
+from exceptions.base import DomainException, ConnectionError
 
 logger = logging.getLogger(__name__)
 

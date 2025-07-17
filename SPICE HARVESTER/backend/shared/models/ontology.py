@@ -120,6 +120,17 @@ class OntologyCreateRequest(OntologyBase):
     pass
 
 
+class OntologyCreateRequestBFF(BaseModel):
+    """BFF용 온톨로지 생성 요청 - ID 자동 생성"""
+    label: Union[str, MultiLingualText] = Field(..., description="클래스 레이블")
+    description: Optional[Union[str, MultiLingualText]] = None
+    properties: List[Property] = Field(default_factory=list)
+    relationships: List[Relationship] = Field(default_factory=list)
+    parent_class: Optional[str] = None
+    abstract: bool = Field(default=False)
+    metadata: Optional[Dict[str, Any]] = None
+
+
 class OntologyUpdateRequest(BaseModel):
     """온톨로지 업데이트 요청"""
     label: Optional[Union[str, MultiLingualText]] = None

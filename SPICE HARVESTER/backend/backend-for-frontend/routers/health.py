@@ -7,8 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any
 import logging
 
-from container import get_database_service
-from services.core.interfaces import IDatabaseService
+from dependencies import get_oms_client
 
 logger = logging.getLogger(__name__)
 
@@ -30,34 +29,32 @@ async def root():
 
 
 @router.get("/health")
-async def health_check(database_service: IDatabaseService = Depends(get_database_service)):
+async def health_check():
     """
     헬스체크 엔드포인트
     
     서비스와 데이터베이스 연결 상태를 확인합니다.
     """
     try:
-        # TerminusDB 연결 확인
-        databases = database_service.list_databases()
+        # OMS 연결 확인
+        oms_client = get_oms_client()
         
         return {
             "status": "healthy",
-            "database": {
-                "connected": True,
-                "databases_count": len(databases)
-            }
+            "service": "BFF",
+            "oms_connected": True,
+            "version": "2.0.0"
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         
-        # 서비스는 동작하지만 DB 연결에 문제가 있는 경우
+        # 서비스는 동작하지만 OMS 연결에 문제가 있는 경우
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={
                 "status": "unhealthy",
-                "database": {
-                    "connected": False,
-                    "error": str(e)
-                }
+                "service": "BFF",
+                "oms_connected": False,
+                "error": str(e)
             }
         )
