@@ -33,7 +33,7 @@ async def test_id_generation_mismatch():
         # Clean up any existing test database
         try:
             await client.delete(TestConfig.get_database_delete_url(test_db))
-        except:
+        except (httpx.HTTPError, httpx.TimeoutException, ConnectionError):
             pass
         
         # Create test database

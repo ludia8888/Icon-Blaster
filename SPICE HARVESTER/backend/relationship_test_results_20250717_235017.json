@@ -1,0 +1,50 @@
+{
+  "total_tests": 7,
+  "passed": 7,
+  "failed": 0,
+  "errors": [],
+  "test_details": [
+    {
+      "test": "1️⃣ RelationshipManager 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:50:17.045789"
+    },
+    {
+      "test": "2️⃣ RelationshipValidator 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:50:17.045866"
+    },
+    {
+      "test": "3️⃣ CircularReferenceDetector 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:50:17.045887"
+    },
+    {
+      "test": "4️⃣ RelationshipPathTracker 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:50:17.045908"
+    },
+    {
+      "test": "5️⃣ 통합 시나리오 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:50:17.045926"
+    },
+    {
+      "test": "6️⃣ 실제 사용 시나리오 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:50:17.045954"
+    },
+    {
+      "test": "7️⃣ 엔터프라이즈 기능 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:50:17.051827"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  terminusdb:
+    image: terminusdb/terminusdb-server:latest
+    container_name: spice-foundry-terminusdb
+    environment:
+      - TERMINUSDB_SERVER_NAME=SpiceFoundryTerminusDB
+      - TERMINUSDB_ADMIN_PASS=admin
+      - TERMINUSDB_SERVER_PORT=6363
+      - TERMINUSDB_CONSOLE_BASE_URL=http://localhost:6364
+      - TERMINUSDB_SERVER_WORKERS=4
+      - TERMINUSDB_JWT_TOKEN_EXPIRES_IN=720
+      - TERMINUSDB_PACK_DIR=/app/pack
+      - TERMINUSDB_INDEX_TEMPLATE=default
+    ports:
+      - "6364:6363"
+    volumes:
+      - terminusdb-data:/app/terminusdb/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6363/api/ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - terminusdb-network
+
+volumes:
+  terminusdb-data:
+    driver: local
+
+networks:
+  terminusdb-network:
+    driver: bridge

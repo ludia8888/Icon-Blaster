@@ -6,6 +6,7 @@ Test OMS Response Structure
 import httpx
 import asyncio
 import json
+from test_config import TestConfig
 
 async def test_oms_response():
     """Test OMS response structure"""
@@ -16,7 +17,7 @@ async def test_oms_response():
         # 1. Create test database
         print("1. Creating test database...")
         response = await client.post(
-            "http://localhost:8000/api/v1/database/create",
+            "http://{TestConfig.get_oms_base_url()}/api/v1/database/create",
             json={"name": test_db, "description": "OMS response test"}
         )
         print(f"   DB creation: {response.status_code}")
@@ -33,7 +34,7 @@ async def test_oms_response():
         }
         
         response = await client.post(
-            f"http://localhost:8000/api/v1/ontology/{test_db}/create",
+            f"{TestConfig.get_oms_base_url()}/api/v1/ontology/{test_db}/create",
             json=test_ontology
         )
         
@@ -53,7 +54,7 @@ async def test_oms_response():
         
         # 3. Clean up
         print("\n3. Cleaning up...")
-        await client.delete(f"http://localhost:8000/api/v1/database/{test_db}")
+        await client.delete(f"{TestConfig.get_oms_base_url()}/api/v1/database/{test_db}")
 
 if __name__ == "__main__":
     asyncio.run(test_oms_response())

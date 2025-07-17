@@ -6,6 +6,7 @@ Final Debug Test - Comprehensive check
 import httpx
 import asyncio
 import time
+from test_config import TestConfig
 
 async def test_final():
     """Final comprehensive test"""
@@ -16,7 +17,7 @@ async def test_final():
         # 1. Create database
         print("1. Creating database...")
         response = await client.post(
-            "http://localhost:8000/api/v1/database/create",
+            "http://{TestConfig.get_oms_base_url()}/api/v1/database/create",
             json={"name": test_db, "description": "Final test"}
         )
         print(f"   Status: {response.status_code}")
@@ -25,7 +26,7 @@ async def test_final():
             # 2. Create simple ontology via BFF
             print("\n2. Creating ontology 'SimpleTest' via BFF...")
             response = await client.post(
-                f"http://localhost:8002/database/{test_db}/ontology",
+                f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology",
                 json={
                     "label": "SimpleTest",
                     "properties": []
@@ -43,7 +44,7 @@ async def test_final():
                 # Main.py endpoint
                 print(f"\n   a) BFF main.py endpoint (async):")
                 response = await client.get(
-                    f"http://localhost:8002/database/{test_db}/ontology/SimpleTest"
+                    f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology/SimpleTest"
                 )
                 print(f"      Status: {response.status_code}")
                 if response.status_code != 200:
@@ -53,20 +54,20 @@ async def test_final():
                 if created_id:
                     print(f"\n   b) BFF with created ID '{created_id}':")
                     response = await client.get(
-                        f"http://localhost:8002/database/{test_db}/ontology/{created_id}"
+                        f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology/{created_id}"
                     )
                     print(f"      Status: {response.status_code}")
                 
                 # Direct OMS query to verify data exists
                 print(f"\n   c) Direct OMS query:")
                 response = await client.get(
-                    f"http://localhost:8000/api/v1/ontology/{test_db}/{created_id or 'SimpleTest'}"
+                    f"{TestConfig.get_oms_base_url()}/api/v1/ontology/{test_db}/{created_id or 'SimpleTest'}"
                 )
                 print(f"      Status: {response.status_code}")
         
         # 4. Cleanup
         print("\n4. Cleaning up...")
-        await client.delete(f"http://localhost:8000/api/v1/database/{test_db}")
+        await client.delete(f"{TestConfig.get_oms_base_url()}/api/v1/database/{test_db}")
 
 if __name__ == "__main__":
     asyncio.run(test_final())

@@ -99,7 +99,7 @@ class OMSClient:
             response = await self.client.post(f"/api/v1/ontology/{db_name}/create", json=ontology_data)
             response.raise_for_status()
             return response.json()
-        except Exception as e:
+        except (httpx.HTTPError, httpx.TimeoutException, ValueError) as e:
             logger.error(f"온톨로지 생성 실패 ({db_name}): {e}")
             raise
     

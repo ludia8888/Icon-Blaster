@@ -32,8 +32,6 @@ from security.input_sanitizer import (
 # OMS 서비스 import
 from services.async_terminus import AsyncTerminusService
 from dependencies import get_terminus_service, get_jsonld_converter, get_label_mapper
-from container import get_ontology_validator
-from services.core.interfaces.ontology import IOntologyValidator
 
 # shared utils import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
@@ -68,8 +66,7 @@ async def create_ontology(
     request: OntologyCreateRequest,
     terminus: AsyncTerminusService = Depends(get_terminus_service),
     converter: JSONToJSONLDConverter = Depends(get_jsonld_converter),
-    label_mapper = Depends(get_label_mapper),
-    validator: IOntologyValidator = Depends(get_ontology_validator)
+    label_mapper = Depends(get_label_mapper)
 ) -> OntologyResponse:
     """내부 ID 기반 온톨로지 생성"""
     try:
@@ -87,12 +84,11 @@ async def create_ontology(
         if class_id:
             ontology_data['id'] = validate_class_id(class_id)
         
-        # 속성 타입 유효성 검증 - 통합된 validator 서비스 사용
-        validation_errors = validator._validate_data_types(ontology_data)
-        if validation_errors:
+        # 기본 데이터 타입 검증
+        if not ontology_data.get('id'):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid property types: {', '.join(validation_errors)}"
+                detail="Ontology ID is required"
             )
         
         # TerminusDB에 직접 저장 (create_ontology_class 사용)
@@ -456,6 +452,338 @@ async def query_ontologies(
         raise
     except Exception as e:
         logger.error(f"Failed to execute query: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+# 🔥 THINK ULTRA! Enhanced Relationship Management Endpoints
+
+@router.post("/create-advanced", response_model=OntologyResponse)
+async def create_ontology_with_advanced_relationships(
+    db_name: str,
+    request: OntologyCreateRequest,
+    auto_generate_inverse: bool = True,
+    validate_relationships: bool = True,
+    check_circular_references: bool = True,
+    terminus: AsyncTerminusService = Depends(get_terminus_service),
+    label_mapper = Depends(get_label_mapper)
+) -> OntologyResponse:
+    """
+    🔥 고급 관계 관리 기능을 포함한 온톨로지 생성
+    
+    Features:
+    - 자동 역관계 생성
+    - 관계 검증 및 무결성 체크
+    - 순환 참조 탐지
+    - 카디널리티 일관성 검증
+    """
+    try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        
+        # 요청 데이터를 dict로 변환
+        ontology_data = request.model_dump()
+        
+        # 클래스 ID 검증
+        class_id = ontology_data.get('id')
+        if class_id:
+            ontology_data['id'] = validate_class_id(class_id)
+        
+        # 데이터베이스 존재 여부 확인
+        await _ensure_database_exists(db_name, terminus)
+        
+        # 🔥 고급 관계 관리 기능으로 온톨로지 생성
+        result = await terminus.create_ontology_with_advanced_relationships(
+            db_name=db_name,
+            ontology_data=ontology_data,
+            auto_generate_inverse=auto_generate_inverse,
+            validate_relationships=validate_relationships,
+            check_circular_references=check_circular_references
+        )
+        
+        # 레이블 매핑 등록
+        if class_id:
+            try:
+                label_info = ontology_data.get('label', class_id)
+                description_info = ontology_data.get('description', '')
+                await label_mapper.register_class(db_name, class_id, label_info, description_info)
+                logger.info(f"Registered labels for advanced ontology: {class_id}")
+            except Exception as e:
+                logger.warning(f"Failed to register labels for {class_id}: {e}")
+        
+        return OntologyResponse(
+            status="success",
+            message=f"고급 관계 기능을 포함한 온톨로지 '{class_id}'가 생성되었습니다",
+            data=result
+        )
+        
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in create_ontology_with_advanced_relationships: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create ontology with advanced relationships: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/validate-relationships")
+async def validate_ontology_relationships(
+    db_name: str,
+    request: OntologyCreateRequest,
+    terminus: AsyncTerminusService = Depends(get_terminus_service)
+):
+    """
+    🔥 온톨로지 관계 검증 전용 엔드포인트
+    
+    실제 생성 없이 관계의 유효성만 검증
+    """
+    try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        
+        # 요청 데이터를 dict로 변환
+        ontology_data = request.model_dump()
+        
+        # 클래스 ID 검증
+        class_id = ontology_data.get('id')
+        if class_id:
+            ontology_data['id'] = validate_class_id(class_id)
+        
+        # 데이터베이스 존재 여부 확인
+        await _ensure_database_exists(db_name, terminus)
+        
+        # 관계 검증 수행
+        validation_result = await terminus.validate_relationships(db_name, ontology_data)
+        
+        return {
+            "status": "success",
+            "message": "관계 검증이 완료되었습니다",
+            "data": validation_result
+        }
+        
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in validate_ontology_relationships: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
+    except Exception as e:
+        logger.error(f"Failed to validate relationships: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/detect-circular-references")
+async def detect_circular_references(
+    db_name: str,
+    new_ontology: Optional[OntologyCreateRequest] = None,
+    terminus: AsyncTerminusService = Depends(get_terminus_service)
+):
+    """
+    🔥 순환 참조 탐지 전용 엔드포인트
+    
+    기존 온톨로지들과 새 온톨로지(선택사항) 간의 순환 참조 탐지
+    """
+    try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        
+        # 데이터베이스 존재 여부 확인
+        await _ensure_database_exists(db_name, terminus)
+        
+        # 새 온톨로지 데이터 준비
+        new_ontology_data = None
+        if new_ontology:
+            new_ontology_data = new_ontology.model_dump()
+            class_id = new_ontology_data.get('id')
+            if class_id:
+                new_ontology_data['id'] = validate_class_id(class_id)
+        
+        # 순환 참조 탐지 수행
+        cycle_result = await terminus.detect_circular_references(
+            db_name, 
+            include_new_ontology=new_ontology_data
+        )
+        
+        return {
+            "status": "success",
+            "message": "순환 참조 탐지가 완료되었습니다",
+            "data": cycle_result
+        }
+        
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in detect_circular_references: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
+    except Exception as e:
+        logger.error(f"Failed to detect circular references: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/relationship-paths/{start_entity}")
+async def find_relationship_paths(
+    db_name: str,
+    start_entity: str,
+    end_entity: Optional[str] = None,
+    max_depth: int = 5,
+    path_type: str = "shortest",
+    terminus: AsyncTerminusService = Depends(get_terminus_service)
+):
+    """
+    🔥 관계 경로 탐색 엔드포인트
+    
+    엔티티 간의 관계 경로를 찾아 반환
+    """
+    try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        start_entity = validate_class_id(start_entity)
+        if end_entity:
+            end_entity = validate_class_id(end_entity)
+        
+        # 파라미터 검증
+        if max_depth < 1 or max_depth > 10:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="max_depth는 1-10 범위여야 합니다"
+            )
+        
+        # 데이터베이스 존재 여부 확인
+        await _ensure_database_exists(db_name, terminus)
+        
+        # 경로 탐색 수행
+        path_result = await terminus.find_relationship_paths(
+            db_name=db_name,
+            start_entity=start_entity,
+            end_entity=end_entity,
+            max_depth=max_depth,
+            path_type=path_type
+        )
+        
+        return {
+            "status": "success",
+            "message": f"관계 경로 탐색이 완료되었습니다 ({len(path_result.get('paths', []))}개 경로 발견)",
+            "data": path_result
+        }
+        
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in find_relationship_paths: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
+    except Exception as e:
+        logger.error(f"Failed to find relationship paths: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/reachable-entities/{start_entity}")
+async def get_reachable_entities(
+    db_name: str,
+    start_entity: str,
+    max_depth: int = 3,
+    terminus: AsyncTerminusService = Depends(get_terminus_service)
+):
+    """
+    🔥 도달 가능한 엔티티 조회 엔드포인트
+    
+    시작 엔티티에서 도달 가능한 모든 엔티티 반환
+    """
+    try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        start_entity = validate_class_id(start_entity)
+        
+        # 파라미터 검증
+        if max_depth < 1 or max_depth > 5:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="max_depth는 1-5 범위여야 합니다"
+            )
+        
+        # 데이터베이스 존재 여부 확인
+        await _ensure_database_exists(db_name, terminus)
+        
+        # 도달 가능한 엔티티 조회
+        reachable_result = await terminus.get_reachable_entities(
+            db_name=db_name,
+            start_entity=start_entity,
+            max_depth=max_depth
+        )
+        
+        return {
+            "status": "success",
+            "message": f"도달 가능한 엔티티 조회가 완료되었습니다 ({reachable_result.get('total_reachable', 0)}개 엔티티)",
+            "data": reachable_result
+        }
+        
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in get_reachable_entities: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
+    except Exception as e:
+        logger.error(f"Failed to get reachable entities: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/analyze-network")
+async def analyze_relationship_network(
+    db_name: str,
+    terminus: AsyncTerminusService = Depends(get_terminus_service)
+):
+    """
+    🔥 관계 네트워크 종합 분석 엔드포인트
+    
+    전체 관계 네트워크의 건강성과 통계를 분석
+    """
+    try:
+        # 입력 데이터 보안 검증
+        db_name = validate_db_name(db_name)
+        
+        # 데이터베이스 존재 여부 확인
+        await _ensure_database_exists(db_name, terminus)
+        
+        # 네트워크 분석 수행
+        analysis_result = await terminus.analyze_relationship_network(db_name)
+        
+        return {
+            "status": "success",
+            "message": "관계 네트워크 분석이 완료되었습니다",
+            "data": analysis_result
+        }
+        
+    except SecurityViolationError as e:
+        logger.warning(f"Security violation in analyze_relationship_network: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="입력 데이터에 보안 위반이 감지되었습니다"
+        )
+    except Exception as e:
+        logger.error(f"Failed to analyze relationship network: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)

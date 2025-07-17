@@ -6,6 +6,7 @@ Test Label Mapper Functionality
 import httpx
 import asyncio
 import json
+from test_config import TestConfig
 
 async def test_label_mapper():
     """Test label mapping for multilingual queries"""
@@ -16,7 +17,7 @@ async def test_label_mapper():
         # 1. Create test database
         print("1. Creating test database...")
         response = await client.post(
-            "http://localhost:8000/api/v1/database/create",
+            "http://{TestConfig.get_oms_base_url()}/api/v1/database/create",
             json={"name": test_db, "description": "Label mapper test"}
         )
         print(f"   DB creation: {response.status_code}")
@@ -37,7 +38,7 @@ async def test_label_mapper():
         }
         
         response = await client.post(
-            f"http://localhost:8002/database/{test_db}/ontology",
+            f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology",
             json=multilingual_ontology
         )
         print(f"   Creation: {response.status_code}")
@@ -56,14 +57,14 @@ async def test_label_mapper():
             # Query by ID
             print(f"\n   a) Query by ID: {created_id}")
             response = await client.get(
-                f"http://localhost:8002/database/{test_db}/ontology/{created_id}"
+                f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology/{created_id}"
             )
             print(f"      Result: {response.status_code}")
             
             # Query by Korean label
             print("\n   b) Query by Korean label: 테스트 클래스")
             response = await client.get(
-                f"http://localhost:8002/database/{test_db}/ontology/테스트 클래스",
+                f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology/테스트 클래스",
                 headers={"Accept-Language": "ko"}
             )
             print(f"      Result: {response.status_code}")
@@ -73,7 +74,7 @@ async def test_label_mapper():
             # Query by English label
             print("\n   c) Query by English label: Test Class")
             response = await client.get(
-                f"http://localhost:8002/database/{test_db}/ontology/Test Class",
+                f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology/Test Class",
                 headers={"Accept-Language": "en"}
             )
             print(f"      Result: {response.status_code}")
@@ -85,14 +86,14 @@ async def test_label_mapper():
             import urllib.parse
             encoded_label = urllib.parse.quote("테스트 클래스")
             response = await client.get(
-                f"http://localhost:8002/database/{test_db}/ontology/{encoded_label}",
+                f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology/{encoded_label}",
                 headers={"Accept-Language": "ko"}
             )
             print(f"      Result: {response.status_code}")
         
         # 4. Clean up
         print("\n4. Cleaning up...")
-        await client.delete(f"http://localhost:8000/api/v1/database/{test_db}")
+        await client.delete(f"{TestConfig.get_oms_base_url()}/api/v1/database/{test_db}")
 
 if __name__ == "__main__":
     asyncio.run(test_label_mapper())

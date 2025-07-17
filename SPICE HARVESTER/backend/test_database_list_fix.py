@@ -7,11 +7,12 @@ import asyncio
 import httpx
 import json
 import time
+from test_config import TestConfig
 
 
 async def test_database_list_fix():
     """Test that newly created databases appear in the list"""
-    oms_url = "http://localhost:8000"
+    oms_url = TestConfig.get_oms_base_url()
     test_db = f"list_test_{int(time.time())}"
     
     print(f"🧪 Testing database list fix with database: {test_db}")

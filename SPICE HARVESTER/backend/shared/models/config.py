@@ -20,7 +20,7 @@ class ConnectionConfig(SerializableMixin):
     server_url: str = "http://localhost:6363"
     user: str = "admin"
     account: str = "admin"
-    key: str = "admin123"
+    key: str = ""  # Never hardcode credentials - use environment variables
     timeout: int = 30
     
     # Connection pool settings
@@ -51,7 +51,7 @@ class ConnectionConfig(SerializableMixin):
             server_url=os.getenv("TERMINUS_SERVER_URL", "http://localhost:6363"),
             user=os.getenv("TERMINUS_USER", "admin"),
             account=os.getenv("TERMINUS_ACCOUNT", "admin"),
-            key=os.getenv("TERMINUS_KEY", "admin123"),
+            key=os.getenv("TERMINUS_KEY", ""),  # No default - must be set via env var
             timeout=int(os.getenv("TERMINUS_TIMEOUT", "30")),
             use_pool=os.getenv("TERMINUS_USE_POOL", "false").lower() == "true",
             pool_size=int(os.getenv("TERMINUS_POOL_SIZE", "10")),

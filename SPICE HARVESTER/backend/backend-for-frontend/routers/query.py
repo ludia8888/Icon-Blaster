@@ -96,17 +96,36 @@ async def execute_raw_query(
     terminus: TerminusService = Depends(get_terminus_service)
 ):
     """
-    원시 쿼리 실행
+    원시 쿼리 실행 (제한적 접근)
     
     내부 ID 기반의 원시 쿼리를 실행합니다.
-    고급 사용자용 기능입니다.
+    보안상 매우 제한적인 쿼리만 허용됩니다.
     """
     try:
+        # 데이터베이스 이름 검증
+        from shared.security.input_sanitizer import validate_db_name, sanitize_input
+        validated_db_name = validate_db_name(db_name)
+        
+        # 쿼리 검증 - 허용된 쿼리 타입만 허용
+        allowed_query_types = ['select', 'count', 'exists']
+        query_type = query.get('type', '').lower()
+        
+        if query_type not in allowed_query_types:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"허용되지 않은 쿼리 타입: {query_type}. 허용된 타입: {allowed_query_types}"
+            )
+        
+        # 쿼리 파라미터 정화
+        sanitized_query = sanitize_input(query)
+        
         # 쿼리 실행
-        result = terminus.execute_query(db_name, query)
+        result = terminus.execute_query(validated_db_name, sanitized_query)
         
         return result
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to execute raw query: {e}")
         raise HTTPException(

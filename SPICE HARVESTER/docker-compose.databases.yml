@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # Cassandra Database
+  cassandra:
+    image: cassandra:4.1
+    container_name: spice-foundry-cassandra
+    environment:
+      - CASSANDRA_CLUSTER_NAME=SpiceFoundryCluster
+      - CASSANDRA_DC=datacenter1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_NUM_TOKENS=256
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=100M
+    ports:
+      - "9042:9042"  # CQL port
+      - "7199:7199"  # JMX port
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local;'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - spice-foundry-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: spice-foundry-postgres
+    environment:
+      - POSTGRES_USER=spiceadmin
+      - POSTGRES_PASSWORD=spicepass123
+      - POSTGRES_DB=spicedb
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+    ports:
+      - "5433:5432"  # Using 5433 to avoid conflict with existing postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spiceadmin -d spicedb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - spice-foundry-network
+
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: spice-foundry-elasticsearch
+    platform: linux/amd64
+    environment:
+      - discovery.type=single-node
+      - cluster.name=spice-foundry-cluster
+      - node.name=spice-foundry-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"  # REST API
+      - "9300:9300"  # Transport
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - spice-foundry-network
+
+  # Kibana (Optional - Elasticsearch UI)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: spice-foundry-kibana
+    platform: linux/amd64
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=spice-foundry-kibana
+      - SERVER_HOST=0.0.0.0
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=kibana
+      - xpack.security.enabled=false
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - spice-foundry-network
+
+volumes:
+  cassandra-data:
+    driver: local
+  postgres-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+
+networks:
+  spice-foundry-network:
+    driver: bridge

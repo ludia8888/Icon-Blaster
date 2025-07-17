@@ -6,6 +6,7 @@ Test Security Fix - check if 'id' is no longer blocked
 import httpx
 import asyncio
 import time
+from test_config import TestConfig
 
 async def test_security_fix():
     """Test if security validation fix works"""
@@ -17,17 +18,17 @@ async def test_security_fix():
         test_cases = [
             {
                 "name": "Database with 'id' in description",
-                "url": "http://localhost:8000/api/v1/database/create",
+                "url": "http://{TestConfig.get_oms_base_url()}/api/v1/database/create",
                 "data": {"name": f"testdb{int(time.time())}", "description": "Database with id field"}
             },
             {
                 "name": "Database with 'Direct ID test' description",
-                "url": "http://localhost:8000/api/v1/database/create", 
+                "url": "http://{TestConfig.get_oms_base_url()}/api/v1/database/create", 
                 "data": {"name": f"testdb2{int(time.time())}", "description": "Direct ID test"}
             },
             {
                 "name": "Ontology with 'id' field",
-                "url": f"http://localhost:8002/database/testdb{int(time.time())}/ontology",
+                "url": f"{TestConfig.get_bff_base_url()}/database/testdb{int(time.time())}/ontology",
                 "data": {"label": "Test Class", "description": "Class with id information"}
             }
         ]
@@ -39,7 +40,7 @@ async def test_security_fix():
             if 'ontology' in test_case['url']:
                 db_name = test_case['url'].split('/database/')[1].split('/')[0]
                 await client.post(
-                    "http://localhost:8000/api/v1/database/create",
+                    "http://{TestConfig.get_oms_base_url()}/api/v1/database/create",
                     json={"name": db_name, "description": "Test database"}
                 )
             

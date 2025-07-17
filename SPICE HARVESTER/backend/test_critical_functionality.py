@@ -17,15 +17,16 @@ import httpx
 import json
 import time
 from datetime import datetime
+from test_config import TestConfig
 
 
 class CriticalFunctionalityTest:
     """핵심 기능 실제 동작 테스트"""
     
     def __init__(self):
-        self.oms_url = "http://localhost:8000"
-        self.bff_url = "http://localhost:8002"
-        self.test_db = f"critical_test_{int(time.time())}"
+        self.oms_url = TestConfig.get_oms_base_url()
+        self.bff_url = TestConfig.get_bff_base_url()
+        self.test_db = f"{TestConfig.get_test_db_prefix()}critical_{int(time.time())}"
         self.test_results = []
         self.security_test_results = []
         
@@ -86,7 +87,7 @@ class CriticalFunctionalityTest:
             
             # BFF 헬스체크
             try:
-                response = await client.get(f"{self.bff_url}/health")
+                response = await client.get(f"{self.bff_url}/api/v1/health")
                 if response.status_code == 200:
                     health_data = response.json()
                     print(f"  ✅ BFF: {health_data}")
@@ -422,10 +423,18 @@ class CriticalFunctionalityTest:
             }
             
             # OMS 직접 호출
+            # Fix the format to match what OMS expects
+            oms_test_ontology = {
+                "id": "URLAlignmentTest",
+                "label": "URL Alignment Test",
+                "properties": [
+                    {"name": "test", "type": "xsd:string"}
+                ]
+            }
             try:
                 response = await client.post(
                     f"{self.oms_url}/api/v1/ontology/{self.test_db}/create",
-                    json=test_ontology
+                    json=oms_test_ontology
                 )
                 oms_success = response.status_code == 200
                 print(f"  OMS 직접 호출: {'✅' if oms_success else '❌'} {response.status_code}")

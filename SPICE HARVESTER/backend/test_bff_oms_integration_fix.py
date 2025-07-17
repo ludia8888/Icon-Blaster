@@ -6,6 +6,7 @@ Test BFF-OMS ID generation integration after fix
 import httpx
 import asyncio
 import time
+from test_config import TestConfig
 
 async def test_bff_oms_integration():
     """Test the fixed BFF-OMS ID generation integration"""
@@ -21,7 +22,7 @@ async def test_bff_oms_integration():
         print("1. Creating test database...")
         try:
             response = await client.post(
-                "http://localhost:8000/api/v1/database/create",
+                "http://{TestConfig.get_oms_base_url()}/api/v1/database/create",
                 json={"name": test_db, "description": "Test database for ID generation"}
             )
             if response.status_code not in [200, 201]:
@@ -64,7 +65,7 @@ async def test_bff_oms_integration():
             try:
                 # Create ontology through BFF
                 creation_response = await client.post(
-                    f"http://localhost:8002/database/{test_db}/ontology",
+                    f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology",
                     json={
                         "label": test_case['label'],
                         "description": f"Test ontology for {test_case['name']}"
@@ -88,7 +89,7 @@ async def test_bff_oms_integration():
                     
                     # Try to retrieve it back
                     retrieval_response = await client.get(
-                        f"http://localhost:8002/database/{test_db}/ontology/{created_id}"
+                        f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology/{created_id}"
                     )
                     
                     if retrieval_response.status_code == 200:

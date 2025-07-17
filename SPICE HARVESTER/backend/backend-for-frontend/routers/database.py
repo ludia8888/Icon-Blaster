@@ -12,6 +12,7 @@ import os
 # Add shared path for common utilities
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
 from utils.language import get_accept_language
+from models.requests import DatabaseCreateRequest, ApiResponse
 
 from services.oms_client import OMSClient
 from dependencies import get_oms_client
@@ -47,42 +48,32 @@ async def list_databases(
         )
 
 
-@router.post("")
+@router.post("", response_model=ApiResponse)
 async def create_database(
-    request: Dict[str, Any],
+    request: DatabaseCreateRequest,
     oms: OMSClient = Depends(get_oms_client)
 ):
     """데이터베이스 생성"""
     try:
-        # 요청 데이터 검증
-        db_name = request.get("name")
-        if not db_name:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="데이터베이스 이름이 필요합니다"
-            )
-        
-        description = request.get("description", "")
-        
         # OMS를 통해 데이터베이스 생성
-        result = await oms.create_database(db_name, description)
+        result = await oms.create_database(request.name, request.description)
         
         return {
             "status": "success",
-            "message": f"데이터베이스 '{db_name}'가 생성되었습니다",
-            "name": db_name,
+            "message": f"데이터베이스 '{request.name}'가 생성되었습니다",
+            "name": request.name,
             "data": result
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to create database '{request.get('name', 'unknown')}': {e}")
+        logger.error(f"Failed to create database '{request.name}': {e}")
         
         # 중복 데이터베이스 체크
         if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"데이터베이스 '{request.get('name')}'이(가) 이미 존재합니다"
+                detail=f"데이터베이스 '{request.name}'이(가) 이미 존재합니다"
             )
         
         raise HTTPException(

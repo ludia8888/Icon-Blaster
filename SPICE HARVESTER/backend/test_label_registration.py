@@ -51,7 +51,7 @@ async def test_label_registration():
         # 1. Create database
         print(f"1. Creating database: {test_db}")
         response = await client.post(
-            "http://localhost:8000/api/v1/database/create",
+            "http://{TestConfig.get_oms_base_url()}/api/v1/database/create",
             json={"name": test_db, "description": "Label test"}
         )
         print(f"   Status: {response.status_code}")
@@ -60,7 +60,7 @@ async def test_label_registration():
             # 2. Create ontology with simple label
             print("\n2. Creating ontology with label 'Test Class'")
             response = await client.post(
-                f"http://localhost:8002/database/{test_db}/ontology",
+                f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology",
                 json={
                     "label": "Test Class",
                     "properties": []
@@ -78,7 +78,7 @@ async def test_label_registration():
             # 4. Try to query by label
             print(f"\n4. Querying by label 'Test Class':")
             response = await client.get(
-                f"http://localhost:8002/database/{test_db}/ontology/Test Class"
+                f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology/Test Class"
             )
             print(f"   Status: {response.status_code}")
             if response.status_code != 200:
@@ -86,9 +86,10 @@ async def test_label_registration():
         
         # 5. Cleanup
         print("\n5. Cleaning up...")
-        await client.delete(f"http://localhost:8000/api/v1/database/{test_db}")
+        await client.delete(f"{TestConfig.get_oms_base_url()}/api/v1/database/{test_db}")
 
 import time
+from test_config import TestConfig
 
 if __name__ == "__main__":
     print("=== Testing Label Registration ===\n")

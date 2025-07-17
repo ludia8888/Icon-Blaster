@@ -22,10 +22,11 @@ import string
 import gc
 import sys
 import tracemalloc
+from test_config import TestConfig
 
 # 성능 테스트 설정
-OMS_BASE_URL = "http://localhost:8000"
-BFF_BASE_URL = "http://localhost:8002"
+OMS_BASE_URL = TestConfig.get_oms_base_url()
+BFF_BASE_URL = TestConfig.get_bff_base_url()
 PERFORMANCE_TEST_TIMEOUT = 60
 MAX_PAYLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_CONCURRENT_USERS = 100

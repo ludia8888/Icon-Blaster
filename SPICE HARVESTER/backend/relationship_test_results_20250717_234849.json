@@ -1,0 +1,56 @@
+{
+  "total_tests": 7,
+  "passed": 2,
+  "failed": 5,
+  "errors": [
+    "1️⃣ RelationshipManager 테스트: ",
+    "2️⃣ RelationshipValidator 테스트: 1 validation error for Relationship\ncardinality\n  Input should be 'one', 'many', '1:1', '1:n' or 'n:n' [type=enum, input_value='invalid_cardinality', input_type=str]",
+    "3️⃣ CircularReferenceDetector 테스트: 1 validation error for Relationship\ncardinality\n  Input should be 'one', 'many', '1:1', '1:n' or 'n:n' [type=enum, input_value='n:1', input_type=str]",
+    "4️⃣ RelationshipPathTracker 테스트: 1 validation error for Relationship\ncardinality\n  Input should be 'one', 'many', '1:1', '1:n' or 'n:n' [type=enum, input_value='n:1', input_type=str]",
+    "6️⃣ 실제 사용 시나리오 테스트: 1 validation error for Relationship\ncardinality\n  Input should be 'one', 'many', '1:1', '1:n' or 'n:n' [type=enum, input_value='n:1', input_type=str]"
+  ],
+  "test_details": [
+    {
+      "test": "1️⃣ RelationshipManager 테스트",
+      "success": false,
+      "details": "",
+      "timestamp": "2025-07-17T23:48:49.944643"
+    },
+    {
+      "test": "2️⃣ RelationshipValidator 테스트",
+      "success": false,
+      "details": "1 validation error for Relationship\ncardinality\n  Input should be 'one', 'many', '1:1', '1:n' or 'n:n' [type=enum, input_value='invalid_cardinality', input_type=str]",
+      "timestamp": "2025-07-17T23:48:49.944692"
+    },
+    {
+      "test": "3️⃣ CircularReferenceDetector 테스트",
+      "success": false,
+      "details": "1 validation error for Relationship\ncardinality\n  Input should be 'one', 'many', '1:1', '1:n' or 'n:n' [type=enum, input_value='n:1', input_type=str]",
+      "timestamp": "2025-07-17T23:48:49.944739"
+    },
+    {
+      "test": "4️⃣ RelationshipPathTracker 테스트",
+      "success": false,
+      "details": "1 validation error for Relationship\ncardinality\n  Input should be 'one', 'many', '1:1', '1:n' or 'n:n' [type=enum, input_value='n:1', input_type=str]",
+      "timestamp": "2025-07-17T23:48:49.944764"
+    },
+    {
+      "test": "5️⃣ 통합 시나리오 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:48:49.944785"
+    },
+    {
+      "test": "6️⃣ 실제 사용 시나리오 테스트",
+      "success": false,
+      "details": "1 validation error for Relationship\ncardinality\n  Input should be 'one', 'many', '1:1', '1:n' or 'n:n' [type=enum, input_value='n:1', input_type=str]",
+      "timestamp": "2025-07-17T23:48:49.944803"
+    },
+    {
+      "test": "7️⃣ 엔터프라이즈 기능 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:48:49.949971"
+    }
+  ]
+}

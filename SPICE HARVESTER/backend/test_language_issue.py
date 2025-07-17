@@ -6,6 +6,7 @@ Test Language Registration Issue
 import httpx
 import asyncio
 import sqlite3
+from test_config import TestConfig
 
 async def check_registrations():
     """Check what's registered in SQLite"""
@@ -42,14 +43,14 @@ async def test_with_explicit_lang():
         # Create database
         print("\n2. Creating test database...")
         await client.post(
-            "http://localhost:8000/api/v1/database/create",
+            "http://{TestConfig.get_oms_base_url()}/api/v1/database/create",
             json={"name": test_db, "description": "Language test"}
         )
         
         # Create ontology
         print("\n3. Creating ontology with explicit headers...")
         response = await client.post(
-            f"http://localhost:8002/database/{test_db}/ontology",
+            f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology",
             json={
                 "label": "TestClass",
                 "properties": []
@@ -68,13 +69,13 @@ async def test_with_explicit_lang():
             for lang in ["en", "ko", ""]:
                 headers = {"Accept-Language": lang} if lang else {}
                 response = await client.get(
-                    f"http://localhost:8002/database/{test_db}/ontology/TestClass",
+                    f"{TestConfig.get_bff_base_url()}/database/{test_db}/ontology/TestClass",
                     headers=headers
                 )
                 print(f"   Lang '{lang}': {response.status_code}")
         
         # Cleanup
-        await client.delete(f"http://localhost:8000/api/v1/database/{test_db}")
+        await client.delete(f"{TestConfig.get_oms_base_url()}/api/v1/database/{test_db}")
 
 if __name__ == "__main__":
     asyncio.run(check_registrations())

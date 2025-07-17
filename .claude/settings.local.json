@@ -1,4 +1,13 @@
 {
+  "mcpServers": {
+    "TalkToFigma": {
+      "command": "bunx",
+      "args": [
+        "cursor-talk-to-figma-mcp@latest",
+        "--server=vps.sonnylab.com"
+      ]
+    }
+  },
   "permissions": {
     "allow": [
       "Bash(ls:*)",
@@ -74,7 +83,12 @@
       "Bash(createdb:*)",
       "Bash(cloc:*)",
       "Bash(timeout:*)",
-      "Bash(env)"
+      "Bash(env)",
+      "Bash(kill:*)",
+      "Bash(nc:*)",
+      "Bash(psql:*)",
+      "Bash(git pull:*)",
+      "Bash(git rebase:*)"
     ],
     "deny": []
   }

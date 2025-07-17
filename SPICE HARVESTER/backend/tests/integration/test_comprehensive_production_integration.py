@@ -17,10 +17,11 @@ from typing import Dict, List, Any
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
+from test_config import TestConfig
 
 # 테스트 설정
-OMS_BASE_URL = "http://localhost:8000"
-BFF_BASE_URL = "http://localhost:8002"
+OMS_BASE_URL = TestConfig.get_oms_base_url()
+BFF_BASE_URL = TestConfig.get_bff_base_url()
 TEST_TIMEOUT = 30
 MAX_CONCURRENT_REQUESTS = 50
 
@@ -213,7 +214,7 @@ class ProductionIntegrationTestSuite:
                     )
                     if response.status_code != 400:
                         self.security_violations.append(f"DB name security bypass: {malicious_input}")
-                except:
+                except (httpx.HTTPError, httpx.TimeoutException, ConnectionError):
                     pass  # 연결 오류는 정상 (보안 차단)
                 
                 # 온톨로지 클래스 ID에 악성 입력
@@ -224,7 +225,7 @@ class ProductionIntegrationTestSuite:
                     )
                     if response.status_code != 400:
                         self.security_violations.append(f"Class ID security bypass: {malicious_input}")
-                except:
+                except (httpx.HTTPError, httpx.TimeoutException, ConnectionError):
                     pass
                 
                 # 브랜치 이름에 악성 입력
@@ -235,7 +236,7 @@ class ProductionIntegrationTestSuite:
                     )
                     if response.status_code != 400:
                         self.security_violations.append(f"Branch name security bypass: {malicious_input}")
-                except:
+                except (httpx.HTTPError, httpx.TimeoutException, ConnectionError):
                     pass
         
         if self.security_violations:

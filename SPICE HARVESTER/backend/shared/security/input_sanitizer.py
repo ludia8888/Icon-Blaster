@@ -228,7 +228,7 @@ class InputSanitizer:
             if decoded != sanitized:
                 # 디코딩된 값도 검증
                 self.sanitize_string(decoded, max_length)
-        except Exception as e:
+        except (UnicodeDecodeError, ValueError) as e:
             # URL 디코딩 실패는 보안 위반으로 처리
             logger.error(f"URL decoding failed for potentially malicious input: {e}")
             raise SecurityViolationError(f"Invalid URL encoding detected: {str(e)}")
@@ -429,7 +429,7 @@ def sanitize_input(data: Any) -> Any:
     except SecurityViolationError as e:
         logger.warning(f"Security violation detected: {e}")
         raise
-    except Exception as e:
+    except (ValueError, TypeError, AttributeError) as e:
         logger.error(f"Input sanitization error: {e}")
         raise SecurityViolationError(f"Input sanitization failed: {e}")
 

@@ -5,6 +5,7 @@ Test Error Detail
 
 import httpx
 import asyncio
+from test_config import TestConfig
 
 async def test_error():
     """Get detailed error"""
@@ -12,7 +13,7 @@ async def test_error():
     async with httpx.AsyncClient(timeout=30) as client:
         # Use existing database
         response = await client.get(
-            "http://localhost:8002/database/testlang/ontology/TestClass"
+            "http://{TestConfig.get_bff_base_url()}/database/testlang/ontology/TestClass"
         )
         print(f"Status: {response.status_code}")
         print(f"Response: {response.text}")

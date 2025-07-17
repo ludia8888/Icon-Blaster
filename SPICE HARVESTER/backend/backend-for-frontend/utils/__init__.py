@@ -3,7 +3,9 @@
 """
 
 from .label_mapper import LabelMapper
+from .conflict_converter import ConflictConverter
 
 __all__ = [
-    "LabelMapper"
+    "LabelMapper",
+    "ConflictConverter"
 ]

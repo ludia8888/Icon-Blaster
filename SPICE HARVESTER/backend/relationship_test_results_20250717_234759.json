@@ -1,0 +1,56 @@
+{
+  "total_tests": 7,
+  "passed": 2,
+  "failed": 5,
+  "errors": [
+    "1️⃣ RelationshipManager 테스트: ",
+    "2️⃣ RelationshipValidator 테스트: 2 validation errors for Relationship\npredicate\n  Value error, 식별자는 영문자로 시작하고 영문, 숫자, 언더스코어만 포함해야 합니다 [type=value_error, input_value='', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\ncardinality\n  Input should be 'one', 'many', '1:1', '1:n' or 'n:n' [type=enum, input_value='invalid_cardinality', input_type=str]",
+    "3️⃣ CircularReferenceDetector 테스트: type object 'Cardinality' has no attribute 'MANY_TO_ONE'",
+    "4️⃣ RelationshipPathTracker 테스트: type object 'Cardinality' has no attribute 'MANY_TO_ONE'",
+    "6️⃣ 실제 사용 시나리오 테스트: type object 'Cardinality' has no attribute 'MANY_TO_ONE'"
+  ],
+  "test_details": [
+    {
+      "test": "1️⃣ RelationshipManager 테스트",
+      "success": false,
+      "details": "",
+      "timestamp": "2025-07-17T23:47:59.472782"
+    },
+    {
+      "test": "2️⃣ RelationshipValidator 테스트",
+      "success": false,
+      "details": "2 validation errors for Relationship\npredicate\n  Value error, 식별자는 영문자로 시작하고 영문, 숫자, 언더스코어만 포함해야 합니다 [type=value_error, input_value='', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.5/v/value_error\ncardinality\n  Input should be 'one', 'many', '1:1', '1:n' or 'n:n' [type=enum, input_value='invalid_cardinality', input_type=str]",
+      "timestamp": "2025-07-17T23:47:59.473566"
+    },
+    {
+      "test": "3️⃣ CircularReferenceDetector 테스트",
+      "success": false,
+      "details": "type object 'Cardinality' has no attribute 'MANY_TO_ONE'",
+      "timestamp": "2025-07-17T23:47:59.473634"
+    },
+    {
+      "test": "4️⃣ RelationshipPathTracker 테스트",
+      "success": false,
+      "details": "type object 'Cardinality' has no attribute 'MANY_TO_ONE'",
+      "timestamp": "2025-07-17T23:47:59.473656"
+    },
+    {
+      "test": "5️⃣ 통합 시나리오 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:47:59.473679"
+    },
+    {
+      "test": "6️⃣ 실제 사용 시나리오 테스트",
+      "success": false,
+      "details": "type object 'Cardinality' has no attribute 'MANY_TO_ONE'",
+      "timestamp": "2025-07-17T23:47:59.473695"
+    },
+    {
+      "test": "7️⃣ 엔터프라이즈 기능 테스트",
+      "success": true,
+      "details": "성공",
+      "timestamp": "2025-07-17T23:47:59.479182"
+    }
+  ]
+}

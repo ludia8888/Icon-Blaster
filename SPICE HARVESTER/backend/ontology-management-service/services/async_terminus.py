@@ -20,7 +20,9 @@ from models.ontology import (
     OntologyCreateRequest,
     OntologyUpdateRequest,
     MultiLingualText,
-    QueryOperator
+    QueryOperator,
+    OntologyBase,
+    Relationship
 )
 from models.config import ConnectionConfig, AsyncConnectionInfo
 from exceptions import (
@@ -30,6 +32,12 @@ from exceptions import (
     ConnectionError,
     DatabaseNotFoundError
 )
+
+# 🔥 THINK ULTRA! Import new relationship management components
+from .relationship_manager import RelationshipManager
+from ..validators.relationship_validator import RelationshipValidator, ValidationResult, ValidationSeverity
+from ..utils.circular_reference_detector import CircularReferenceDetector, CycleInfo
+from ..utils.relationship_path_tracker import RelationshipPathTracker, PathQuery, RelationshipPath
 
 logger = logging.getLogger(__name__)
 
@@ -73,16 +81,21 @@ class AsyncTerminusService:
         Args:
             connection_info: 연결 정보 객체
         """
-        self.connection_info = connection_info or ConnectionConfig(
-            server_url="http://localhost:6363",
-            user="admin",
-            account="admin",
-            key="admin123"
-        )
+        # Use environment variables if no connection info provided
+        self.connection_info = connection_info or ConnectionConfig.from_env()
         
         self._client = None
         self._auth_token = None
         self._db_cache = set()
+        
+        # 🔥 THINK ULTRA! Initialize relationship management components
+        self.relationship_manager = RelationshipManager()
+        self.relationship_validator = RelationshipValidator()
+        self.circular_detector = CircularReferenceDetector()
+        self.path_tracker = RelationshipPathTracker()
+        
+        # Relationship cache for performance
+        self._ontology_cache: Dict[str, List[OntologyBase]] = {}
     
     async def _get_client(self) -> httpx.AsyncClient:
         """HTTP 클라이언트 생성/반환"""
@@ -99,15 +112,22 @@ class AsyncTerminusService:
     
     async def _authenticate(self) -> str:
         """TerminusDB 인증 처리 - Basic Auth 사용"""
-        # TerminusDB는 HTTP Basic Authentication을 사용
         import base64
         
         if self._auth_token:
             return self._auth_token
         
-        # Basic Auth 헤더 생성
+        # Validate credentials exist
+        if not self.connection_info.user or not self.connection_info.key:
+            raise ConnectionError("TerminusDB credentials not configured. Set TERMINUS_USER and TERMINUS_KEY environment variables.")
+        
+        # Warn if not using HTTPS in production
+        if not self.connection_info.server_url.startswith("https://") and "localhost" not in self.connection_info.server_url:
+            logger.warning("Using HTTP instead of HTTPS for TerminusDB connection. This is insecure for production use.")
+        
+        # Basic Auth 헤더 생성 (TerminusDB requirement)
         credentials = f"{self.connection_info.user}:{self.connection_info.key}"
-        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+        encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('ascii')
         self._auth_token = f"Basic {encoded_credentials}"
         
         return self._auth_token
@@ -120,7 +140,9 @@ class AsyncTerminusService:
         token = await self._authenticate()
         
         headers = {
-            "Authorization": token
+            "Authorization": token,
+            "X-Request-ID": str(id(self)),  # For request tracking
+            "User-Agent": "SPICE-HARVESTER-OMS/1.0"  # Identify our service
         }
         
         try:
@@ -171,7 +193,7 @@ class AsyncTerminusService:
             
             logger.info(f"Connected to TerminusDB successfully")
             
-        except Exception as e:
+        except (httpx.HTTPError, httpx.RequestError, ConnectionError) as e:
             logger.error(f"Failed to connect to TerminusDB: {e}")
             raise AsyncDatabaseError(f"TerminusDB 연결 실패: {e}")
     
@@ -1239,6 +1261,388 @@ class AsyncTerminusService:
         except Exception as e:
             logger.error(f"문서 목록 조회 실패: {e}")
             raise AsyncDatabaseError(f"문서 목록 조회 실패: {e}")
+    
+    # 🔥 THINK ULTRA! Enhanced Relationship Management Methods
+    
+    async def create_ontology_with_advanced_relationships(
+        self, 
+        db_name: str, 
+        ontology_data: Dict[str, Any],
+        auto_generate_inverse: bool = True,
+        validate_relationships: bool = True,
+        check_circular_references: bool = True
+    ) -> Dict[str, Any]:
+        """
+        고급 관계 관리 기능을 포함한 온톨로지 생성
+        
+        Args:
+            db_name: 데이터베이스 명
+            ontology_data: 온톨로지 데이터
+            auto_generate_inverse: 자동 역관계 생성 여부
+            validate_relationships: 관계 검증 여부
+            check_circular_references: 순환 참조 체크 여부
+        """
+        logger.info(f"🔥 Creating ontology with advanced relationship management: {ontology_data.get('id', 'unknown')}")
+        
+        # 1. 기본 온톨로지 검증
+        ontology = OntologyBase(**ontology_data)
+        
+        # 2. 관계 검증
+        validation_results = []
+        if validate_relationships:
+            validation_results = self.relationship_validator.validate_ontology_relationships(ontology)
+            
+            # 심각한 오류가 있으면 생성 중단
+            critical_errors = [r for r in validation_results if r.severity == ValidationSeverity.ERROR]
+            if critical_errors:
+                error_messages = [r.message for r in critical_errors]
+                raise AsyncValidationError(f"관계 검증 실패: {', '.join(error_messages)}")
+        
+        # 3. 순환 참조 체크
+        cycle_info = []
+        if check_circular_references:
+            # 기존 온톨로지들과 함께 순환 참조 검사
+            existing_ontologies = await self._get_cached_ontologies(db_name)
+            test_ontologies = existing_ontologies + [ontology]
+            
+            self.circular_detector.build_relationship_graph(test_ontologies)
+            cycle_info = self.circular_detector.detect_all_cycles()
+            
+            # 치명적인 순환 참조가 있으면 생성 중단
+            critical_cycles = [c for c in cycle_info if c.severity == "critical"]
+            if critical_cycles:
+                cycle_messages = [c.message for c in critical_cycles]
+                raise AsyncValidationError(f"치명적인 순환 참조 감지: {', '.join(cycle_messages)}")
+        
+        # 4. 자동 역관계 생성
+        enhanced_relationships = []
+        if auto_generate_inverse:
+            for rel in ontology.relationships:
+                forward_rel, inverse_rel = self.relationship_manager.create_bidirectional_relationship(
+                    source_class=ontology.id,
+                    relationship=rel,
+                    auto_generate_inverse=True
+                )
+                
+                enhanced_relationships.append(forward_rel)
+                if inverse_rel:
+                    # 역관계는 별도 온톨로지로 저장하거나 관련 온톨로지에 추가
+                    # 여기서는 메타데이터에 저장
+                    if "inverse_relationships" not in ontology_data:
+                        ontology_data["inverse_relationships"] = []
+                    ontology_data["inverse_relationships"].append({
+                        "target_class": inverse_rel.target,
+                        "relationship": inverse_rel.dict()
+                    })
+        else:
+            enhanced_relationships = ontology.relationships
+        
+        # 5. 개선된 온톨로지 데이터 준비
+        enhanced_data = ontology_data.copy()
+        enhanced_data["relationships"] = [rel.dict() for rel in enhanced_relationships]
+        
+        # 검증 및 순환 참조 정보를 메타데이터에 추가
+        enhanced_data.setdefault("metadata", {}).update({
+            "relationship_validation": {
+                "validated": validate_relationships,
+                "validation_results": len(validation_results),
+                "warnings": len([r for r in validation_results if r.severity == ValidationSeverity.WARNING]),
+                "info": len([r for r in validation_results if r.severity == ValidationSeverity.INFO])
+            },
+            "circular_reference_check": {
+                "checked": check_circular_references,
+                "cycles_detected": len(cycle_info),
+                "critical_cycles": len([c for c in cycle_info if c.severity == "critical"])
+            },
+            "auto_inverse_generated": auto_generate_inverse,
+            "enhanced_at": datetime.utcnow().isoformat()
+        })
+        
+        # 6. 실제 온톨로지 생성
+        try:
+            result = await self.create_ontology(db_name, enhanced_data)
+            
+            # 캐시 무효화
+            if db_name in self._ontology_cache:
+                del self._ontology_cache[db_name]
+            
+            # 관계 그래프 업데이트
+            await self._update_relationship_graphs(db_name)
+            
+            logger.info(f"✅ Successfully created ontology with enhanced relationships: {ontology.id}")
+            
+            return {
+                **result,
+                "relationship_enhancements": {
+                    "validation_results": validation_results,
+                    "cycle_info": cycle_info,
+                    "inverse_relationships_generated": auto_generate_inverse
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to create enhanced ontology: {e}")
+            raise
+    
+    async def validate_relationships(self, db_name: str, ontology_data: Dict[str, Any]) -> Dict[str, Any]:
+        """관계 검증 전용 메서드"""
+        
+        ontology = OntologyBase(**ontology_data)
+        
+        # 기존 온톨로지들 조회
+        existing_ontologies = await self._get_cached_ontologies(db_name)
+        self.relationship_validator.existing_ontologies = existing_ontologies
+        
+        # 검증 실행
+        validation_results = self.relationship_validator.validate_ontology_relationships(ontology)
+        
+        # 검증 요약
+        summary = self.relationship_validator.get_validation_summary(validation_results)
+        
+        return {
+            "validation_summary": summary,
+            "validation_results": [
+                {
+                    "severity": r.severity.value,
+                    "code": r.code,
+                    "message": r.message,
+                    "field": r.field,
+                    "related_objects": r.related_objects
+                }
+                for r in validation_results
+            ]
+        }
+    
+    async def detect_circular_references(self, db_name: str, include_new_ontology: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """순환 참조 탐지 전용 메서드"""
+        
+        # 기존 온톨로지들 조회
+        existing_ontologies = await self._get_cached_ontologies(db_name)
+        
+        # 새 온톨로지가 있으면 포함
+        test_ontologies = existing_ontologies[:]
+        if include_new_ontology:
+            new_ontology = OntologyBase(**include_new_ontology)
+            test_ontologies.append(new_ontology)
+        
+        # 순환 참조 탐지
+        self.circular_detector.build_relationship_graph(test_ontologies)
+        cycles = self.circular_detector.detect_all_cycles()
+        
+        # 분석 보고서 생성
+        report = self.circular_detector.get_cycle_analysis_report(cycles)
+        
+        return {
+            "cycle_analysis_report": report,
+            "detected_cycles": [
+                {
+                    "type": c.cycle_type.value,
+                    "path": c.path,
+                    "predicates": c.predicates,
+                    "length": c.length,
+                    "severity": c.severity,
+                    "message": c.message,
+                    "can_break": c.can_break,
+                    "resolution_suggestions": self.circular_detector.suggest_cycle_resolution(c)
+                }
+                for c in cycles
+            ]
+        }
+    
+    async def find_relationship_paths(self, db_name: str, start_entity: str, end_entity: Optional[str] = None, **query_params) -> Dict[str, Any]:
+        """관계 경로 탐색"""
+        
+        # 관계 그래프 업데이트
+        await self._update_relationship_graphs(db_name)
+        
+        # 경로 쿼리 생성
+        query = PathQuery(
+            start_entity=start_entity,
+            end_entity=end_entity,
+            **query_params
+        )
+        
+        # 경로 탐색
+        paths = self.path_tracker.find_paths(query)
+        
+        # 통계 정보
+        statistics = self.path_tracker.get_path_statistics(paths)
+        
+        return {
+            "query": {
+                "start_entity": start_entity,
+                "end_entity": end_entity,
+                "parameters": query_params
+            },
+            "paths": [
+                {
+                    "start_entity": p.start_entity,
+                    "end_entity": p.end_entity,
+                    "entities": p.entities,
+                    "predicates": p.predicates,
+                    "length": p.length,
+                    "total_weight": p.total_weight,
+                    "path_type": p.path_type.value,
+                    "semantic_score": p.semantic_score,
+                    "confidence": p.confidence,
+                    "readable_path": p.to_readable_string()
+                }
+                for p in paths
+            ],
+            "statistics": statistics
+        }
+    
+    async def get_reachable_entities(self, db_name: str, start_entity: str, max_depth: int = 3) -> Dict[str, Any]:
+        """시작 엔티티에서 도달 가능한 모든 엔티티 조회"""
+        
+        await self._update_relationship_graphs(db_name)
+        
+        reachable = self.path_tracker.find_all_reachable_entities(start_entity, max_depth)
+        
+        return {
+            "start_entity": start_entity,
+            "max_depth": max_depth,
+            "reachable_entities": {
+                entity: {
+                    "path": path.entities,
+                    "predicates": path.predicates,
+                    "distance": path.length,
+                    "weight": path.total_weight
+                }
+                for entity, path in reachable.items()
+            },
+            "total_reachable": len(reachable)
+        }
+    
+    async def analyze_relationship_network(self, db_name: str) -> Dict[str, Any]:
+        """관계 네트워크 종합 분석"""
+        
+        logger.info(f"🔥 Analyzing relationship network for database: {db_name}")
+        
+        # 온톨로지들 조회
+        ontologies = await self._get_cached_ontologies(db_name)
+        
+        if not ontologies:
+            return {"message": "No ontologies found in database"}
+        
+        # 1. 관계 검증
+        all_validation_results = []
+        for ontology in ontologies:
+            results = self.relationship_validator.validate_ontology_relationships(ontology)
+            all_validation_results.extend(results)
+        
+        validation_summary = self.relationship_validator.get_validation_summary(all_validation_results)
+        
+        # 2. 순환 참조 분석
+        self.circular_detector.build_relationship_graph(ontologies)
+        cycles = self.circular_detector.detect_all_cycles()
+        cycle_report = self.circular_detector.get_cycle_analysis_report(cycles)
+        
+        # 3. 경로 추적 그래프 구축
+        self.path_tracker.build_graph(ontologies)
+        graph_summary = self.path_tracker.export_graph_summary()
+        
+        # 4. 관계 통계
+        all_relationships = []
+        for ontology in ontologies:
+            all_relationships.extend(ontology.relationships)
+        
+        relationship_summary = self.relationship_manager.generate_relationship_summary(all_relationships)
+        
+        return {
+            "database": db_name,
+            "analysis_timestamp": datetime.utcnow().isoformat(),
+            "ontology_count": len(ontologies),
+            "relationship_summary": relationship_summary,
+            "validation_summary": validation_summary,
+            "cycle_analysis": cycle_report,
+            "graph_summary": graph_summary,
+            "recommendations": self._generate_network_recommendations(
+                validation_summary, cycle_report, relationship_summary
+            )
+        }
+    
+    async def _get_cached_ontologies(self, db_name: str) -> List[OntologyBase]:
+        """캐시된 온톨로지 조회 (성능 최적화)"""
+        
+        if db_name not in self._ontology_cache:
+            # 온톨로지들을 실제로 조회하여 캐시
+            ontology_dicts = await self.list_ontologies(db_name)
+            ontologies = []
+            
+            for onto_dict in ontology_dicts:
+                try:
+                    # 필요한 필드들이 있는지 확인하고 기본값 설정
+                    if "id" not in onto_dict:
+                        continue
+                    
+                    onto_dict.setdefault("label", onto_dict["id"])
+                    onto_dict.setdefault("properties", [])
+                    onto_dict.setdefault("relationships", [])
+                    
+                    ontology = OntologyBase(**onto_dict)
+                    ontologies.append(ontology)
+                except Exception as e:
+                    logger.warning(f"Failed to parse ontology {onto_dict.get('id', 'unknown')}: {e}")
+                    continue
+            
+            self._ontology_cache[db_name] = ontologies
+        
+        return self._ontology_cache[db_name]
+    
+    async def _update_relationship_graphs(self, db_name: str) -> None:
+        """관계 그래프들 업데이트"""
+        
+        ontologies = await self._get_cached_ontologies(db_name)
+        
+        # 모든 관계 관리 컴포넌트의 그래프 업데이트
+        self.circular_detector.build_relationship_graph(ontologies)
+        self.path_tracker.build_graph(ontologies)
+        
+        # 검증기에 기존 온톨로지 정보 제공
+        self.relationship_validator.existing_ontologies = ontologies
+    
+    def _generate_network_recommendations(
+        self, 
+        validation_summary: Dict[str, Any], 
+        cycle_report: Dict[str, Any], 
+        relationship_summary: Dict[str, Any]
+    ) -> List[str]:
+        """네트워크 분석 기반 권장사항 생성"""
+        
+        recommendations = []
+        
+        # 검증 관련 권장사항
+        if validation_summary.get("errors", 0) > 0:
+            recommendations.append(f"❌ {validation_summary['errors']}개의 관계 오류를 수정하세요")
+        
+        if validation_summary.get("warnings", 0) > 5:
+            recommendations.append(f"⚠️ {validation_summary['warnings']}개의 관계 경고를 검토하세요")
+        
+        # 순환 참조 관련 권장사항
+        if cycle_report.get("critical_cycles", 0) > 0:
+            recommendations.append(f"🔄 {cycle_report['critical_cycles']}개의 치명적인 순환 참조를 해결하세요")
+        
+        if cycle_report.get("total_cycles", 0) > 10:
+            recommendations.append("🏗️ 복잡한 순환 구조를 단순화하는 것을 고려하세요")
+        
+        # 관계 관련 권장사항
+        total_relationships = relationship_summary.get("total_relationships", 0)
+        if total_relationships == 0:
+            recommendations.append("📝 온톨로지 간 관계를 정의하여 의미적 연결을 강화하세요")
+        elif total_relationships > 50:
+            recommendations.append("📊 관계가 많습니다. 모듈화를 고려하세요")
+        
+        # 역관계 커버리지
+        inverse_coverage = relationship_summary.get("inverse_coverage", "0/0 (0%)")
+        coverage_percent = float(inverse_coverage.split("(")[1].split("%")[0]) if "(" in inverse_coverage else 0
+        if coverage_percent < 50:
+            recommendations.append("↔️ 역관계 정의를 늘려 양방향 탐색을 개선하세요")
+        
+        if not recommendations:
+            recommendations.append("✅ 관계 네트워크가 건강한 상태입니다")
+        
+        return recommendations
 
     async def __aenter__(self):
         """비동기 컨텍스트 매니저 진입"""

@@ -12,7 +12,11 @@ from pathlib import Path
 import logging
 from contextlib import asynccontextmanager
 import asyncio
+import sys
+import os
 
+# shared 모델 import
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
 from models.ontology import MultiLingualText, QueryInput, QueryFilter
 
 logger = logging.getLogger(__name__)
@@ -95,10 +99,17 @@ class LabelMapper:
                     )
                 """)
                 
-                # 인덱스 생성
-                await conn.execute("CREATE INDEX IF NOT EXISTS idx_class_label ON class_mappings(db_name, label)")
-                await conn.execute("CREATE INDEX IF NOT EXISTS idx_property_label ON property_mappings(db_name, class_id, label)")
-                await conn.execute("CREATE INDEX IF NOT EXISTS idx_relationship_label ON relationship_mappings(db_name, label)")
+                # 인덱스 생성 (쿼리 패턴에 최적화된 복합 인덱스)
+                # 기존 인덱스 (레이블로 ID 찾기)
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_class_label ON class_mappings(db_name, label, label_lang)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_property_label ON property_mappings(db_name, class_id, label, label_lang)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_relationship_label ON relationship_mappings(db_name, label, label_lang)")
+                
+                # 배치 조회 최적화 인덱스 (ID로 레이블 찾기)
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_class_batch ON class_mappings(db_name, label_lang, class_id)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_property_batch ON property_mappings(db_name, class_id, label_lang, property_id)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_property_batch_all ON property_mappings(db_name, label_lang, class_id, property_id)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_relationship_batch ON relationship_mappings(db_name, label_lang, predicate)")
                 
                 await conn.commit()
                 self._init_flag = True
@@ -229,6 +240,43 @@ class LabelMapper:
             
             return {row['property_id']: row['label'] for row in rows}
     
+    async def get_all_property_labels_in_batch(self, db_name: str, 
+                                                class_property_pairs: List[Tuple[str, str]], 
+                                                lang: str = 'ko') -> Dict[Tuple[str, str], str]:
+        """
+        여러 클래스의 여러 속성 레이블을 한 번의 쿼리로 조회 (N+1 쿼리 문제 완전 해결)
+        
+        Args:
+            db_name: 데이터베이스 이름
+            class_property_pairs: [(class_id, property_id)] 튜플 목록
+            lang: 언어 코드
+            
+        Returns:
+            {(class_id, property_id): label} 형태의 딕셔너리
+        """
+        if not class_property_pairs:
+            return {}
+            
+        await self._init_database()
+        async with self._get_connection() as conn:
+            # WHERE 절을 위한 조건 생성
+            conditions = []
+            params = [db_name, lang]
+            
+            for class_id, property_id in class_property_pairs:
+                conditions.append("(class_id = ? AND property_id = ?)")
+                params.extend([class_id, property_id])
+            
+            query = f"""
+                SELECT class_id, property_id, label FROM property_mappings 
+                WHERE db_name = ? AND label_lang = ? AND ({' OR '.join(conditions)})
+            """
+            
+            cursor = await conn.execute(query, params)
+            rows = await cursor.fetchall()
+            
+            return {(row['class_id'], row['property_id']): row['label'] for row in rows}
+    
     async def get_relationship_labels_in_batch(self, db_name: str, predicates: List[str], 
                                                lang: str = 'ko') -> Dict[str, str]:
         """
@@ -309,28 +357,27 @@ class LabelMapper:
         class_labels = await self.get_class_labels_in_batch(db_name, class_ids, lang)
         relationship_labels = await self.get_relationship_labels_in_batch(db_name, list(all_predicates), lang)
         
-        # 각 클래스별 속성 라벨 조회
-        property_labels = {}
-        for class_id in set(class_ids):
-            class_property_ids = []
-            for data in data_list:
-                if data.get('id') == class_id or data.get('@id') == class_id:
-                    properties = data.get('properties', [])
-                    if isinstance(properties, dict):
-                        # OMS dict 형식 처리
-                        for prop_name, prop_type in properties.items():
-                            if not prop_name.startswith('rdfs:') and prop_name not in ['@type', '@class']:
-                                class_property_ids.append(prop_name)
-                    elif isinstance(properties, list):
-                        # 기존 list 형식 처리
-                        for prop in properties:
-                            if isinstance(prop, dict) and 'name' in prop:
-                                class_property_ids.append(prop['name'])
-            
-            if class_property_ids:
-                property_labels[class_id] = await self.get_property_labels_in_batch(
-                    db_name, class_id, class_property_ids, lang
-                )
+        # 모든 (class_id, property_id) 쌍 수집 (N+1 쿼리 문제 해결)
+        all_class_property_pairs = []
+        for data in data_list:
+            class_id = data.get('id') or data.get('@id')
+            if class_id:
+                properties = data.get('properties', [])
+                if isinstance(properties, dict):
+                    # OMS dict 형식 처리
+                    for prop_name, prop_type in properties.items():
+                        if not prop_name.startswith('rdfs:') and prop_name not in ['@type', '@class']:
+                            all_class_property_pairs.append((class_id, prop_name))
+                elif isinstance(properties, list):
+                    # 기존 list 형식 처리
+                    for prop in properties:
+                        if isinstance(prop, dict) and 'name' in prop:
+                            all_class_property_pairs.append((class_id, prop['name']))
+        
+        # 한 번의 쿼리로 모든 속성 라벨 조회
+        all_property_labels = await self.get_all_property_labels_in_batch(
+            db_name, all_class_property_pairs, lang
+        )
         
         # 데이터 변환
         labeled_data = []
@@ -346,7 +393,7 @@ class LabelMapper:
                     display_data['@label'] = class_labels[class_id]
             
             # 속성들을 레이블로 변환
-            if 'properties' in display_data and class_id in property_labels:
+            if 'properties' in display_data and class_id:
                 properties = display_data['properties']
                 if isinstance(properties, dict):
                     # OMS dict 형식을 list로 변환하면서 레이블 추가
@@ -357,15 +404,20 @@ class LabelMapper:
                                 'name': prop_name,
                                 'type': prop_type if isinstance(prop_type, str) else prop_type.get('@class', 'xsd:string')
                             }
-                            if prop_name in property_labels[class_id]:
-                                prop_info['display_label'] = property_labels[class_id][prop_name]
+                            # 튜플 키로 속성 라벨 조회
+                            label_key = (class_id, prop_name)
+                            if label_key in all_property_labels:
+                                prop_info['display_label'] = all_property_labels[label_key]
                             property_list.append(prop_info)
                     display_data['properties'] = property_list
                 elif isinstance(properties, list):
                     # 기존 list 형식 처리
                     for prop in properties:
-                        if isinstance(prop, dict) and 'name' in prop and prop['name'] in property_labels[class_id]:
-                            prop['display_label'] = property_labels[class_id][prop['name']]
+                        if isinstance(prop, dict) and 'name' in prop:
+                            # 튜플 키로 속성 라벨 조회
+                            label_key = (class_id, prop['name'])
+                            if label_key in all_property_labels:
+                                prop['display_label'] = all_property_labels[label_key]
             
             # 관계들을 레이블로 변환
             if 'relationships' in display_data:

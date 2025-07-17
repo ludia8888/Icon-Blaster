@@ -6,6 +6,7 @@ Direct OMS Ontology Creation Test
 import httpx
 import asyncio
 import json
+from test_config import TestConfig
 
 async def test_direct_oms():
     """Test OMS ontology creation directly"""
@@ -17,7 +18,7 @@ async def test_direct_oms():
         print("1. Creating test database...")
         try:
             response = await client.post(
-                "http://localhost:8000/api/v1/database/create",
+                "http://{TestConfig.get_oms_base_url()}/api/v1/database/create",
                 json={"name": test_db, "description": "Direct OMS test"}
             )
             print(f"   DB creation: {response.status_code}")
@@ -82,7 +83,7 @@ async def test_direct_oms():
             
             try:
                 response = await client.post(
-                    f"http://localhost:8000/api/v1/ontology/{test_db}/create",
+                    f"{TestConfig.get_oms_base_url()}/api/v1/ontology/{test_db}/create",
                     json=test_format['data']
                 )
                 print(f"   Result: {response.status_code}")
@@ -96,9 +97,9 @@ async def test_direct_oms():
         # 3. Clean up
         print("\n3. Cleaning up...")
         try:
-            await client.delete(f"http://localhost:8000/api/v1/database/{test_db}")
+            await client.delete(f"{TestConfig.get_oms_base_url()}/api/v1/database/{test_db}")
             print("   Cleanup done")
-        except:
+        except (httpx.HTTPError, httpx.TimeoutException, ConnectionError):
             print("   Cleanup failed")
 
 if __name__ == "__main__":

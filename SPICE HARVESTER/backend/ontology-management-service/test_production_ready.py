@@ -503,7 +503,7 @@ class ProductionReadinessTest:
                     f"/api/v1/databases/{self.test_db_name}/classes/Person"
                 )
                 return response.status_code == 200
-            except:
+            except (httpx.HTTPError, asyncio.TimeoutError, ConnectionError):
                 return False
                 
         try:
