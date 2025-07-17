@@ -37,6 +37,7 @@ class PaginationResponse(BaseModel):
 
 class DataType(str, Enum):
     """지원되는 데이터 타입"""
+    # 기본 XSD 타입
     STRING = "xsd:string"
     INTEGER = "xsd:integer"
     DECIMAL = "xsd:decimal"
@@ -45,10 +46,44 @@ class DataType(str, Enum):
     DATETIME = "xsd:dateTime"
     URI = "xsd:anyURI"
     
+    # 🔥 THINK ULTRA! 복합 타입들
+    ARRAY = "custom:array"           # 배열 타입
+    OBJECT = "custom:object"         # 중첩 객체
+    ENUM = "custom:enum"             # 열거형
+    MONEY = "custom:money"           # 통화 타입
+    PHONE = "custom:phone"           # 전화번호
+    EMAIL = "custom:email"           # 이메일
+    COORDINATE = "custom:coordinate" # 좌표 (위도/경도)
+    ADDRESS = "custom:address"       # 주소
+    IMAGE = "custom:image"           # 이미지 URL
+    FILE = "custom:file"             # 파일 첨부
+    
     @classmethod
     def validate(cls, value: str) -> bool:
         """데이터 타입 유효성 검증"""
         return value in [item.value for item in cls]
+    
+    @classmethod
+    def is_complex_type(cls, data_type: str) -> bool:
+        """복합 타입 여부 확인"""
+        return data_type.startswith("custom:")
+    
+    @classmethod
+    def get_base_type(cls, data_type: str) -> str:
+        """복합 타입의 기본 저장 타입 반환"""
+        base_type_map = {
+            cls.ARRAY.value: cls.STRING.value,  # JSON string으로 저장
+            cls.OBJECT.value: cls.STRING.value,  # JSON string으로 저장
+            cls.ENUM.value: cls.STRING.value,
+            cls.MONEY.value: cls.DECIMAL.value,
+            cls.PHONE.value: cls.STRING.value,
+            cls.EMAIL.value: cls.STRING.value,
+            cls.COORDINATE.value: cls.STRING.value,  # "lat,lng" 형식
+            cls.ADDRESS.value: cls.STRING.value,  # JSON string으로 저장
+            cls.IMAGE.value: cls.URI.value,
+            cls.FILE.value: cls.URI.value
+        }
+        return base_type_map.get(data_type, data_type)
 
 
 class Cardinality(str, Enum):

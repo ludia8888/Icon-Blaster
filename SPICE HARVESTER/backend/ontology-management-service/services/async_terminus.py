@@ -14,7 +14,16 @@ from functools import wraps
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+# 🔥 THINK ULTRA! Add ontology-management-service root directory to path for utils/validators imports
+# CRITICAL: This must come FIRST to avoid conflicts with shared/utils
+oms_root = os.path.join(os.path.dirname(__file__), '..')
+sys.path.insert(0, oms_root)  # Insert at beginning to take precedence
+
+# Add shared directory to path AFTER local directories
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+
+# print(f"🔥 DEBUG: Added {oms_root} to sys.path")
+# print(f"🔥 DEBUG: sys.path = {sys.path[:5]}")  # Show first 5 entries
 
 from models.ontology import (
     OntologyCreateRequest,
@@ -32,12 +41,35 @@ from exceptions import (
     ConnectionError,
     DatabaseNotFoundError
 )
+from models.common import DataType  # 🔥 THINK ULTRA! Import at top level
 
-# 🔥 THINK ULTRA! Import new relationship management components
+# 🔥 THINK ULTRA! Import new relationship management components - USING DIRECT IMPORTLIB
 from .relationship_manager import RelationshipManager
-from ..validators.relationship_validator import RelationshipValidator, ValidationResult, ValidationSeverity
-from ..utils.circular_reference_detector import CircularReferenceDetector, CycleInfo
-from ..utils.relationship_path_tracker import RelationshipPathTracker, PathQuery, RelationshipPath
+from validators.relationship_validator import RelationshipValidator, ValidationResult, ValidationSeverity
+
+# 🔥 THINK ULTRA! Use direct import with importlib to force correct path and avoid shared/utils conflict
+import importlib.util
+
+# Load local utils modules directly to bypass import conflicts
+utils_circular_path = os.path.join(oms_root, 'utils', 'circular_reference_detector.py')
+utils_path_tracker_path = os.path.join(oms_root, 'utils', 'relationship_path_tracker.py')
+
+# Load circular_reference_detector
+spec = importlib.util.spec_from_file_location("circular_reference_detector", utils_circular_path)
+circular_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(circular_module)
+
+CircularReferenceDetector = circular_module.CircularReferenceDetector
+CycleInfo = circular_module.CycleInfo
+
+# Load relationship_path_tracker
+spec2 = importlib.util.spec_from_file_location("relationship_path_tracker", utils_path_tracker_path)
+path_module = importlib.util.module_from_spec(spec2)
+spec2.loader.exec_module(path_module)
+
+RelationshipPathTracker = path_module.RelationshipPathTracker
+PathQuery = path_module.PathQuery
+RelationshipPath = path_module.RelationshipPath
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +120,7 @@ class AsyncTerminusService:
         self._auth_token = None
         self._db_cache = set()
         
-        # 🔥 THINK ULTRA! Initialize relationship management components
+        # 🔥 THINK ULTRA! Initialize relationship management components - TESTING ROOT CAUSE
         self.relationship_manager = RelationshipManager()
         self.relationship_validator = RelationshipValidator()
         self.circular_detector = CircularReferenceDetector()
@@ -1138,7 +1170,14 @@ class AsyncTerminusService:
                 prop_name = prop.get("name")
                 prop_type = prop.get("type", "xsd:string")
                 if prop_name:
-                    schema_doc[prop_name] = prop_type
+                    # 🔥 THINK ULTRA! 복합 타입을 기본 타입으로 변환하여 TerminusDB가 이해할 수 있게 함
+                    if DataType.is_complex_type(prop_type):
+                        base_type = DataType.get_base_type(prop_type)
+                        schema_doc[prop_name] = base_type
+                        logger.info(f"🔥 CONVERTED: {prop_type} -> {base_type} for {prop_name}")
+                        print(f"🔥 DEBUG: Converted complex type {prop_type} to base type {base_type} for property {prop_name}")
+                    else:
+                        schema_doc[prop_name] = prop_type
         
         # 기본 속성 추가 (optional로 설정)
         if "label" in class_data:
@@ -1155,6 +1194,9 @@ class AsyncTerminusService:
         }
         
         try:
+            # 🔥 THINK ULTRA! 디버깅: TerminusDB에 보내는 스키마 문서 로깅
+            logger.info(f"Sending schema document to TerminusDB: {schema_doc}")
+            print(f"🔥 FINAL DOCUMENT TO TERMINUSDB: {json.dumps(schema_doc, indent=2)}")
             result = await self._make_request("POST", endpoint, [schema_doc], params)
             # 실제 TerminusDB 응답을 그대로 반환
             return result

@@ -809,12 +809,12 @@ async def analyze_relationship_network_bff(
 
 @router.get("/relationship-paths")
 async def find_relationship_paths_bff(
+    request: Request,
     db_name: str,
     start_entity: str,
     end_entity: Optional[str] = Query(None, description="목표 엔티티 (없으면 모든 도달 가능한 엔티티)"),
     max_depth: int = Query(3, ge=1, le=5, description="최대 탐색 깊이"),
     path_type: str = Query("shortest", description="경로 타입 (shortest, all, weighted, semantic)"),
-    request: Request,
     terminus: TerminusService = Depends(get_terminus_service),
     mapper: LabelMapper = Depends(get_label_mapper)
 ):

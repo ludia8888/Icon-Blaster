@@ -28,6 +28,7 @@ class JSONToJSONLDConverter:
         "xsd": "http://www.w3.org/2001/XMLSchema#",
         "owl": "http://www.w3.org/2002/07/owl#",
         "sys": "http://terminusdb.com/schema/sys#",
+        "custom": "http://example.org/ontology/custom#",  # 🔥 THINK ULTRA! 복합 타입 네임스페이스
         "label": "rdfs:label",
         "comment": "rdfs:comment",
         "description": "rdfs:comment"
@@ -156,11 +157,23 @@ class JSONToJSONLDConverter:
         jsonld_properties = []
         
         for prop in properties:
-            jsonld_prop = {
-                "@id": prop["name"],
-                "@type": "owl:DatatypeProperty",
-                "rdfs:range": {"@id": prop["type"]}
-            }
+            prop_type = prop["type"]
+            
+            # 🔥 THINK ULTRA! 복합 타입 처리 - TerminusDB가 이해할 수 있는 기본 타입 사용
+            if DataType.is_complex_type(prop_type):
+                base_type = DataType.get_base_type(prop_type)
+                jsonld_prop = {
+                    "@id": prop["name"],
+                    "@type": "owl:DatatypeProperty",
+                    "rdfs:range": {"@id": base_type},
+                    "sys:complex_type": prop_type  # 복합 타입 정보를 메타데이터로 저장
+                }
+            else:
+                jsonld_prop = {
+                    "@id": prop["name"],
+                    "@type": "owl:DatatypeProperty",
+                    "rdfs:range": {"@id": prop_type}
+                }
             
             # 레이블 처리
             if "label" in prop:
@@ -245,6 +258,23 @@ class JSONToJSONLDConverter:
         if datatype in [DataType.DATE, DataType.DATETIME]:
             if isinstance(value, datetime):
                 value = value.isoformat()
+        
+        # 🔥 THINK ULTRA! 복합 타입 처리
+        if DataType.is_complex_type(datatype):
+            from ..serializers.complex_type_serializer import ComplexTypeSerializer
+            
+            # 복합 타입 직렬화
+            serialized_value, metadata = ComplexTypeSerializer.serialize(value, datatype)
+            base_type = DataType.get_base_type(datatype)
+            
+            return {
+                "@value": serialized_value,
+                "@type": base_type,
+                "@metadata": {
+                    "complexType": datatype,
+                    **metadata
+                }
+            }
         
         return {
             "@value": value,
@@ -382,9 +412,15 @@ class JSONToJSONLDConverter:
         properties = []
         
         for prop in jsonld_properties:
+            # 🔥 THINK ULTRA! 복합 타입 복원 - sys:complex_type이 있으면 그것을 사용
+            if "sys:complex_type" in prop:
+                prop_type = prop["sys:complex_type"]
+            else:
+                prop_type = prop.get("rdfs:range", {}).get("@id")
+            
             extracted = {
                 "name": prop.get("@id"),
-                "type": prop.get("rdfs:range", {}).get("@id")
+                "type": prop_type
             }
             
             if "rdfs:label" in prop:
