@@ -1,0 +1,35 @@
+{
+  "start_time": "2025-07-18T01:22:35.532220",
+  "tests": [
+    {
+      "name": "ComplexTypeValidator Unit Tests",
+      "file": "test_complex_validator_ultra.py",
+      "success": true,
+      "duration": 0.21050500869750977,
+      "output": ""
+    },
+    {
+      "name": "TerminusDB Integration Tests",
+      "file": "test_complex_types_terminus_integration.py",
+      "success": null,
+      "skipped": true,
+      "duration": 0,
+      "output": "Skipped - services not running"
+    },
+    {
+      "name": "BFF Integration Tests",
+      "file": "test_complex_types_bff_integration.py",
+      "success": null,
+      "skipped": true,
+      "duration": 0,
+      "output": "Skipped - services not running"
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0
+  },
+  "end_time": "2025-07-18T01:22:42.869930",
+  "total_duration": 0.21050500869750977
+}

@@ -1,0 +1,67 @@
+{
+  "total": 10,
+  "passed": 9,
+  "failed": 1,
+  "details": [
+    {
+      "test": "ARRAY 타입",
+      "success": true,
+      "message": "성공",
+      "timestamp": "2025-07-18T00:34:34.487774"
+    },
+    {
+      "test": "OBJECT 타입",
+      "success": false,
+      "message": "local",
+      "timestamp": "2025-07-18T00:34:34.489638"
+    },
+    {
+      "test": "ENUM 타입",
+      "success": true,
+      "message": "성공",
+      "timestamp": "2025-07-18T00:34:34.489651"
+    },
+    {
+      "test": "MONEY 타입",
+      "success": true,
+      "message": "성공",
+      "timestamp": "2025-07-18T00:34:34.490190"
+    },
+    {
+      "test": "PHONE 타입",
+      "success": true,
+      "message": "성공",
+      "timestamp": "2025-07-18T00:34:34.490227"
+    },
+    {
+      "test": "EMAIL 타입",
+      "success": true,
+      "message": "성공",
+      "timestamp": "2025-07-18T00:34:34.490273"
+    },
+    {
+      "test": "COORDINATE 타입",
+      "success": true,
+      "message": "성공",
+      "timestamp": "2025-07-18T00:34:34.490283"
+    },
+    {
+      "test": "ADDRESS 타입",
+      "success": true,
+      "message": "성공",
+      "timestamp": "2025-07-18T00:34:34.490299"
+    },
+    {
+      "test": "IMAGE 타입",
+      "success": true,
+      "message": "성공",
+      "timestamp": "2025-07-18T00:34:34.490360"
+    },
+    {
+      "test": "FILE 타입",
+      "success": true,
+      "message": "성공",
+      "timestamp": "2025-07-18T00:34:34.490464"
+    }
+  ]
+}

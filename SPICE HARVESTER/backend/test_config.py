@@ -64,7 +64,7 @@ class TestConfig:
     def get_oms_ontology_url(cls, db_name: str, path: str = "") -> str:
         """Get OMS ontology endpoint URL"""
         base_path = f"/ontology/{db_name}"
-        full_path = f"{base_path}{path}" if path else base_path
+        full_path = f"{base_path}{path}" if path else f"{base_path}/create"
         return cls.get_oms_api_url(full_path)
     
     @classmethod

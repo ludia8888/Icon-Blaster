@@ -1,0 +1,33 @@
+{
+  "start_time": "2025-07-18T01:25:09.915831",
+  "tests": [
+    {
+      "name": "ComplexTypeValidator Unit Tests",
+      "file": "test_complex_validator_ultra.py",
+      "success": true,
+      "duration": 0.15015888214111328,
+      "output": ""
+    },
+    {
+      "name": "TerminusDB Integration Tests",
+      "file": "test_complex_types_terminus_integration.py",
+      "success": true,
+      "duration": 0.3342628479003906,
+      "output": ""
+    },
+    {
+      "name": "BFF Integration Tests",
+      "file": "test_complex_types_bff_integration.py",
+      "success": true,
+      "duration": 0.3235001564025879,
+      "output": ""
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0
+  },
+  "end_time": "2025-07-18T01:25:16.902649",
+  "total_duration": 0.8079218864440918
+}

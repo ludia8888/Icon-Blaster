@@ -1,0 +1,67 @@
+{
+  "total": 10,
+  "passed": 5,
+  "failed": 5,
+  "details": [
+    {
+      "test": "1️⃣ ARRAY 타입 완전 검증",
+      "success": false,
+      "message": "타입 불일치 검증이 실패해야 함",
+      "timestamp": "2025-07-18T00:42:21.430581"
+    },
+    {
+      "test": "2️⃣ OBJECT 타입 완전 검증",
+      "success": false,
+      "message": "local",
+      "timestamp": "2025-07-18T00:42:21.432586"
+    },
+    {
+      "test": "3️⃣ ENUM 타입 완전 검증",
+      "success": true,
+      "message": "모든 검증 통과",
+      "timestamp": "2025-07-18T00:42:21.433424"
+    },
+    {
+      "test": "4️⃣ MONEY 타입 완전 검증",
+      "success": true,
+      "message": "모든 검증 통과",
+      "timestamp": "2025-07-18T00:42:21.433530"
+    },
+    {
+      "test": "5️⃣ PHONE 타입 완전 검증",
+      "success": false,
+      "message": "미국 전화번호 검증 실패: Invalid phone number",
+      "timestamp": "2025-07-18T00:42:21.440952"
+    },
+    {
+      "test": "6️⃣ EMAIL 타입 완전 검증",
+      "success": false,
+      "message": "local",
+      "timestamp": "2025-07-18T00:42:21.441094"
+    },
+    {
+      "test": "7️⃣ COORDINATE 타입 완전 검증",
+      "success": true,
+      "message": "모든 검증 통과",
+      "timestamp": "2025-07-18T00:42:21.441308"
+    },
+    {
+      "test": "8️⃣ ADDRESS 타입 완전 검증",
+      "success": true,
+      "message": "모든 검증 통과",
+      "timestamp": "2025-07-18T00:42:21.441505"
+    },
+    {
+      "test": "9️⃣ IMAGE 타입 완전 검증",
+      "success": true,
+      "message": "모든 검증 통과",
+      "timestamp": "2025-07-18T00:42:21.441608"
+    },
+    {
+      "test": "🔟 FILE 타입 완전 검증",
+      "success": false,
+      "message": "허용되지 않은 확장자를 탐지하지 못함",
+      "timestamp": "2025-07-18T00:42:21.441630"
+    }
+  ]
+}

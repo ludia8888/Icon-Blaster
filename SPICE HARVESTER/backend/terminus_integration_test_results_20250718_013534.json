@@ -1,0 +1,67 @@
+{
+  "total": 10,
+  "passed": 1,
+  "failed": 9,
+  "details": [
+    {
+      "test": "1️⃣ ARRAY 타입 온톨로지",
+      "success": false,
+      "message": "Failed to create array ontology: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:35:34.310386"
+    },
+    {
+      "test": "2️⃣ OBJECT 타입 온톨로지",
+      "success": false,
+      "message": "Failed to create object ontology: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:35:34.311379"
+    },
+    {
+      "test": "3️⃣ ENUM 타입 온톨로지",
+      "success": false,
+      "message": "Failed to create enum ontology: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:35:34.311984"
+    },
+    {
+      "test": "4️⃣ MONEY 타입 온톨로지",
+      "success": false,
+      "message": "Failed to create money ontology: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:35:34.312550"
+    },
+    {
+      "test": "5️⃣ PHONE/EMAIL 타입 온톨로지",
+      "success": false,
+      "message": "Failed to create contact ontology: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:35:34.313096"
+    },
+    {
+      "test": "6️⃣ COORDINATE/ADDRESS 타입 온톨로지",
+      "success": false,
+      "message": "Failed to create location ontology: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:35:34.313658"
+    },
+    {
+      "test": "7️⃣ IMAGE/FILE 타입 온톨로지",
+      "success": false,
+      "message": "Failed to create media ontology: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:35:34.314190"
+    },
+    {
+      "test": "8️⃣ 복합 타입 조합 온톨로지",
+      "success": false,
+      "message": "Failed to create complex combination: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:35:34.314740"
+    },
+    {
+      "test": "9️⃣ 제약조건 검증 테스트",
+      "success": true,
+      "message": "성공",
+      "timestamp": "2025-07-18T01:35:34.315246"
+    },
+    {
+      "test": "🔟 전체 e-commerce 모델",
+      "success": false,
+      "message": "Failed to create e-commerce model: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:35:34.315916"
+    }
+  ]
+}

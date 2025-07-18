@@ -1,0 +1,37 @@
+{
+  "total": 5,
+  "passed": 0,
+  "failed": 5,
+  "details": [
+    {
+      "test": "1️⃣ BFF 레이블 매핑 테스트",
+      "success": false,
+      "message": "Failed to create via BFF (en): {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:31:37.207734"
+    },
+    {
+      "test": "2️⃣ 복합 타입 생성 (BFF)",
+      "success": false,
+      "message": "Failed to create complex model: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:31:37.208764"
+    },
+    {
+      "test": "3️⃣ 다국어 레이블 지원",
+      "success": false,
+      "message": "Failed to create multilingual ontology: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:31:37.209487"
+    },
+    {
+      "test": "4️⃣ 복합 타입 검증 (BFF)",
+      "success": false,
+      "message": "Failed to create validated ontology: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:31:37.210035"
+    },
+    {
+      "test": "5️⃣ 전체 워크플로우 테스트",
+      "success": false,
+      "message": "Failed to create complete model: {\"detail\":\"Not Found\"}",
+      "timestamp": "2025-07-18T01:31:37.210677"
+    }
+  ]
+}
