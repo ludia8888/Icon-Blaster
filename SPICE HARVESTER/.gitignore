@@ -188,6 +188,7 @@ test_results/
 verify_jwks.py
 test_token_direct.py
 test_full_flow.py
+.claude/
 
 # Unrelated projects
 pca-hijab/
