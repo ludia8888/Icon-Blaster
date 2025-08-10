@@ -21,6 +21,7 @@ export default function Home() {
   const [iconCount, setIconCount] = useState(10);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedIcons, setGeneratedIcons] = useState<GeneratedIcon[]>([]);
+  const [downloadFormat, setDownloadFormat] = useState<'png' | 'svg'>('png');
   const [error, setError] = useState<string | null>(null);
   const [successCount, setSuccessCount] = useState(0);
 
@@ -83,7 +84,7 @@ export default function Home() {
 
   const handleDownload = async (icon: GeneratedIcon) => {
     try {
-      await downloadIcon(icon, prompt);
+      await downloadIcon(icon, prompt, downloadFormat);
     } catch (error) {
       console.error("Failed to download icon:", error);
       alert("다운로드에 실패했습니다. 다시 시도해주세요.");
@@ -92,10 +93,20 @@ export default function Home() {
 
   const handleBatchDownload = async () => {
     try {
-      await downloadSelectedIcons(generatedIcons, prompt);
+      await downloadSelectedIcons(generatedIcons, prompt, downloadFormat);
     } catch (error) {
       console.error("Failed to download selected icons:", error);
       alert("선택된 아이콘 다운로드에 실패했습니다. 다시 시도해주세요.");
+    }
+  };
+
+  const handleDownloadAllFormats = async (icon: GeneratedIcon) => {
+    try {
+      const { downloadAllFormats } = await import('@/lib/download');
+      await downloadAllFormats(icon, prompt);
+    } catch (error) {
+      console.error("Failed to download all formats:", error);
+      alert("모든 포맷 다운로드에 실패했습니다. 다시 시도해주세요.");
     }
   };
 
@@ -154,6 +165,24 @@ export default function Home() {
                   <SelectItem value="6">6개</SelectItem>
                   <SelectItem value="8">8개</SelectItem>
                   <SelectItem value="10">10개</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+              <Download className="h-4 w-4 text-slate-600" />
+              <span className="text-sm text-slate-600">포맷:</span>
+              <Select
+                value={downloadFormat}
+                onValueChange={(value: 'png' | 'svg') => setDownloadFormat(value)}
+                disabled={isGenerating}
+              >
+                <SelectTrigger className="w-20 h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="png">PNG</SelectItem>
+                  <SelectItem value="svg">SVG</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -262,14 +291,28 @@ export default function Home() {
                           className={`h-4 w-4 ${icon.liked ? 'fill-current' : ''}`} 
                         />
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(icon)}
-                        className="flex-1"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      <div className="flex flex-1 gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownload(icon)}
+                          className="flex-1"
+                          title={`${downloadFormat.toUpperCase()} 다운로드`}
+                        >
+                          <Download className="h-4 w-4" />
+                          <span className="text-xs ml-1">{downloadFormat.toUpperCase()}</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadAllFormats(icon)}
+                          className="px-2"
+                          title="PNG+SVG 모두 다운로드"
+                        >
+                          <Download className="h-3 w-3" />
+                          <span className="text-xs">ALL</span>
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -280,7 +323,8 @@ export default function Home() {
             {generatedIcons.filter(icon => icon.liked).length > 0 && (
               <div className="text-center">
                 <Button size="lg" className="px-8 py-3" onClick={handleBatchDownload}>
-                  선택된 아이콘 다운로드 ({generatedIcons.filter(icon => icon.liked).length}개)
+                  <Download className="h-5 w-5 mr-2" />
+                  선택된 아이콘 {downloadFormat.toUpperCase()} 다운로드 ({generatedIcons.filter(icon => icon.liked).length}개)
                 </Button>
               </div>
             )}

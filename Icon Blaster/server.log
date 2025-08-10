@@ -18,3 +18,102 @@
  GET / 200 in 35ms
  ✓ Compiled /api/generate-icons in 314ms
  POST /api/generate-icons 200 in 12240ms
+ ✓ Compiled middleware in 2ms
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'
+}
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 639ms
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.6n07l12405e'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.6n07l12405e'
+}
+[Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.enulwqx6gar'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.enulwqx6gar'
+}
+[Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.xa6tvv0wzu'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.xa6tvv0wzu'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.jphe5f2ofa'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.jphe5f2ofa'
+}
+[Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.dauthbqo84m'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.dauthbqo84m'
+}
+[Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.m7kjnvv1lai'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.m7kjnvv1lai'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.agble6vtd89'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.agble6vtd89'
+}
+[Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.x8poc38u1qs'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.x8poc38u1qs'
+}
+[Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.fvwtx4wmw4'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/static/development/_buildManifest.js.tmp.fvwtx4wmw4'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/favicon.ico/[__metadata_id__]/route/app-paths-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/isihyeon/Desktop/Icon Blaster/.next/server/app/favicon.ico/[__metadata_id__]/route/app-paths-manifest.json'
+}
