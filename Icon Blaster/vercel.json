@@ -5,6 +5,30 @@
     }
   },
   "env": {
-    "OPENAI_API_KEY": "@openai-api-key"
-  }
+    "OPENAI_API_KEY": "@openai-api-key",
+    "NODE_ENV": "production",
+    "RATE_LIMIT_MAX": "10",
+    "RATE_LIMIT_WINDOW_MS": "60000",
+    "SECURITY_STRICT_MODE": "true"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "X-RateLimit-Limit",
+          "value": "10"
+        },
+        {
+          "key": "X-RateLimit-Window",
+          "value": "60"
+        }
+      ]
+    }
+  ]
 }
